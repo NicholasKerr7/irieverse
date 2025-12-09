@@ -1,0 +1,87 @@
+import { BookingOption } from "../types/travel";
+import { ExternalLink } from "lucide-react";
+
+interface BookingRecommendationsProps {
+  bookings: BookingOption[];
+  isLoading: boolean;
+  error: string | null;
+  onRefresh: () => void;
+  destinationName: string;
+}
+
+export function BookingRecommendations({
+  bookings,
+  isLoading,
+  error,
+  onRefresh,
+  destinationName,
+}: BookingRecommendationsProps) {
+  return (
+    <section className="max-w-6xl mx-auto bg-slate-950/80 border border-slate-800 rounded-3xl shadow-[0_24px_80px_rgba(15,23,42,0.9)] backdrop-blur-xl p-4 sm:p-6 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-emerald-300/80">Book the vibe</p>
+          <h2 className="text-lg sm:text-xl font-semibold">Curated stays + flights for {destinationName}</h2>
+          <p className="text-xs sm:text-[0.8rem] text-slate-400">
+            Pulled from boutique partners + Duffel quotes. Swap origin/destination to refresh.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-3 py-1.5 text-[0.7rem] uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-900/60 disabled:opacity-40"
+          disabled={isLoading}
+        >
+          Refresh
+        </button>
+      </div>
+
+      {error && <p className="text-xs text-rose-400">{error}</p>}
+
+      {!error && !bookings.length && (
+        <p className="text-xs text-slate-400">
+          {isLoading ? "Checking our booking partners…" : "No tailored stays available for this combo yet."}
+        </p>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {bookings.map((option) => (
+          <article
+            key={option.id}
+            className="rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3 flex flex-col gap-2 shadow shadow-slate-950/40"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold">{option.title}</p>
+                <p className="text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">
+                  {option.provider} · {option.type}
+                </p>
+              </div>
+              <p className="text-base font-semibold text-emerald-300">
+                ${option.price.toLocaleString()} {option.currency}
+              </p>
+            </div>
+            <p className="text-xs text-slate-400">{option.description}</p>
+            {option.perks && (
+              <div className="flex flex-wrap gap-2 text-[0.65rem] uppercase tracking-[0.15em] text-slate-500">
+                {option.perks.map((perk) => (
+                  <span key={perk} className="px-2 py-0.5 rounded-full border border-slate-800">
+                    {perk}
+                  </span>
+                ))}
+              </div>
+            )}
+            <a
+              href={option.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-emerald-300 hover:text-emerald-100"
+            >
+              Book this {option.type} <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}

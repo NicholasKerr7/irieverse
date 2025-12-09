@@ -1,0 +1,46 @@
+[
+  {
+    "id": "mobay-sound-system",
+    "title": "Hip Strip Sound System Clash",
+    "city": "Montego Bay",
+    "region": "North Coast",
+    "venue": "Gloucester Ave beach stage",
+    "startDate": "2025-01-12T19:00:00-05:00",
+    "vibes": ["nightlife", "music"],
+    "price": "Free · street party",
+    "description": "Weekly selectors showdown with jerk vendors and mobile rum bars."
+  },
+  {
+    "id": "negril-sunrise-yoga",
+    "title": "Cliffs Sunrise Yoga Flow",
+    "city": "Negril",
+    "region": "West Coast",
+    "venue": "West End cliffs outlook",
+    "startDate": "2025-01-11T06:30:00-05:00",
+    "vibes": ["chill", "wellness"],
+    "price": "$15 drop-in",
+    "description": "Hour-long flow with coconut water + ital breakfast included."
+  },
+  {
+    "id": "kingston-dub-rooftop",
+    "title": "Kingston Rooftop Dub Session",
+    "city": "Kingston",
+    "region": "South-East",
+    "venue": "Skyline Levels",
+    "startDate": "2025-01-13T21:30:00-05:00",
+    "vibes": ["nightlife", "culture"],
+    "price": "$25 early",
+    "description": "Live dub engineers, artisan vendors, and skyline views of the capital."
+  },
+  {
+    "id": "portland-blue-lagoon-market",
+    "title": "Blue Lagoon Artisan Market",
+    "city": "Port Antonio",
+    "region": "East",
+    "venue": "Blue Lagoon village",
+    "startDate": "2025-01-10T10:00:00-05:00",
+    "vibes": ["culture", "food"],
+    "price": "Free entry",
+    "description": "Local designers, handwoven goods, and farm-to-table pop ups."
+  }
+]

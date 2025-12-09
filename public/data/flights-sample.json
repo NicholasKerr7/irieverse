@@ -1,0 +1,84 @@
+{
+  "JFK-MBJ": [
+    {
+      "flightNumber": "B6 1501",
+      "airline": "JetBlue",
+      "origin": "JFK",
+      "destination": "MBJ",
+      "departureTimeUTC": "2024-11-14T12:30:00Z",
+      "arrivalTimeUTC": "2024-11-14T15:55:00Z",
+      "status": "On Time",
+      "durationMinutes": 205
+    },
+    {
+      "flightNumber": "DL 1845",
+      "airline": "Delta",
+      "origin": "JFK",
+      "destination": "MBJ",
+      "departureTimeUTC": "2024-11-14T14:05:00Z",
+      "arrivalTimeUTC": "2024-11-14T17:35:00Z",
+      "status": "Boarding",
+      "durationMinutes": 210
+    }
+  ],
+  "JFK-KIN": [
+    {
+      "flightNumber": "CM 408",
+      "airline": "Copa",
+      "origin": "JFK",
+      "destination": "KIN",
+      "departureTimeUTC": "2024-11-14T10:20:00Z",
+      "arrivalTimeUTC": "2024-11-14T14:35:00Z",
+      "status": "Departed",
+      "durationMinutes": 255
+    }
+  ],
+  "MIA-MBJ": [
+    {
+      "flightNumber": "AA 2879",
+      "airline": "American",
+      "origin": "MIA",
+      "destination": "MBJ",
+      "departureTimeUTC": "2024-11-14T13:45:00Z",
+      "arrivalTimeUTC": "2024-11-14T15:23:00Z",
+      "status": "On Time",
+      "durationMinutes": 158
+    }
+  ],
+  "MIA-KIN": [
+    {
+      "flightNumber": "WN 2705",
+      "airline": "Southwest",
+      "origin": "MIA",
+      "destination": "KIN",
+      "departureTimeUTC": "2024-11-14T16:05:00Z",
+      "arrivalTimeUTC": "2024-11-14T18:40:00Z",
+      "status": "Final Call",
+      "durationMinutes": 155
+    }
+  ],
+  "YYZ-MBJ": [
+    {
+      "flightNumber": "WS 2704",
+      "airline": "WestJet",
+      "origin": "YYZ",
+      "destination": "MBJ",
+      "departureTimeUTC": "2024-11-14T11:30:00Z",
+      "arrivalTimeUTC": "2024-11-14T15:20:00Z",
+      "status": "On Time",
+      "durationMinutes": 230
+    }
+  ],
+  "YYZ-KIN": [
+    {
+      "flightNumber": "AC 1810",
+      "airline": "Air Canada",
+      "origin": "YYZ",
+      "destination": "KIN",
+      "departureTimeUTC": "2024-11-14T09:40:00Z",
+      "arrivalTimeUTC": "2024-11-14T13:55:00Z",
+      "status": "On Time",
+      "durationMinutes": 255
+    }
+  ]
+}
