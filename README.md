@@ -27,5 +27,19 @@ VITE_BOOKING_API_URL=https://.../bookings     # live bookings; otherwise uses pu
 
 If env vars are absent, the app falls back to local sample data in `public/data`.
 
+## Deployment
+- Build output is static in `dist` (`npm run build`), so it works on Vercel, Netlify, or any static host.
+- Vercel: Import the repo, Framework = Vite, Build Command = `npm run build`, Output = `dist`, add env vars as needed.
+- Netlify: Build Command = `npm run build`, Publish directory = `dist`, set env vars. No functions required.
+- Plain static hosting: run `npm run build` and serve the `dist` folder (e.g., `npx serve dist`).
+
+## Screenshots
+Capture a few key views and drop them into the repo (e.g., `public/screenshots`), then embed them here:
+- Hero/search and Explore (places view)
+- Experiences view with filters
+- Map view
+- Trip planner + flight snapshot + bookings
+- Live events feed
+
 ## Tech stack
 React 18, Vite, TypeScript, Tailwind CSS, MapLibre via `react-map-gl`, Supabase (optional for collab).
