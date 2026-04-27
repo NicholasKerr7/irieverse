@@ -1,4 +1,15 @@
-import { CalendarDays, Heart, Music2, PartyPopper, Utensils } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  Gauge,
+  Heart,
+  MapPin,
+  Music2,
+  PartyPopper,
+  Star,
+  Utensils,
+  WalletCards,
+} from "lucide-react";
 import { Experience } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { capitalise } from "../utils/text";
@@ -13,80 +24,109 @@ interface ExperiencesGridProps {
 export function ExperiencesGrid({ items, saved, onToggleSaved, onAddToTrip }: ExperiencesGridProps) {
   if (!items.length) {
     return (
-      <p className="mt-5 text-xs text-slate-400">
+      <div className="mt-5 rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-6 text-sm text-slate-400">
         No experiences match those filters yet. Try a different type, vibe or search.
-      </p>
+      </div>
     );
   }
-
-  const iconForType = (type: string) => {
-    if (type === "food") return <Utensils className="w-3 h-3" />;
-    if (type === "music") return <Music2 className="w-3 h-3" />;
-    if (type === "festival") return <PartyPopper className="w-3 h-3" />;
-    return null;
-  };
 
   return (
     <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((experience) => {
         const isSaved = saved.has(experience.id);
+
         return (
           <article
             key={experience.id}
-            className="group rounded-2xl border border-slate-700/80 bg-gradient-to-br from-slate-900/95 via-slate-950 to-slate-950/95 overflow-hidden flex flex-col shadow-lg shadow-slate-950/60"
+            className="group overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-slate-950/40"
           >
-            <div className="relative h-32 overflow-hidden">
+            <div className="relative h-48 overflow-hidden">
               <img
                 src={experience.imageUrl}
                 alt={experience.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent" />
               <button
                 type="button"
                 onClick={() => onToggleSaved(experience.id)}
-                className="absolute top-2 right-2 inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-950/80 border border-slate-700/80 text-slate-200 hover:bg-slate-900/90"
+                className={classNames(
+                  "absolute right-3 top-3 inline-flex min-h-10 items-center gap-2 rounded-full border px-3 text-xs font-semibold backdrop-blur transition",
+                  isSaved
+                    ? "border-rose-300/50 bg-rose-400/20 text-rose-100"
+                    : "border-white/15 bg-slate-950/65 text-slate-100 hover:border-emerald-300/60"
+                )}
                 aria-label={isSaved ? "Remove from saved" : "Save experience"}
               >
-                <Heart
-                  className={classNames(
-                    "w-4 h-4",
-                    isSaved ? "fill-rose-400 text-rose-400" : "text-slate-200"
-                  )}
-                />
+                <Heart className={classNames("h-4 w-4", isSaved ? "fill-rose-300 text-rose-300" : "")} />
+                {isSaved ? "Saved" : "Save"}
               </button>
-              <span className="absolute left-2 bottom-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-950/80 border border-slate-700/80 text-[0.65rem] text-slate-200">
-                {iconForType(experience.type)}
-                {capitalise(experience.type)}
-              </span>
+              <div className="absolute bottom-4 left-4 right-4">
+                <p className="inline-flex items-center gap-1 rounded-full border border-emerald-300/25 bg-slate-950/65 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-100 backdrop-blur">
+                  {iconForType(experience.type)}
+                  {capitalise(experience.type)}
+                </p>
+                <h3 className="mt-2 text-xl font-semibold leading-tight text-white">{experience.title}</h3>
+              </div>
             </div>
-            <div className="flex-1 p-3 flex flex-col gap-1">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold line-clamp-2">{experience.title}</h3>
-                <span className="text-[0.7rem] text-amber-300 flex items-center gap-1">
-                  ★ {experience.rating.toFixed(1)}
+
+            <div className="flex min-h-[15rem] flex-col p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="flex min-w-0 items-center gap-1 text-xs text-slate-400">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-cyan-300" />
+                  <span className="truncate">{experience.region} · {experience.location}</span>
+                </p>
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber-200">
+                  <Star className="h-4 w-4 fill-current" /> {experience.rating.toFixed(1)}
                 </span>
               </div>
-              <p className="text-[0.72rem] text-slate-300 line-clamp-3">{experience.description}</p>
-              <p className="text-[0.68rem] text-slate-400 mt-1">
-                {experience.region} · {experience.location}
-              </p>
-              <div className="mt-1 flex items-center justify-between text-[0.68rem] text-slate-400">
-                <span>{experience.bestTime}</span>
-                <span className="text-slate-300">{experience.approxCost}</span>
-              </div>
-              {onAddToTrip && (
-                <button
-                  type="button"
-                  onClick={() => onAddToTrip(experience.id)}
-                  className="mt-2 inline-flex items-center justify-center gap-1 rounded-full border border-emerald-400/70 bg-emerald-400/10 px-3 py-1.5 text-[0.7rem] text-emerald-200 hover:bg-emerald-400/20"
-                >
-                  <CalendarDays className="w-3 h-3" /> Add to trip
-                </button>
-              )}
+
+              <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-300">{experience.description}</p>
+
+              <dl className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                <ExperienceFact icon={Gauge} label="Energy" value={experience.energy} />
+                <ExperienceFact icon={Clock} label="Best time" value={experience.bestTime} />
+                <ExperienceFact icon={WalletCards} label="Cost" value={experience.approxCost} />
+              </dl>
+
+              <button
+                type="button"
+                onClick={() => onAddToTrip?.(experience.id)}
+                disabled={!onAddToTrip}
+                className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-emerald-300/70 bg-emerald-300/10 px-4 py-2 text-xs font-bold text-emerald-100 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <CalendarDays className="h-4 w-4" /> Add to trip
+              </button>
             </div>
           </article>
         );
       })}
     </div>
   );
+}
+
+function ExperienceFact({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Gauge;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-2">
+      <dt className="flex items-center gap-1 text-[0.62rem] uppercase tracking-[0.12em] text-slate-500">
+        <Icon className="h-3 w-3" /> {label}
+      </dt>
+      <dd className="mt-1 line-clamp-2 font-semibold text-slate-200">{value}</dd>
+    </div>
+  );
+}
+
+function iconForType(type: string) {
+  if (type === "food") return <Utensils className="h-3.5 w-3.5" />;
+  if (type === "music") return <Music2 className="h-3.5 w-3.5" />;
+  if (type === "festival") return <PartyPopper className="h-3.5 w-3.5" />;
+  return null;
 }
