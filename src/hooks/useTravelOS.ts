@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ViewStateChangeEvent } from "react-map-gl";
+import type { ViewStateChangeEvent } from "react-map-gl/maplibre";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import { fetchBookingOptions } from "../services/bookings";
 import {
@@ -15,6 +15,7 @@ import type {
   Destination,
   ExperienceType,
   FlightOption,
+  ImportedIdea,
   ItineraryPlan,
   LiveEvent,
   OriginAirport,
@@ -27,6 +28,7 @@ const AVERAGE_JET_SPEED_KMH = 850;
 const STORAGE_KEY_ORIGIN_AIRPORT = "irieverse_origin_airport";
 const STORAGE_KEY_SAVED_PLACES = "irieverse_saved_places";
 const STORAGE_KEY_SAVED_EXPERIENCES = "irieverse_saved_experiences";
+const STORAGE_KEY_IMPORTED_IDEAS = "irieverse_imported_ideas";
 const STORAGE_KEY_THEME = "irieverse_theme";
 
 const AIRPORT_TIMEZONES: Record<string, string> = {
@@ -82,6 +84,7 @@ export function useTravelOS() {
   const [sort, setSort] = useState("trending");
   const [savedPlaces, setSavedPlaces] = useState<Set<string>>(new Set());
   const [savedExperiences, setSavedExperiences] = useState<Set<string>>(new Set());
+  const [importedIdeas, setImportedIdeas] = useState<ImportedIdea[]>([]);
   const [theme, setTheme] = useState<ThemeMode>("dark");
   const [plannerBaseId, setPlannerBaseId] = useState("mobay");
   const [plannerDays, setPlannerDays] = useState(5);
@@ -126,6 +129,7 @@ export function useTravelOS() {
   useEffect(() => {
     const savedDestinations = localStorage.getItem(STORAGE_KEY_SAVED_PLACES);
     const savedExperiencesStored = localStorage.getItem(STORAGE_KEY_SAVED_EXPERIENCES);
+    const importedIdeasStored = localStorage.getItem(STORAGE_KEY_IMPORTED_IDEAS);
     const savedTheme = localStorage.getItem(STORAGE_KEY_THEME) as ThemeMode | null;
 
     if (savedDestinations) {
@@ -133,6 +137,16 @@ export function useTravelOS() {
     }
     if (savedExperiencesStored) {
       setSavedExperiences(new Set(JSON.parse(savedExperiencesStored)));
+    }
+    if (importedIdeasStored) {
+      try {
+        const parsed = JSON.parse(importedIdeasStored);
+        if (Array.isArray(parsed)) {
+          setImportedIdeas(parsed);
+        }
+      } catch {
+        setImportedIdeas([]);
+      }
     }
     if (savedTheme === "dark" || savedTheme === "light") {
       setTheme(savedTheme);
@@ -146,6 +160,10 @@ export function useTravelOS() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_SAVED_EXPERIENCES, JSON.stringify(Array.from(savedExperiences)));
   }, [savedExperiences]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_IMPORTED_IDEAS, JSON.stringify(importedIdeas));
+  }, [importedIdeas]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -479,6 +497,7 @@ export function useTravelOS() {
     }
     setSavedPlaces(new Set(payload.savedPlaces ?? []));
     setSavedExperiences(new Set(payload.savedExperiences ?? []));
+    setImportedIdeas(payload.importedIdeas ?? []);
   }, []);
 
   useEffect(() => {
@@ -562,6 +581,26 @@ export function useTravelOS() {
     });
   };
 
+  const addImportedIdea = (idea: Omit<ImportedIdea, "id" | "createdAt">) => {
+    const importedIdea: ImportedIdea = {
+      ...idea,
+      id: createImportedIdeaId(),
+      createdAt: new Date().toISOString(),
+    };
+    setImportedIdeas((prev) => [importedIdea, ...prev]);
+    return importedIdea;
+  };
+
+  const updateImportedIdea = (id: string, patch: Partial<Omit<ImportedIdea, "id" | "createdAt">>) => {
+    setImportedIdeas((prev) =>
+      prev.map((idea) => (idea.id === id ? { ...idea, ...patch } : idea))
+    );
+  };
+
+  const removeImportedIdea = (id: string) => {
+    setImportedIdeas((prev) => prev.filter((idea) => idea.id !== id));
+  };
+
   const handleMapMove = (event: ViewStateChangeEvent) => {
     setMapViewState({
       latitude: event.viewState.latitude,
@@ -613,6 +652,7 @@ export function useTravelOS() {
         originAirportId,
         savedPlaces,
         savedExperiences,
+        importedIdeas,
       });
       const id = await saveTripState(tripId, payload);
       setTripId(id);
@@ -650,6 +690,7 @@ export function useTravelOS() {
       originAirportId,
       savedPlaces,
       savedExperiences,
+      importedIdeas,
     });
 
     const handler = setTimeout(() => {
@@ -675,6 +716,7 @@ export function useTravelOS() {
     originAirportId,
     savedPlaces,
     savedExperiences,
+    importedIdeas,
   ]);
 
   return {
@@ -690,6 +732,7 @@ export function useTravelOS() {
     setSort,
     savedPlaces,
     savedExperiences,
+    importedIdeas,
     theme,
     toggleTheme: () => setTheme((prev) => (prev === "dark" ? "light" : "dark")),
     plannerBaseId,
@@ -738,6 +781,9 @@ export function useTravelOS() {
     toggleSavedExperience,
     savePlace,
     saveExperience,
+    addImportedIdea,
+    updateImportedIdea,
+    removeImportedIdea,
     handleExportItinerary,
     handleShareTrip,
     handleCopyShareLink,
@@ -745,6 +791,13 @@ export function useTravelOS() {
 }
 
 export type TravelOS = ReturnType<typeof useTravelOS>;
+
+function createImportedIdeaId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `idea-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 function estimateFlightDuration(origin: OriginAirport, destination: Pick<Destination, "latitude" | "longitude">): string {
   const distanceKm = haversineDistance(origin.latitude, origin.longitude, destination.latitude, destination.longitude);

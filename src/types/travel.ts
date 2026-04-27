@@ -14,6 +14,16 @@ export type ExperienceCategory = "food" | "music" | "festival";
 
 export type ExperienceType = "all" | ExperienceCategory;
 
+export type ImportedIdeaCategory =
+  | "food"
+  | "beach"
+  | "music"
+  | "culture"
+  | "hotel"
+  | "hidden-gem"
+  | "nightlife"
+  | "other";
+
 export interface Destination {
   id: string;
   name: string;
@@ -63,6 +73,17 @@ export interface Experience {
   bestTime: string;
   imageUrl: string;
   approxCost: string;
+}
+
+export interface ImportedIdea {
+  id: string;
+  title: string;
+  url: string;
+  note: string;
+  category: ImportedIdeaCategory;
+  collectionId: string;
+  createdAt: string;
+  linkedDestinationId?: string;
 }
 
 export interface PlannerDay {

@@ -1,5 +1,5 @@
 import { memo } from "react";
-import Map, { Layer, Marker, Source, ViewStateChangeEvent } from "react-map-gl";
+import Map, { Layer, Marker, Source, type ViewStateChangeEvent } from "react-map-gl/maplibre";
 import type { Destination } from "../types/travel";
 import { MapPin } from "lucide-react";
 import { classNames } from "../utils/classNames";
@@ -87,7 +87,6 @@ export const TravelMap = memo(function TravelMap({
         dragRotate={false}
         mapStyle={MAP_STYLE}
         style={{ width: "100%", height }}
-        mapLib={import("maplibre-gl")}
         {...viewState}
         onMove={onMove}
       >

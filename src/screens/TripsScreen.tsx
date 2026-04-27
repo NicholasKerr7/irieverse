@@ -19,7 +19,7 @@ import { LiveEventsFeed } from "../components/LiveEventsFeed";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCES, VIBE_OPTIONS } from "../data/content";
 import { formatLocalTime, type TravelOS } from "../hooks/useTravelOS";
-import type { Experience, Vibe } from "../types/travel";
+import type { Experience, ImportedIdea, Vibe } from "../types/travel";
 import { classNames } from "../utils/classNames";
 
 type TripsScreenProps = {
@@ -49,6 +49,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
     () => EXPERIENCES.filter((experience) => app.savedExperiences.has(experience.id)),
     [app.savedExperiences]
   );
+  const importedIdeas = app.importedIdeas;
   const estimatedTotal =
     (app.perDayBudget.lodging + app.perDayBudget.dining + app.perDayBudget.experiences) * app.plannerDays +
     app.transportBudget;
@@ -114,6 +115,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
             setActiveStep={setActiveStep}
             savedDestinations={savedDestinations}
             savedExperiences={savedExperiences}
+            importedIdeas={importedIdeas}
             onNavigate={onNavigate}
           />
         </aside>
@@ -148,7 +150,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <MiniCard icon={WalletCards} title="Budget" body={`$${estimatedTotal.toLocaleString()} trip estimate.`} />
               <MiniCard icon={Plane} title="Flights" body={`${app.originAirport.code} to ${app.destination.airportCode}.`} />
-              <MiniCard icon={Users} title="Saved" body={`${savedDestinations.length + savedExperiences.length} ideas ready.`} />
+              <MiniCard icon={Users} title="Saved" body={`${savedDestinations.length + savedExperiences.length + importedIdeas.length} ideas ready.`} />
               <MiniCard icon={Sparkles} title="Vibe" body={app.plannerVibe === "mixed" ? "Mixed island flow." : `${app.plannerVibe} focused.`} />
             </div>
           </section>
@@ -211,6 +213,7 @@ function WizardPanel({
   setActiveStep,
   savedDestinations,
   savedExperiences,
+  importedIdeas,
   onNavigate,
 }: {
   app: TravelOS;
@@ -218,6 +221,7 @@ function WizardPanel({
   setActiveStep: (step: WizardStepId) => void;
   savedDestinations: typeof DESTINATIONS;
   savedExperiences: Experience[];
+  importedIdeas: ImportedIdea[];
   onNavigate: (tab: MobileTabId) => void;
 }) {
   return (
@@ -304,7 +308,7 @@ function WizardPanel({
 
       {activeStep === "saved" && (
         <div className="space-y-3">
-          <WizardTitle title="Add saved spots" body="Saved places can become the trip base; saved experiences stay ready for daily plans." />
+          <WizardTitle title="Add saved spots" body="Saved places can become the trip base; imported ideas stay attached to this trip board." />
           <div className="space-y-2">
             {savedDestinations.slice(0, 4).map((destination) => (
               <button
@@ -327,8 +331,35 @@ function WizardPanel({
               </button>
             )}
           </div>
+          {!!importedIdeas.length && (
+            <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+              <p className="text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">Imported ideas</p>
+              {importedIdeas.slice(0, 3).map((idea) => (
+                <button
+                  key={idea.id}
+                  type="button"
+                  onClick={() => {
+                    if (idea.linkedDestinationId) {
+                      app.setPlannerBaseId(idea.linkedDestinationId);
+                    }
+                  }}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 text-left"
+                >
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-200">{idea.title}</span>
+                    <span className="block text-xs text-slate-500">
+                      {idea.linkedDestinationId ? "Map location attached" : "Map location pending"}
+                    </span>
+                  </span>
+                  {idea.linkedDestinationId === app.plannerBaseId && <Check className="h-4 w-4 text-cyan-300" />}
+                </button>
+              ))}
+            </div>
+          )}
           {!!savedExperiences.length && (
-            <p className="text-xs text-slate-500">{savedExperiences.length} saved experiences will stay available for planning.</p>
+            <p className="text-xs text-slate-500">
+              {savedExperiences.length} saved experiences and {importedIdeas.length} imported ideas will stay available for planning.
+            </p>
           )}
         </div>
       )}
@@ -574,7 +605,7 @@ function VibeButton({ active, label, onClick }: { active: boolean; label: string
 function getCompletedStepIndex(app: TravelOS) {
   if (app.tripShareUrl) return 7;
   if (app.itinerary.daysPlan.length) return 6;
-  if (app.savedPlaces.size || app.savedExperiences.size) return 5;
+  if (app.savedPlaces.size || app.savedExperiences.size || app.importedIdeas.length) return 5;
   if (app.plannerBudget) return 4;
   if (app.plannerVibe) return 3;
   if (app.plannerStartDate && app.plannerDays) return 2;

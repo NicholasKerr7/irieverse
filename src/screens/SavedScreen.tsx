@@ -1,16 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   CalendarDays,
+  ExternalLink,
   Heart,
+  Link,
   MapPinned,
   MoveRight,
+  Plus,
   Share2,
+  StickyNote,
   Trash2,
 } from "lucide-react";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
-import type { Destination, Experience } from "../types/travel";
+import type { Destination, Experience, ImportedIdea, ImportedIdeaCategory } from "../types/travel";
 import { classNames } from "../utils/classNames";
 
 type SavedScreenProps = {
@@ -31,15 +35,36 @@ const COLLECTIONS = [
 ] as const;
 
 type CollectionId = (typeof COLLECTIONS)[number]["id"];
-type ItemKind = "place" | "experience";
+type ItemKind = "place" | "experience" | "import";
 type SavedItem =
   | { kind: "place"; item: Destination; collection: CollectionId }
-  | { kind: "experience"; item: Experience; collection: CollectionId };
+  | { kind: "experience"; item: Experience; collection: CollectionId }
+  | { kind: "import"; item: ImportedIdea; collection: CollectionId };
+
+const IMPORT_CATEGORIES: Array<{ id: ImportedIdeaCategory; label: string }> = [
+  { id: "food", label: "Food" },
+  { id: "beach", label: "Beach" },
+  { id: "music", label: "Music" },
+  { id: "culture", label: "Culture" },
+  { id: "hotel", label: "Hotel" },
+  { id: "hidden-gem", label: "Hidden Gem" },
+  { id: "nightlife", label: "Nightlife" },
+];
+
+const DEFAULT_IMPORT_FORM = {
+  title: "",
+  url: "",
+  note: "",
+  category: "food" as ImportedIdeaCategory,
+  collectionId: "food" as CollectionId,
+  linkedDestinationId: "",
+};
 
 export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   const [activeCollection, setActiveCollection] = useState<CollectionId>("all");
   const [collectionAssignments, setCollectionAssignments] = useState<Record<string, CollectionId>>({});
   const [statusMessage, setStatusMessage] = useState("");
+  const [importForm, setImportForm] = useState(DEFAULT_IMPORT_FORM);
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY_COLLECTIONS);
@@ -76,8 +101,13 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
         item: experience,
         collection: getExperienceCollection(experience, collectionAssignments),
       })),
+      ...app.importedIdeas.map((idea) => ({
+        kind: "import" as const,
+        item: idea,
+        collection: getImportCollection(idea),
+      })),
     ],
-    [collectionAssignments, savedDestinations, savedExperiences]
+    [app.importedIdeas, collectionAssignments, savedDestinations, savedExperiences]
   );
 
   const visibleItems =
@@ -87,6 +117,11 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   const hasSavedItems = savedItems.length > 0;
 
   const handleMoveCollection = (kind: ItemKind, id: string, collection: CollectionId) => {
+    if (kind === "import") {
+      app.updateImportedIdea(id, { collectionId: collection });
+      setStatusMessage(`Moved to ${COLLECTIONS.find((item) => item.id === collection)?.label ?? "collection"}`);
+      return;
+    }
     setCollectionAssignments((prev) => ({
       ...prev,
       [itemKey(kind, id)]: collection,
@@ -100,6 +135,9 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     } else if (savedItem.item.linkedDestinationId) {
       app.setPlannerBaseId(savedItem.item.linkedDestinationId);
     }
+    if (savedItem.kind === "import" && !savedItem.item.linkedDestinationId) {
+      setStatusMessage("Imported idea is ready in the trip builder. Attach a map location when you have one.");
+    }
     onNavigate("trips");
   };
 
@@ -108,6 +146,9 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       app.setPlannerBaseId(savedItem.item.id);
     } else if (savedItem.item.linkedDestinationId) {
       app.setPlannerBaseId(savedItem.item.linkedDestinationId);
+    } else if (savedItem.kind === "import") {
+      setStatusMessage("Attach a Jamaica map location to view this import on the map.");
+      return;
     }
     onNavigate("map");
   };
@@ -115,15 +156,18 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   const handleRemove = (savedItem: SavedItem) => {
     if (savedItem.kind === "place") {
       app.toggleSavedPlace(savedItem.item.id);
-    } else {
+    } else if (savedItem.kind === "experience") {
       app.toggleSavedExperience(savedItem.item.id);
+    } else {
+      app.removeImportedIdea(savedItem.item.id);
     }
     setStatusMessage("Removed from saved");
   };
 
   const handleShareLater = async (savedItem: SavedItem) => {
-    const title = savedItem.kind === "place" ? savedItem.item.name : savedItem.item.title;
-    const text = `IrieVerse Jamaica idea: ${title}`;
+    const title = getSavedItemTitle(savedItem);
+    const url = savedItem.kind === "import" ? savedItem.item.url : "";
+    const text = `IrieVerse Jamaica idea: ${title}${url ? ` ${url}` : ""}`;
     try {
       if (navigator.share) {
         await navigator.share({ title, text });
@@ -136,6 +180,42 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     }
   };
 
+  const handleImportSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const title = importForm.title.trim();
+    const url = importForm.url.trim();
+    const note = importForm.note.trim();
+    const fallbackTitle = inferTitleFromUrl(url) || note.slice(0, 56);
+
+    if (!title && !url && !note) {
+      setStatusMessage("Add a link, title, or note before saving.");
+      return;
+    }
+
+    app.addImportedIdea({
+      title: title || fallbackTitle || "Imported Jamaica idea",
+      url,
+      note,
+      category: importForm.category,
+      collectionId: importForm.collectionId,
+      linkedDestinationId: importForm.linkedDestinationId || undefined,
+    });
+    setImportForm({
+      ...DEFAULT_IMPORT_FORM,
+      category: importForm.category,
+      collectionId: categoryToCollection(importForm.category),
+    });
+    setStatusMessage("Imported idea saved");
+  };
+
+  const handleCategoryChange = (category: ImportedIdeaCategory) => {
+    setImportForm((prev) => ({
+      ...prev,
+      category,
+      collectionId: categoryToCollection(category),
+    }));
+  };
+
   return (
     <section className="mx-auto min-h-screen max-w-7xl px-4 py-5 sm:px-6 lg:px-10">
       <header className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-slate-950/40">
@@ -144,7 +224,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
             <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Saved</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">Your Jamaica boards.</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-              Organize saved places and experiences into trip-ready boards, then map them or send them into the builder.
+              Organize saved places, experiences, pasted links, and notes into trip-ready boards.
             </p>
             {statusMessage && <p className="mt-3 text-xs text-cyan-200">{statusMessage}</p>}
           </div>
@@ -152,10 +232,120 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
           <div className="grid grid-cols-3 border-t border-slate-800 bg-slate-950/50 lg:border-l lg:border-t-0">
             <SavedMetric label="Saved" value={savedItems.length.toString()} />
             <SavedMetric label="Places" value={savedDestinations.length.toString()} />
-            <SavedMetric label="Ideas" value={savedExperiences.length.toString()} />
+            <SavedMetric label="Imports" value={app.importedIdeas.length.toString()} />
           </div>
         </div>
       </header>
+
+      <form
+        onSubmit={handleImportSubmit}
+        className="mt-5 rounded-3xl border border-slate-800 bg-slate-900/60 p-4 shadow-xl shadow-slate-950/30"
+      >
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Save a Jamaica idea</p>
+            <h2 className="mt-1 text-xl font-semibold">Paste a travel link or add a note.</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+              Capture TikTok, Instagram, Google Maps, YouTube, article links, or manual ideas now; attach exact map data later.
+            </p>
+          </div>
+          <button
+            type="submit"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-slate-950"
+          >
+            <Plus className="h-4 w-4" /> Save to Irieverse
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_0.75fr]">
+          <label className="flex flex-col gap-2 text-sm text-slate-300">
+            <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Paste link</span>
+            <span className="flex items-center gap-2 rounded-2xl border border-slate-700/80 bg-slate-950/80 px-3 py-2">
+              <Link className="h-4 w-4 text-cyan-300" />
+              <input
+                type="url"
+                value={importForm.url}
+                onChange={(event) => setImportForm((prev) => ({ ...prev, url: event.target.value }))}
+                placeholder="https://maps.google.com/... or social link"
+                className="min-w-0 flex-1 bg-transparent text-slate-100 placeholder:text-slate-600 focus:outline-none"
+              />
+            </span>
+          </label>
+
+          <label className="flex flex-col gap-2 text-sm text-slate-300">
+            <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Title</span>
+            <input
+              type="text"
+              value={importForm.title}
+              onChange={(event) => setImportForm((prev) => ({ ...prev, title: event.target.value }))}
+              placeholder="Jerk stop in Port Antonio"
+              className="rounded-2xl border border-slate-700/80 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-600 focus:outline-none"
+            />
+          </label>
+        </div>
+
+        <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_0.8fr_0.8fr]">
+          <label className="flex flex-col gap-2 text-sm text-slate-300">
+            <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Note</span>
+            <textarea
+              value={importForm.note}
+              onChange={(event) => setImportForm((prev) => ({ ...prev, note: event.target.value }))}
+              placeholder="Why this belongs in the trip"
+              rows={3}
+              className="resize-none rounded-2xl border border-slate-700/80 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-600 focus:outline-none"
+            />
+          </label>
+
+          <label className="flex flex-col gap-2 text-sm text-slate-300">
+            <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Collection</span>
+            <select
+              value={importForm.collectionId}
+              onChange={(event) => setImportForm((prev) => ({ ...prev, collectionId: event.target.value as CollectionId }))}
+              className="rounded-2xl border border-slate-700/80 bg-slate-950/80 px-3 py-2 text-slate-100 focus:outline-none"
+            >
+              {COLLECTIONS.filter((collection) => collection.id !== "all").map((collection) => (
+                <option key={collection.id} value={collection.id}>
+                  {collection.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2 text-sm text-slate-300">
+            <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Map location</span>
+            <select
+              value={importForm.linkedDestinationId}
+              onChange={(event) => setImportForm((prev) => ({ ...prev, linkedDestinationId: event.target.value }))}
+              className="rounded-2xl border border-slate-700/80 bg-slate-950/80 px-3 py-2 text-slate-100 focus:outline-none"
+            >
+              <option value="">Attach later</option>
+              {DESTINATIONS.map((destination) => (
+                <option key={destination.id} value={destination.id}>
+                  {destination.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {IMPORT_CATEGORIES.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => handleCategoryChange(category.id)}
+              className={classNames(
+                "rounded-full border px-3 py-2 text-xs font-semibold transition",
+                importForm.category === category.id
+                  ? "border-cyan-300 bg-cyan-300 text-slate-950"
+                  : "border-slate-700/80 bg-slate-950/70 text-slate-300 hover:border-cyan-300/60"
+              )}
+            >
+              {category.label}
+            </button>
+          ))}
+        </div>
+      </form>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[18rem_1fr]">
         <aside className="rounded-3xl border border-slate-800 bg-slate-900/60 p-3">
@@ -193,7 +383,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
               <Heart className="mx-auto h-8 w-8 text-cyan-300" />
               <h2 className="mt-3 text-lg font-semibold">No saved Jamaica ideas yet</h2>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400">
-                Save a place or experience from Explore or the Map, then build your trip from this board.
+                Save from Explore, the Map, or the import form above, then build your trip from this board.
               </p>
               <button
                 type="button"
@@ -210,15 +400,21 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
               {visibleItems.length ? (
                 visibleItems.map((savedItem) => (
                   <SavedCard
-                    key={itemKey(savedItem.kind, savedItem.kind === "place" ? savedItem.item.id : savedItem.item.id)}
+                    key={itemKey(savedItem.kind, getSavedItemId(savedItem))}
                     savedItem={savedItem}
                     onAddToTrip={() => handleAddToTrip(savedItem)}
                     onViewMap={() => handleViewMap(savedItem)}
                     onRemove={() => handleRemove(savedItem)}
                     onShareLater={() => handleShareLater(savedItem)}
                     onMoveCollection={(collection) =>
-                      handleMoveCollection(savedItem.kind, savedItem.kind === "place" ? savedItem.item.id : savedItem.item.id, collection)
+                      handleMoveCollection(savedItem.kind, getSavedItemId(savedItem), collection)
                     }
+                    onUpdateImportLocation={(destinationId) => {
+                      if (savedItem.kind === "import") {
+                        app.updateImportedIdea(savedItem.item.id, { linkedDestinationId: destinationId || undefined });
+                        setStatusMessage(destinationId ? "Map location attached" : "Map location cleared");
+                      }
+                    }}
                   />
                 ))
               ) : (
@@ -241,6 +437,7 @@ function SavedCard({
   onRemove,
   onShareLater,
   onMoveCollection,
+  onUpdateImportLocation,
 }: {
   savedItem: SavedItem;
   onAddToTrip: () => void;
@@ -248,16 +445,44 @@ function SavedCard({
   onRemove: () => void;
   onShareLater: () => void;
   onMoveCollection: (collection: CollectionId) => void;
+  onUpdateImportLocation: (destinationId: string) => void;
 }) {
-  const title = savedItem.kind === "place" ? savedItem.item.name : savedItem.item.title;
-  const region = savedItem.kind === "place" ? savedItem.item.region : `${savedItem.item.region} · ${savedItem.item.location}`;
-  const image = savedItem.kind === "place" ? savedItem.item.heroImage : savedItem.item.imageUrl;
-  const body = savedItem.kind === "place" ? savedItem.item.headline : savedItem.item.description;
+  const title = getSavedItemTitle(savedItem);
+  const linkedDestination =
+    savedItem.kind === "import" && savedItem.item.linkedDestinationId
+      ? DESTINATIONS.find((destination) => destination.id === savedItem.item.linkedDestinationId)
+      : null;
+  const region =
+    savedItem.kind === "place"
+      ? savedItem.item.region
+      : savedItem.kind === "experience"
+        ? `${savedItem.item.region} · ${savedItem.item.location}`
+        : `${formatImportedCategory(savedItem.item.category)} · ${linkedDestination?.name ?? "Attach map later"}`;
+  const image =
+    savedItem.kind === "place"
+      ? savedItem.item.heroImage
+      : savedItem.kind === "experience"
+        ? savedItem.item.imageUrl
+        : linkedDestination?.heroImage;
+  const body =
+    savedItem.kind === "place"
+      ? savedItem.item.headline
+      : savedItem.kind === "experience"
+        ? savedItem.item.description
+        : savedItem.item.note || savedItem.item.url || "Manual Jamaica idea";
 
   return (
     <article className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-slate-950/30">
       <div className="relative h-40">
-        <img src={image} alt={title} className="h-full w-full object-cover" />
+        {image ? (
+          <img src={image} alt={title} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-slate-950">
+            <div className="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 p-4">
+              <StickyNote className="h-7 w-7 text-cyan-200" />
+            </div>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
         <div className="absolute bottom-3 left-3 right-3">
           <p className="text-xs uppercase tracking-[0.18em] text-cyan-200">{region}</p>
@@ -266,6 +491,16 @@ function SavedCard({
       </div>
       <div className="p-4">
         <p className="line-clamp-2 text-sm leading-6 text-slate-400">{body}</p>
+        {savedItem.kind === "import" && savedItem.item.url && (
+          <a
+            href={savedItem.item.url}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-cyan-200 hover:text-cyan-100"
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> Open source
+          </a>
+        )}
 
         <label className="mt-4 flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-400">
           <MoveRight className="h-3.5 w-3.5 text-cyan-300" />
@@ -282,6 +517,25 @@ function SavedCard({
             ))}
           </select>
         </label>
+
+        {savedItem.kind === "import" && (
+          <label className="mt-2 flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-400">
+            <MapPinned className="h-3.5 w-3.5 text-cyan-300" />
+            <span className="shrink-0 uppercase tracking-[0.16em]">Map</span>
+            <select
+              value={savedItem.item.linkedDestinationId ?? ""}
+              onChange={(event) => onUpdateImportLocation(event.target.value)}
+              className="min-w-0 flex-1 bg-transparent text-slate-200 focus:outline-none"
+            >
+              <option value="">Attach later</option>
+              {DESTINATIONS.map((destination) => (
+                <option key={destination.id} value={destination.id}>
+                  {destination.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <div className="mt-4 grid grid-cols-2 gap-2">
           <IconAction label="Trip" icon={CalendarDays} onClick={onAddToTrip} />
@@ -327,6 +581,14 @@ function itemKey(kind: ItemKind, id: string) {
   return `${kind}:${id}`;
 }
 
+function getSavedItemId(savedItem: SavedItem) {
+  return savedItem.item.id;
+}
+
+function getSavedItemTitle(savedItem: SavedItem) {
+  return savedItem.kind === "place" ? savedItem.item.name : savedItem.item.title;
+}
+
 function getCollectionCount(savedItems: SavedItem[], collection: CollectionId) {
   if (collection === "all") return savedItems.length;
   return savedItems.filter((savedItem) => savedItem.collection === collection).length;
@@ -338,6 +600,37 @@ function getDestinationCollection(destination: Destination, assignments: Record<
 
 function getExperienceCollection(experience: Experience, assignments: Record<string, CollectionId>): CollectionId {
   return assignments[itemKey("experience", experience.id)] ?? inferExperienceCollection(experience);
+}
+
+function getImportCollection(idea: ImportedIdea): CollectionId {
+  return normalizeCollectionId(idea.collectionId) ?? categoryToCollection(idea.category);
+}
+
+function normalizeCollectionId(collectionId: string): CollectionId | null {
+  const match = COLLECTIONS.find((collection) => collection.id === collectionId && collection.id !== "all");
+  return match?.id ?? null;
+}
+
+function categoryToCollection(category: ImportedIdeaCategory): CollectionId {
+  if (category === "food") return "food";
+  if (category === "beach") return "beach";
+  if (category === "music" || category === "nightlife") return "nightlife";
+  if (category === "culture") return "culture";
+  return "wishlist";
+}
+
+function formatImportedCategory(category: ImportedIdeaCategory): string {
+  return IMPORT_CATEGORIES.find((item) => item.id === category)?.label ?? "Idea";
+}
+
+function inferTitleFromUrl(url: string): string {
+  if (!url) return "";
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    return `${host} Jamaica idea`;
+  } catch {
+    return "";
+  }
 }
 
 function inferDestinationCollection(destination: Destination): CollectionId {

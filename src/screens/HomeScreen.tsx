@@ -62,7 +62,7 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
             <HomeAction
               icon={Heart}
               label="Saved"
-              body={`${app.savedPlaces.size + app.savedExperiences.size} saved ideas`}
+              body={`${app.savedPlaces.size + app.savedExperiences.size + app.importedIdeas.length} saved ideas`}
               onClick={() => onNavigate("saved")}
             />
             <HomeAction
