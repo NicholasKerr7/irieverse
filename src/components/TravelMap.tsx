@@ -65,9 +65,14 @@ export const TravelMap = memo(function TravelMap({
   const mapRef = useRef<MapRef | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const routeSegments = useMemo(
-    () => buildRouteSegments(routeDestinations, routeLegs),
+  const [roadRoutesById, setRoadRoutesById] = useState<Record<string, RoadRoute>>({});
+  const routeRequests = useMemo(
+    () => buildRouteRequests(routeDestinations, routeLegs),
     [routeDestinations, routeLegs]
+  );
+  const routeSegments = useMemo(
+    () => buildRouteSegments(routeRequests, roadRoutesById),
+    [roadRoutesById, routeRequests]
   );
   const geojson = {
     type: "FeatureCollection" as const,
@@ -102,6 +107,7 @@ export const TravelMap = memo(function TravelMap({
         id: segment.id,
         color: segment.color,
         label: segment.label,
+        source: segment.source,
       },
     })),
   };
@@ -114,6 +120,46 @@ export const TravelMap = memo(function TravelMap({
     bottomInset,
     fitTargets.map((destination) => destination.id).join("|"),
   ].join(":");
+
+  useEffect(() => {
+    if (!routeRequests.length) {
+      setRoadRoutesById({});
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadRoadRoutes() {
+      const entries = await Promise.all(
+        routeRequests.map(async (request) => {
+          try {
+            const route = await fetchRoadRoute(request, controller.signal);
+            return route ? [request.id, route] as const : null;
+          } catch (error) {
+            if (!controller.signal.aborted) {
+              console.error("Road route unavailable", error);
+            }
+            return null;
+          }
+        })
+      );
+
+      if (controller.signal.aborted) return;
+      setRoadRoutesById((prev) => {
+        const next: Record<string, RoadRoute> = {};
+        entries.forEach((entry) => {
+          if (entry) next[entry[0]] = entry[1];
+        });
+        return shallowRoadRoutesEqual(prev, next) ? prev : next;
+      });
+    }
+
+    loadRoadRoutes();
+
+    return () => {
+      controller.abort();
+    };
+  }, [routeRequests]);
 
   const fitMapToTargets = useCallback(() => {
     if (!mapReady || fitTargets.length < 2 || !mapRef.current) return;
@@ -333,9 +379,24 @@ type RouteSegment = {
     latitude: number;
   };
   coordinates: Array<[number, number]>;
+  source: "road" | "fallback";
 };
 
-function buildRouteSegments(routeDestinations: Destination[], routeLegs: RouteLeg[]): RouteSegment[] {
+type RouteRequest = {
+  id: string;
+  from: Destination;
+  to: Destination;
+  fallbackDistanceKm: number;
+};
+
+type RoadRoute = {
+  coordinates: Array<[number, number]>;
+  distanceKm: number;
+  durationMinutes: number;
+  source: string;
+};
+
+function buildRouteRequests(routeDestinations: Destination[], routeLegs: RouteLeg[]): RouteRequest[] {
   const destinationById = new globalThis.Map(routeDestinations.map((destination) => [destination.id, destination]));
 
   if (routeLegs.length) {
@@ -344,28 +405,49 @@ function buildRouteSegments(routeDestinations: Destination[], routeLegs: RouteLe
         const from = destinationById.get(leg.fromDestinationId);
         const to = destinationById.get(leg.toDestinationId);
         if (!from || !to) return null;
-        return createRouteSegment(from, to, index, leg.distanceKm);
+        return {
+          id: `${from.id}-${to.id}-${index}`,
+          from,
+          to,
+          fallbackDistanceKm: leg.distanceKm,
+        };
       })
-      .filter((segment): segment is RouteSegment => Boolean(segment));
+      .filter((request): request is RouteRequest => Boolean(request));
   }
 
-  return routeDestinations.slice(1).map((destination, index) =>
-    createRouteSegment(routeDestinations[index], destination, index, 0)
-  );
+  return routeDestinations.slice(1).map((destination, index) => ({
+    id: `${routeDestinations[index].id}-${destination.id}-${index}`,
+    from: routeDestinations[index],
+    to: destination,
+    fallbackDistanceKm: 0,
+  }));
 }
 
-function createRouteSegment(from: Destination, to: Destination, index: number, distanceKm: number): RouteSegment {
+function buildRouteSegments(
+  routeRequests: RouteRequest[],
+  roadRoutesById: Record<string, RoadRoute>
+): RouteSegment[] {
+  return routeRequests.map((request, index) => {
+    const roadRoute = roadRoutesById[request.id];
+    return createRouteSegment(request, index, roadRoute);
+  });
+}
+
+function createRouteSegment(request: RouteRequest, index: number, roadRoute?: RoadRoute): RouteSegment {
   const day = index + 2;
-  const coordinates = buildCurvedRouteCoordinates(from, to, index);
+  const coordinates = roadRoute?.coordinates.length
+    ? roadRoute.coordinates
+    : buildDirectRouteCoordinates(request.from, request.to);
   const midpoint = coordinates[Math.floor(coordinates.length / 2)] ?? [
-    (from.longitude + to.longitude) / 2,
-    (from.latitude + to.latitude) / 2,
+    (request.from.longitude + request.to.longitude) / 2,
+    (request.from.latitude + request.to.latitude) / 2,
   ];
+  const distanceKm = roadRoute?.distanceKm || request.fallbackDistanceKm;
 
   return {
-    id: `${from.id}-${to.id}-${index}`,
-    from,
-    to,
+    id: request.id,
+    from: request.from,
+    to: request.to,
     color: ROUTE_COLORS[index % ROUTE_COLORS.length],
     label: `Day ${day} · ${formatMiles(distanceKm)}`,
     midpoint: {
@@ -373,30 +455,56 @@ function createRouteSegment(from: Destination, to: Destination, index: number, d
       latitude: midpoint[1],
     },
     coordinates,
+    source: roadRoute ? "road" : "fallback",
   };
 }
 
-function buildCurvedRouteCoordinates(from: Destination, to: Destination, index: number): Array<[number, number]> {
-  const start: [number, number] = [from.longitude, from.latitude];
-  const end: [number, number] = [to.longitude, to.latitude];
-  const dx = end[0] - start[0];
-  const dy = end[1] - start[1];
-  const distance = Math.sqrt(dx * dx + dy * dy);
-  const direction = index % 2 === 0 ? 1 : -1;
-  const curveStrength = Math.min(Math.max(distance * 0.16, 0.035), 0.18) * direction;
-  const normalLength = distance || 1;
-  const normalX = -dy / normalLength;
-  const normalY = dx / normalLength;
-  const steps = 24;
-
-  return Array.from({ length: steps + 1 }, (_, step) => {
-    const t = step / steps;
-    const wave = Math.sin(Math.PI * t) * curveStrength;
-    return [
-      start[0] + dx * t + normalX * wave,
-      start[1] + dy * t + normalY * wave,
-    ];
+async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promise<RoadRoute | null> {
+  const params = new URLSearchParams({
+    from: `${request.from.longitude},${request.from.latitude}`,
+    to: `${request.to.longitude},${request.to.latitude}`,
   });
+  const response = await fetch(`/api/road-route?${params}`, { signal });
+  if (!response.ok) {
+    throw new Error(`Road route fetch failed: ${response.status}`);
+  }
+
+  const payload = await response.json();
+  const data = payload?.data;
+  if (!data || !Array.isArray(data.coordinates) || data.coordinates.length < 2) return null;
+  const coordinates = data.coordinates
+    .map((coordinate: unknown) => normalizeCoordinatePair(coordinate))
+    .filter((coordinate: [number, number] | null): coordinate is [number, number] => Boolean(coordinate));
+  if (coordinates.length < 2) return null;
+
+  return {
+    coordinates,
+    distanceKm: Number(data.distanceKm) || request.fallbackDistanceKm,
+    durationMinutes: Number(data.durationMinutes) || 0,
+    source: String(data.source ?? "road"),
+  };
+}
+
+function normalizeCoordinatePair(value: unknown): [number, number] | null {
+  if (!Array.isArray(value) || value.length < 2) return null;
+  const longitude = Number(value[0]);
+  const latitude = Number(value[1]);
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return null;
+  return [longitude, latitude];
+}
+
+function shallowRoadRoutesEqual(first: Record<string, RoadRoute>, second: Record<string, RoadRoute>) {
+  const firstKeys = Object.keys(first);
+  const secondKeys = Object.keys(second);
+  if (firstKeys.length !== secondKeys.length) return false;
+  return firstKeys.every((key) => first[key] === second[key]);
+}
+
+function buildDirectRouteCoordinates(from: Destination, to: Destination): Array<[number, number]> {
+  return [
+    [from.longitude, from.latitude],
+    [to.longitude, to.latitude],
+  ];
 }
 
 function formatMiles(distanceKm: number): string {

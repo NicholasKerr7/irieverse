@@ -125,6 +125,11 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     onNavigate("trips");
   };
 
+  const handleOpenDrivingGuide = () => {
+    if (routeDestinations.length < 2) return;
+    window.open(buildDrivingGuideUrl(routeDestinations), "_blank", "noreferrer");
+  };
+
   return (
     <section className="relative isolate h-[calc(100svh-5.5rem)] min-h-[560px] overflow-hidden bg-slate-950 sm:h-[calc(100vh-7rem)] sm:min-h-[700px]">
       <TravelMap
@@ -328,7 +333,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                     <MapFact icon={Sparkles} label="Nearby" value={`${nearbyExperiences.length} ideas`} />
                   </div>
 
-                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <MapAction
                       icon={Heart}
                       label={isSaved ? "Saved" : "Save"}
@@ -336,6 +341,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                       active={isSaved}
                     />
                     <MapAction icon={Plus} label="Add trip" onClick={handleAddToTrip} primary />
+                    <MapAction icon={Navigation} label="Drive" onClick={handleOpenDrivingGuide} />
                     <MapAction
                       icon={Route}
                       label="Route"
@@ -707,4 +713,27 @@ function mergeDestinations(primary: Destination[], secondary: Destination[]): De
   const byId = new globalThis.Map<string, Destination>();
   [...primary, ...secondary].forEach((destination) => byId.set(destination.id, destination));
   return Array.from(byId.values());
+}
+
+function buildDrivingGuideUrl(routeDestinations: Destination[]): string {
+  const [origin, ...rest] = routeDestinations;
+  const destination = rest[rest.length - 1];
+  const waypoints = rest.slice(0, -1);
+  const params = new URLSearchParams({
+    api: "1",
+    travelmode: "driving",
+    origin: `${origin.latitude},${origin.longitude}`,
+    destination: `${destination.latitude},${destination.longitude}`,
+  });
+
+  if (waypoints.length) {
+    params.set(
+      "waypoints",
+      waypoints
+        .map((waypoint) => `${waypoint.latitude},${waypoint.longitude}`)
+        .join("|")
+    );
+  }
+
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
 }

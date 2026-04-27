@@ -3,7 +3,7 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 
 ## Features
 - Destination + experience explorer with vibe filters and search
-- Interactive map powered by MapLibre (no Mapbox token required)
+- Interactive map powered by MapLibre with road-following route overlays
 - Saved boards for places, experiences, pasted links, and manual Jamaica ideas
 - Region-aware trip planner with editable route order, route pacing, drive estimates, budget, dates, and ICS export
 - Flight snapshot (live via AviationStack, sample data fallback)
@@ -27,6 +27,7 @@ VITE_AVIATIONSTACK_API_KEY=your_key           # live flights; otherwise uses pub
 VITE_BOOKING_API_URL=/api/bookings            # live bookings through the Vercel Amadeus proxy
 AMADEUS_CLIENT_ID=your_amadeus_api_key        # server-only; do not prefix with VITE_
 AMADEUS_CLIENT_SECRET=your_amadeus_api_secret # server-only; do not prefix with VITE_
+ROUTING_API_BASE_URL=https://router.project-osrm.org # server-only road routing proxy
 ```
 
 If env vars are absent, the app falls back to local sample data in `public/data`.
@@ -35,6 +36,7 @@ See `docs/production-env.md` for production platform setup, booking API response
 ## Deployment
 - Vercel: Import the repo, Framework = Vite, Build Command = `npm run build`, Output = `dist`, add env vars as needed.
 - The booking integration uses the Vercel serverless route at `/api/bookings`.
+- The map driving overlay uses the Vercel serverless route at `/api/road-route`.
 - Plain static hosting: run `npm run build` and serve the `dist` folder (e.g., `npx serve dist`).
 
 ## Launch checks

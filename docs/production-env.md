@@ -13,6 +13,7 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | `AMADEUS_CLIENT_ID` | Optional | Server-only Amadeus API key used by `api/bookings.js`. |
 | `AMADEUS_CLIENT_SECRET` | Optional | Server-only Amadeus API secret used by `api/bookings.js`. |
 | `AMADEUS_BASE_URL` | Optional | Amadeus base URL. Defaults to `https://test.api.amadeus.com`; use `https://api.amadeus.com` for production credentials. |
+| `ROUTING_API_BASE_URL` | Optional | Server-only OSRM-compatible routing base URL used by `api/road-route.js`. Defaults to `https://router.project-osrm.org`. |
 
 Only variables prefixed with `VITE_` are exposed to the browser. Keep Amadeus credentials server-only.
 
@@ -44,6 +45,7 @@ vercel env add VITE_BOOKING_API_URL production
 vercel env add AMADEUS_CLIENT_ID production
 vercel env add AMADEUS_CLIENT_SECRET production
 vercel env add AMADEUS_BASE_URL production
+vercel env add ROUTING_API_BASE_URL production
 ```
 
 For this Vercel app, `VITE_BOOKING_API_URL` should be:
@@ -128,6 +130,16 @@ The endpoint uses Amadeus OAuth client credentials, then looks up hotels by Jama
 
 When `VITE_AVIATIONSTACK_API_KEY` is set, IrieVerse calls AviationStack for scheduled flights using the selected origin and destination airport codes. If the variable is missing, the app uses `public/data/flights-sample.json`.
 
+## Road Routing
+
+The map uses `api/road-route.js` to request real driving geometry for each route leg. By default, the endpoint calls the public OSRM demo server:
+
+```text
+https://router.project-osrm.org/route/v1/driving/{lon,lat};{lon,lat}?overview=full&geometries=geojson
+```
+
+That gives IrieVerse road-following GeoJSON lines while keeping the browser code provider-neutral. For production scale, set `ROUTING_API_BASE_URL` to your own OSRM-compatible service or a paid routing provider proxy. If road routing fails, the map falls back to the local preview route instead of breaking.
+
 ## Verification
 
 After setting production variables, run:
@@ -141,4 +153,5 @@ Then test:
 - Share trip creates and reloads a `?trip=` URL.
 - Flights display live data or a clear empty/error state.
 - Booking cards display from the configured endpoint.
+- Map route lines follow roads or gracefully fall back when the routing service is unavailable.
 - App still works with any optional variable removed.
