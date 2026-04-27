@@ -22,12 +22,13 @@ export async function fetchFlightOptions(originCode: string, destinationCode: st
       throw new Error(`AviationStack error: ${response.status} ${text}`);
     }
 
-    const payload = await response.json();
-    if (Array.isArray(payload?.data)) {
+    const payload: unknown = await response.json();
+    if (isRecord(payload) && Array.isArray(payload.data)) {
       return normalizeFlightResponse(payload.data, originCode, destinationCode);
     }
-    if (payload?.error) {
-      throw new Error(payload.error?.message ?? "AviationStack API error");
+    if (isRecord(payload) && payload.error) {
+      const error = isRecord(payload.error) ? payload.error : null;
+      throw new Error(asString(error?.message) ?? "AviationStack API error");
     }
     return [];
   }
@@ -37,23 +38,52 @@ export async function fetchFlightOptions(originCode: string, destinationCode: st
     if (!response.ok) {
       throw new Error("Failed to load sample flights");
     }
-    cachedSampleFlights = await response.json();
+    cachedSampleFlights = await response.json() as Record<string, FlightOption[]>;
   }
 
   return cachedSampleFlights[routeKey] ?? [];
 }
 
-function normalizeFlightResponse(data: any[], origin: string, destination: string): FlightOption[] {
+function normalizeFlightResponse(data: unknown[], origin: string, destination: string): FlightOption[] {
   return data
-    .map((item) => ({
-      flightNumber: item.flight_number ?? item.flightNumber ?? "—",
-      airline: item.airline?.name ?? item.airline?.iata ?? item.airline ?? "Airline",
-      origin: item.departure?.iata ?? item.dep_iata ?? origin,
-      destination: item.arrival?.iata ?? item.arr_iata ?? destination,
-      departureTimeUTC: item.departure?.scheduled ?? item.departureTimeUTC ?? item.dep_time_utc ?? new Date().toISOString(),
-      arrivalTimeUTC: item.arrival?.scheduled ?? item.arrivalTimeUTC ?? item.arr_time_utc ?? new Date().toISOString(),
-      status: item.flight_status ?? item.status ?? "Scheduled",
-      durationMinutes: item.flight?.duration ?? item.durationMinutes ?? undefined,
-    }))
+    .map((item) => normalizeFlightItem(item, origin, destination))
     .slice(0, 4);
+}
+
+function normalizeFlightItem(item: unknown, origin: string, destination: string): FlightOption {
+  const record = isRecord(item) ? item : {};
+  const airline = record.airline;
+  const departure = isRecord(record.departure) ? record.departure : {};
+  const arrival = isRecord(record.arrival) ? record.arrival : {};
+  const flight = isRecord(record.flight) ? record.flight : {};
+
+  return {
+    flightNumber: asString(record.flight_number) ?? asString(record.flightNumber) ?? "—",
+    airline: getAirlineName(airline),
+    origin: asString(departure.iata) ?? asString(record.dep_iata) ?? origin,
+    destination: asString(arrival.iata) ?? asString(record.arr_iata) ?? destination,
+    departureTimeUTC: asString(departure.scheduled) ?? asString(record.departureTimeUTC) ?? asString(record.dep_time_utc) ?? new Date().toISOString(),
+    arrivalTimeUTC: asString(arrival.scheduled) ?? asString(record.arrivalTimeUTC) ?? asString(record.arr_time_utc) ?? new Date().toISOString(),
+    status: asString(record.flight_status) ?? asString(record.status) ?? "Scheduled",
+    durationMinutes: asNumber(flight.duration) ?? asNumber(record.durationMinutes) ?? undefined,
+  };
+}
+
+function getAirlineName(value: unknown): string {
+  if (isRecord(value)) {
+    return asString(value.name) ?? asString(value.iata) ?? "Airline";
+  }
+  return asString(value) ?? "Airline";
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

@@ -496,15 +496,15 @@ export function useTravelOS() {
     experiences: Math.max(budgetProfile.experiences, plannerBudget * 0.35),
   };
   const transportBudget = Math.max(
-    budgetProfile.transport * Math.ceil(plannerDays / 3),
+    budgetProfile.transport * Math.ceil(itinerary.days / 3),
     50
   );
 
   const applyTripPayload = useCallback((payload: TripPayload) => {
     setPlannerBaseId(payload.plannerBaseId ?? "mobay");
-    setPlannerDays(payload.plannerDays ?? 5);
+    setPlannerDays(clampPlannerDays(payload.plannerDays ?? 5));
     setPlannerVibe((payload.plannerVibe as Vibe) ?? "mixed");
-    setPlannerBudget(payload.plannerBudget ?? 150);
+    setPlannerBudget(clampPlannerBudget(payload.plannerBudget ?? 150));
     if (payload.plannerStartDate) {
       setPlannerStartDate(payload.plannerStartDate);
     }
@@ -553,6 +553,14 @@ export function useTravelOS() {
     setOriginAirportId(airportId);
     setHasUserPreferredOrigin(true);
     localStorage.setItem(STORAGE_KEY_ORIGIN_AIRPORT, airportId);
+  };
+
+  const handlePlannerDaysChange = (days: number) => {
+    setPlannerDays(clampPlannerDays(days));
+  };
+
+  const handlePlannerBudgetChange = (budget: number) => {
+    setPlannerBudget(clampPlannerBudget(budget));
   };
 
   const toggleSavedPlace = (id: string) => {
@@ -754,11 +762,11 @@ export function useTravelOS() {
     plannerBaseId,
     setPlannerBaseId,
     plannerDays,
-    setPlannerDays,
+    setPlannerDays: handlePlannerDaysChange,
     plannerVibe,
     setPlannerVibe,
     plannerBudget,
-    setPlannerBudget,
+    setPlannerBudget: handlePlannerBudgetChange,
     plannerStartDate,
     setPlannerStartDate,
     originAirportId,
@@ -813,6 +821,16 @@ function createImportedIdeaId(): string {
     return crypto.randomUUID();
   }
   return `idea-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function clampPlannerDays(days: number): number {
+  if (!Number.isFinite(days)) return 5;
+  return Math.max(1, Math.min(Math.round(days), 14));
+}
+
+function clampPlannerBudget(budget: number): number {
+  if (!Number.isFinite(budget)) return 150;
+  return Math.max(50, Math.min(Math.round(budget), 600));
 }
 
 function buildDestinationPool(base: Destination, preferredDestinationIds: Set<string>, plannerVibe: Vibe | "mixed"): Destination[] {

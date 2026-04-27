@@ -4,10 +4,12 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 ## Features
 - Destination + experience explorer with vibe filters and search
 - Interactive map powered by MapLibre (no Mapbox token required)
-- Trip planner with budget, dates, and ICS export
+- Saved boards for places, experiences, pasted links, and manual Jamaica ideas
+- Region-aware trip planner with route pacing, drive estimates, budget, dates, and ICS export
 - Flight snapshot (live via AviationStack, sample data fallback)
 - Live events feed and booking recommendations (sample data fallback)
 - Optional Supabase-backed trip sharing
+- PWA manifest, app icon, and same-origin offline cache for fallback data/assets
 
 ## Quick start
 1) Install Node 18+  
@@ -32,6 +34,13 @@ If env vars are absent, the app falls back to local sample data in `public/data`
 - Vercel: Import the repo, Framework = Vite, Build Command = `npm run build`, Output = `dist`, add env vars as needed.
 - Netlify: Build Command = `npm run build`, Publish directory = `dist`, set env vars. No functions required.
 - Plain static hosting: run `npm run build` and serve the `dist` folder (e.g., `npx serve dist`).
+
+## Launch checks
+- `npx tsc --noEmit`
+- `npm run build`
+- `npm audit --omit=dev --audit-level=high`
+
+Current audit note: npm reports a moderate MapLibre transitive advisory through `pbf`/`protocol-buffers-schema` with no available fix. High-severity production audit currently passes.
 
 ## Screenshots
 Capture a few key views and drop them into the repo (e.g., `public/screenshots`), then embed them here:

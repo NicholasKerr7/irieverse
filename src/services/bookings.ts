@@ -11,13 +11,25 @@ export async function fetchBookingOptions(destinationAirportCode: string, origin
   if (!response.ok) {
     throw new Error(`Booking fetch failed: ${response.statusText}`);
   }
-  const payload = await response.json();
-  const data: BookingOption[] = BOOKINGS_API ? normalizeBookingResponse(payload) : payload[destinationAirportCode] ?? [];
+  const payload: unknown = await response.json();
+  const data: BookingOption[] = BOOKINGS_API
+    ? normalizeBookingResponse(payload)
+    : getFallbackBookingOptions(payload, destinationAirportCode);
   return data.slice(0, 4);
 }
 
-function normalizeBookingResponse(payload: any): BookingOption[] {
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.data)) return payload.data;
+function normalizeBookingResponse(payload: unknown): BookingOption[] {
+  if (Array.isArray(payload)) return payload as BookingOption[];
+  if (isRecord(payload) && Array.isArray(payload.data)) return payload.data as BookingOption[];
   return [];
+}
+
+function getFallbackBookingOptions(payload: unknown, destinationAirportCode: string): BookingOption[] {
+  if (!isRecord(payload)) return [];
+  const options = payload[destinationAirportCode];
+  return Array.isArray(options) ? options as BookingOption[] : [];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
