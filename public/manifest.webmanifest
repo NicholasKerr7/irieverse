@@ -10,6 +10,16 @@
   "orientation": "portrait-primary",
   "background_color": "#020617",
   "theme_color": "#020617",
+  "share_target": {
+    "action": "/?tab=saved&source=share-target",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "shared_title",
+      "text": "shared_text",
+      "url": "shared_url"
+    }
+  },
   "icons": [
     {
       "src": "/icon-192.png",
@@ -28,6 +38,29 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-home.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "IrieVerse mobile home screen"
+    },
+    {
+      "src": "/screenshots/mobile-map.png",
+      "sizes": "780x1688",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Interactive Jamaica map with road routes"
+    },
+    {
+      "src": "/screenshots/desktop-map.png",
+      "sizes": "2880x2000",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop Jamaica map route view"
     }
   ],
   "shortcuts": [

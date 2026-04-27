@@ -80,6 +80,24 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     localStorage.setItem(STORAGE_KEY_COLLECTIONS, JSON.stringify(collectionAssignments));
   }, [collectionAssignments]);
 
+  useEffect(() => {
+    const sharedIdea = getSharedIdeaFromUrl();
+    if (!sharedIdea) return;
+
+    const category = inferImportedCategory(sharedIdea);
+    setImportForm((prev) => ({
+      ...prev,
+      title: sharedIdea.title || prev.title,
+      url: sharedIdea.url || prev.url,
+      note: sharedIdea.note || prev.note,
+      category,
+      collectionId: categoryToCollection(category),
+    }));
+    setActiveCollection(categoryToCollection(category));
+    setStatusMessage("Shared idea ready to save");
+    removeShareTargetParams();
+  }, []);
+
   const savedDestinations = useMemo(
     () => DESTINATIONS.filter((destination) => app.savedPlaces.has(destination.id)),
     [app.savedPlaces]
@@ -631,6 +649,73 @@ function inferTitleFromUrl(url: string): string {
   } catch {
     return "";
   }
+}
+
+function getSharedIdeaFromUrl(): { title: string; url: string; note: string } | null {
+  if (typeof window === "undefined") return null;
+
+  const params = new URLSearchParams(window.location.search);
+  const title = firstParam(params, ["shared_title", "title"]);
+  const text = firstParam(params, ["shared_text", "text"]);
+  const explicitUrl = firstParam(params, ["shared_url", "url"]);
+  const inferredUrl = explicitUrl || findFirstUrl(text);
+
+  if (!title && !text && !inferredUrl) return null;
+
+  return {
+    title: normalizeSharedText(title) || inferTitleFromUrl(inferredUrl),
+    url: inferredUrl,
+    note: normalizeSharedText(removeUrlFromText(text, inferredUrl)),
+  };
+}
+
+function firstParam(params: URLSearchParams, keys: string[]): string {
+  for (const key of keys) {
+    const value = normalizeSharedText(params.get(key) ?? "");
+    if (value) return value;
+  }
+  return "";
+}
+
+function normalizeSharedText(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function findFirstUrl(text: string): string {
+  const match = text.match(/https?:\/\/[^\s]+/i);
+  return match?.[0]?.replace(/[),.;]+$/, "") ?? "";
+}
+
+function removeUrlFromText(text: string, url: string): string {
+  return url ? text.replace(url, "") : text;
+}
+
+function inferImportedCategory(sharedIdea: { title: string; url: string; note: string }): ImportedIdeaCategory {
+  const text = `${sharedIdea.title} ${sharedIdea.url} ${sharedIdea.note}`.toLowerCase();
+  if (/restaurant|jerk|food|cookshop|coffee|bar|cafe|dining|eat/.test(text)) return "food";
+  if (/beach|cove|sand|sea|snorkel|swim|waterfall|lagoon/.test(text)) return "beach";
+  if (/hotel|resort|villa|stay|airbnb|booking|expedia/.test(text)) return "hotel";
+  if (/music|dancehall|reggae|sound|festival|party|club|nightlife/.test(text)) return "music";
+  if (/museum|culture|history|heritage|gallery|art|maroon/.test(text)) return "culture";
+  if (/hidden|secret|local|gem|maps\.google|google\.com\/maps/.test(text)) return "hidden-gem";
+  return "hidden-gem";
+}
+
+function removeShareTargetParams() {
+  if (typeof window === "undefined") return;
+
+  const url = new URL(window.location.href);
+  [
+    "shared_title",
+    "shared_text",
+    "shared_url",
+    "title",
+    "text",
+    "url",
+    "source",
+  ].forEach((key) => url.searchParams.delete(key));
+  url.searchParams.set("tab", "saved");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 function inferDestinationCollection(destination: Destination): CollectionId {

@@ -44,11 +44,13 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
   await page.waitForTimeout(4500);
   await screenshot(page, "mobile-map.png");
 
-  await openTab(page, "saved");
+  await openSharedIdea(page);
   await expect(page.getByText("Your Jamaica boards.")).toBeVisible();
-  await page.locator('input[type="url"]').fill("https://maps.google.com/?q=Blue+Mountain+Coffee+Jamaica");
-  await page.locator('input[type="text"]').fill("QA Blue Mountain coffee stop");
-  await page.locator("textarea").fill("Production QA import idea attached to a Jamaica board.");
+  await expect(page.getByText("Shared idea ready to save")).toBeVisible();
+  await expect(page.locator('input[type="url"]')).toHaveValue("https://maps.google.com/?q=Blue+Mountain+Coffee+Jamaica");
+  await expect(page.locator('input[type="text"]')).toHaveValue("QA Blue Mountain coffee stop");
+  await expect(page.locator("textarea")).toHaveValue("Production QA import idea attached to a Jamaica board.");
+  await expect(page).not.toHaveURL(/shared_url=/);
   await page.locator("select").nth(1).selectOption({ index: 1 });
   await page.getByRole("button", { name: /Save to Irieverse/ }).click();
   await expect(page.getByText("Imported idea saved")).toBeVisible();
@@ -105,6 +107,20 @@ test("production desktop map screenshot", async ({ browser }) => {
 async function openTab(page, tab) {
   const url = tab ? `${BASE_URL}/?tab=${tab}` : BASE_URL;
   await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+  await expect(page.getByLabel("Primary navigation")).toBeVisible();
+}
+
+async function openSharedIdea(page) {
+  const params = new URLSearchParams({
+    tab: "saved",
+    source: "share-target",
+    shared_title: "QA Blue Mountain coffee stop",
+    shared_url: "https://maps.google.com/?q=Blue+Mountain+Coffee+Jamaica",
+    shared_text: "Production QA import idea attached to a Jamaica board.",
+  });
+
+  await page.goto(`${BASE_URL}/?${params}`, { waitUntil: "domcontentloaded" });
   await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
   await expect(page.getByLabel("Primary navigation")).toBeVisible();
 }
@@ -243,6 +259,22 @@ async function verifyProductionAssets(request) {
   );
   expect(manifest.shortcuts.map((shortcut) => shortcut.url)).toEqual(
     expect.arrayContaining(["/?tab=explore", "/?tab=map", "/?tab=trips"])
+  );
+  expect(manifest.share_target).toMatchObject({
+    action: "/?tab=saved&source=share-target",
+    method: "GET",
+    params: {
+      title: "shared_title",
+      text: "shared_text",
+      url: "shared_url",
+    },
+  });
+  expect(manifest.screenshots.map((screenshot) => screenshot.src)).toEqual(
+    expect.arrayContaining([
+      "/screenshots/mobile-home.png",
+      "/screenshots/mobile-map.png",
+      "/screenshots/desktop-map.png",
+    ])
   );
 }
 

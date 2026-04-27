@@ -1,4 +1,4 @@
-const CACHE_NAME = "irieverse-travel-os-v3";
+const CACHE_NAME = "irieverse-travel-os-v4";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
