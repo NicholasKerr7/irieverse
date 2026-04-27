@@ -44,6 +44,8 @@ const MAP_CATEGORIES: Array<{ id: MapCategoryId; label: string; color: string; b
   { id: "nightlife", label: "Nightlife", color: "bg-rose-300", border: "border-rose-300/50" },
 ];
 
+const ROUTE_COLORS = ["#fb5573", "#f59e0b", "#d946ef", "#22c55e", "#8b5cf6", "#38bdf8"];
+
 export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const [activeCategory, setActiveCategory] = useState<MapCategoryId>("all");
   const [sheetExpanded, setSheetExpanded] = useState(true);
@@ -100,6 +102,10 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         .filter((destination): destination is Destination => Boolean(destination)),
     [routeSummary.stops]
   );
+  const mapDestinations = useMemo(
+    () => mergeDestinations(visibleDestinations, routeDestinations),
+    [routeDestinations, visibleDestinations]
+  );
 
   const handleSelectDestination = (destinationId: string) => {
     app.setPlannerBaseId(destinationId);
@@ -120,9 +126,9 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   };
 
   return (
-    <section className="relative isolate h-[calc(100vh-7rem)] min-h-[700px] overflow-hidden bg-slate-950">
+    <section className="relative isolate h-[calc(100svh-5.5rem)] min-h-[560px] overflow-hidden bg-slate-950 sm:h-[calc(100vh-7rem)] sm:min-h-[700px]">
       <TravelMap
-        destinations={visibleDestinations}
+        destinations={mapDestinations}
         selectedDestinationId={selectedDestination.id}
         onSelectDestination={handleSelectDestination}
         viewState={app.mapViewState}
@@ -132,6 +138,9 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         scrollZoom
         getMarkerCategory={getDestinationPinCategory}
         routeDestinations={routeDestinations}
+        routeLegs={routeSummary.legs}
+        autoFitKey={`${activeCategory}-${app.search}-${selectedDestination.id}-${sheetExpanded}-${routeSummary.stops.length}`}
+        bottomInset={sheetExpanded ? "expanded" : "compact"}
       />
 
       <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(2,6,23,0.92)_0%,rgba(2,6,23,0.34)_24%,rgba(2,6,23,0.08)_50%,rgba(2,6,23,0.78)_100%)]" />
@@ -206,6 +215,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
 
           <RouteHud
             stops={routeSummary.stops}
+            legs={routeSummary.legs}
             selectedDestinationId={selectedDestination.id}
             onSelectDestination={handleSelectDestination}
             onOpenTrips={() => onNavigate("trips")}
@@ -372,7 +382,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-sm font-semibold">{stop.name}</span>
                               <span className={classNames("block truncate text-xs", stop.destinationId === selectedDestination.id ? "text-slate-700" : "text-slate-500")}>
-                                {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Arrival"} · {stop.region}
+                                {stop.driveMinutesFromPrevious ? `${formatDriveTime(stop.driveMinutesFromPrevious)} · ${formatMiles(stop.distanceFromPreviousKm)}` : "Arrival"} · {stop.region}
                               </span>
                             </span>
                           </button>
@@ -447,6 +457,7 @@ function HudMetric({ icon: Icon, label, value }: { icon: LucideIcon; label: stri
 
 function RouteHud({
   stops,
+  legs,
   selectedDestinationId,
   onSelectDestination,
   onOpenTrips,
@@ -456,7 +467,12 @@ function RouteHud({
     name: string;
     region: string;
     day: number;
+    distanceFromPreviousKm: number;
     driveMinutesFromPrevious: number;
+  }>;
+  legs: Array<{
+    toDestinationId: string;
+    distanceKm: number;
   }>;
   selectedDestinationId: string;
   onSelectDestination: (destinationId: string) => void;
@@ -493,15 +509,21 @@ function RouteHud({
             )}
           >
             {index < stops.length - 1 && (
-              <span className="absolute left-[1.55rem] top-[2.8rem] h-5 w-px bg-white/15" />
+              <span
+                className="absolute left-[1.55rem] top-[2.8rem] h-5 w-1 rounded-full"
+                style={{ backgroundColor: getRouteColor(index) }}
+              />
             )}
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-black text-cyan-200">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 bg-slate-950 text-xs font-black text-white"
+              style={{ borderColor: getRouteColor(Math.max(0, index - 1)) }}
+            >
               {stop.day}
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-semibold">{stop.name}</span>
               <span className={classNames("block truncate text-xs", stop.destinationId === selectedDestinationId ? "text-slate-700" : "text-slate-500")}>
-                {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"} · {stop.region}
+                {stop.driveMinutesFromPrevious ? `${formatDriveTime(stop.driveMinutesFromPrevious)} · ${formatMiles(getLegDistance(legs, stop.destinationId, stop.distanceFromPreviousKm))}` : "Start"} · {stop.region}
               </span>
             </span>
           </button>
@@ -656,4 +678,27 @@ function formatDriveTime(minutes: number): string {
   if (!hours) return `${remainder} min`;
   if (!remainder) return `${hours} hr`;
   return `${hours} hr ${remainder} min`;
+}
+
+function formatMiles(distanceKm: number): string {
+  if (!distanceKm) return "0 mi";
+  return `${Math.max(1, Math.round(distanceKm * 0.621371))} mi`;
+}
+
+function getRouteColor(index: number): string {
+  return ROUTE_COLORS[index % ROUTE_COLORS.length];
+}
+
+function getLegDistance(
+  legs: Array<{ toDestinationId: string; distanceKm: number }>,
+  destinationId: string,
+  fallbackKm: number
+): number {
+  return legs.find((leg) => leg.toDestinationId === destinationId)?.distanceKm ?? fallbackKm;
+}
+
+function mergeDestinations(primary: Destination[], secondary: Destination[]): Destination[] {
+  const byId = new globalThis.Map<string, Destination>();
+  [...primary, ...secondary].forEach((destination) => byId.set(destination.id, destination));
+  return Array.from(byId.values());
 }
