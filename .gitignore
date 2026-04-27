@@ -6,6 +6,8 @@ dist
 *.local
 vite.svg
 coverage
+test-results
+playwright-report
 .idea
 .vscode
 *.log

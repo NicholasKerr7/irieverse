@@ -48,7 +48,7 @@ const ROUTE_COLORS = ["#fb5573", "#f59e0b", "#d946ef", "#22c55e", "#8b5cf6", "#3
 
 export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const [activeCategory, setActiveCategory] = useState<MapCategoryId>("all");
-  const [sheetExpanded, setSheetExpanded] = useState(true);
+  const [sheetExpanded, setSheetExpanded] = useState(false);
   const [showRoutePreview, setShowRoutePreview] = useState(true);
   const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(null);
   const [routeStatus, setRouteStatus] = useState<RouteRenderStatus>({
