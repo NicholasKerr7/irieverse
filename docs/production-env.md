@@ -57,7 +57,16 @@ data jsonb
 updated_at timestamptz
 ```
 
-Run `supabase/schema.sql` in the Supabase SQL editor for the MVP sharing table and public anon policies. The app stores planner settings, saved places, saved experiences, and imported ideas in the `data` JSON payload.
+The migration in `supabase/migrations/20260427120000_create_trips_sharing.sql` creates the MVP sharing table and public anon policies. The app stores planner settings, saved places, saved experiences, and imported ideas in the `data` JSON payload.
+
+To apply it with the Supabase CLI:
+
+```bash
+supabase link --project-ref your-project-ref
+supabase db push
+```
+
+For manual setup, run `supabase/schema.sql` in the Supabase SQL editor. Keep it mirrored with the migration if the table shape changes.
 
 ## Booking API Contract
 

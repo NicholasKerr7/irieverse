@@ -28,7 +28,7 @@ VITE_BOOKING_API_URL=https://.../bookings     # live bookings; otherwise uses pu
 ```
 
 If env vars are absent, the app falls back to local sample data in `public/data`.
-See `docs/production-env.md` for production platform setup, booking API response shape, and Supabase SQL.
+See `docs/production-env.md` for production platform setup, booking API response shape, and Supabase migration details.
 
 ## Deployment
 - Build output is static in `dist` (`npm run build`), so it works on Vercel, Netlify, or any static host.
