@@ -70,6 +70,11 @@ module.exports = async function bookingsHandler(req, res) {
     return;
   }
 
+  if (req.method === "HEAD") {
+    res.status(200).end();
+    return;
+  }
+
   if (req.method !== "GET") {
     res.status(405).json({ error: "Method not allowed" });
     return;
@@ -140,7 +145,7 @@ module.exports = async function bookingsHandler(req, res) {
 
 function setResponseHeaders(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=3600");
 }
