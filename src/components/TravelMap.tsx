@@ -4,7 +4,7 @@ import type { Destination } from "../types/travel";
 import { MapPin } from "lucide-react";
 import { classNames } from "../utils/classNames";
 
-const MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+const MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
 export type MapPinCategory =
   | "beaches"
@@ -90,6 +90,9 @@ export const TravelMap = memo(function TravelMap({
         ]
       : [],
   };
+  const routeIndexByDestination = new globalThis.Map(
+    routeDestinations.map((destination, index) => [destination.id, index + 1])
+  );
 
   return (
     <div
@@ -110,12 +113,27 @@ export const TravelMap = memo(function TravelMap({
         {!!routeGeojson.features.length && (
           <Source id="route-preview" type="geojson" data={routeGeojson}>
             <Layer
+              id="route-preview-glow"
+              type="line"
+              paint={{
+                "line-color": "#22d3ee",
+                "line-width": 12,
+                "line-opacity": 0.18,
+                "line-blur": 5,
+              }}
+              layout={{
+                "line-cap": "round",
+                "line-join": "round",
+              }}
+            />
+            <Layer
               id="route-preview-line"
               type="line"
               paint={{
-                "line-color": "#06b6d4",
-                "line-width": 4,
-                "line-opacity": 0.78,
+                "line-color": "#67e8f9",
+                "line-width": 3.4,
+                "line-opacity": 0.9,
+                "line-dasharray": [0.4, 1.5],
               }}
               layout={{
                 "line-cap": "round",
@@ -177,6 +195,7 @@ export const TravelMap = memo(function TravelMap({
         {destinations.map((destination) => {
           const isSelected = selectedDestinationId === destination.id;
           const color = CATEGORY_COLORS[getMarkerCategory(destination)];
+          const routeIndex = routeIndexByDestination.get(destination.id);
 
           return (
             <Marker
@@ -190,17 +209,36 @@ export const TravelMap = memo(function TravelMap({
                 onSelectDestination(destination.id);
               }}
             >
-              <div
+              <button
+                type="button"
+                aria-label={`Select ${destination.name}`}
                 className={classNames(
-                  "rounded-full bg-slate-950/80 p-1 shadow-lg ring-2 ring-slate-950 transition",
-                  isSelected ? "scale-125 ring-cyan-200" : "opacity-90 hover:scale-110"
+                  "group relative flex h-10 w-10 items-center justify-center rounded-full border shadow-2xl transition duration-200",
+                  isSelected
+                    ? "scale-125 border-white bg-white text-slate-950 shadow-cyan-950/80"
+                    : "border-slate-950 bg-slate-950/90 text-slate-100 opacity-95 hover:scale-110 hover:border-white/70"
                 )}
                 style={{
-                  boxShadow: isSelected ? `0 0 18px ${color}` : undefined,
+                  boxShadow: isSelected ? `0 0 0 6px ${color}33, 0 0 28px ${color}` : `0 0 18px ${color}55`,
                 }}
               >
-                <MapPin className="h-5 w-5" fill={color} color={color} />
-              </div>
+                {isSelected && (
+                  <span
+                    className="absolute inset-0 -z-10 animate-ping rounded-full opacity-25"
+                    style={{ backgroundColor: color }}
+                  />
+                )}
+                {routeIndex ? (
+                  <span className="text-sm font-black">{routeIndex}</span>
+                ) : (
+                  <MapPin className="h-5 w-5" fill={color} color={color} />
+                )}
+                {isSelected && (
+                  <span className="pointer-events-none absolute left-1/2 top-11 hidden -translate-x-1/2 whitespace-nowrap rounded-full border border-white/15 bg-slate-950/90 px-2.5 py-1 text-[0.62rem] font-semibold text-cyan-100 shadow-xl shadow-slate-950/50 backdrop-blur md:block">
+                    {destination.name}
+                  </span>
+                )}
+              </button>
             </Marker>
           );
         })}

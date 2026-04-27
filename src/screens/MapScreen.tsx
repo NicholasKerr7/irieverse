@@ -1,15 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  ArrowUpRight,
   CalendarDays,
   ChevronDown,
   ChevronUp,
+  Clock3,
+  Compass,
+  Gauge,
   Heart,
+  Layers3,
   MapPin,
+  Navigation,
+  Plane,
   Plus,
+  Radar,
   Route,
   Search,
+  Sparkles,
   Star,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { TravelMap, type MapPinCategory } from "../components/TravelMap";
 import type { MobileTabId } from "../components/mobile/BottomNav";
@@ -25,19 +35,19 @@ type MapScreenProps = {
 
 type MapCategoryId = "all" | "beaches" | "food" | "music" | "culture" | "nightlife";
 
-const MAP_CATEGORIES: Array<{ id: MapCategoryId; label: string; color: string }> = [
-  { id: "all", label: "All", color: "bg-slate-300" },
-  { id: "beaches", label: "Beaches", color: "bg-cyan-300" },
-  { id: "food", label: "Food", color: "bg-amber-400" },
-  { id: "music", label: "Music", color: "bg-violet-300" },
-  { id: "culture", label: "Culture", color: "bg-emerald-300" },
-  { id: "nightlife", label: "Nightlife", color: "bg-rose-300" },
+const MAP_CATEGORIES: Array<{ id: MapCategoryId; label: string; color: string; border: string }> = [
+  { id: "all", label: "All", color: "bg-slate-200", border: "border-slate-200/50" },
+  { id: "beaches", label: "Beaches", color: "bg-cyan-300", border: "border-cyan-300/50" },
+  { id: "food", label: "Food", color: "bg-amber-300", border: "border-amber-300/50" },
+  { id: "music", label: "Music", color: "bg-violet-300", border: "border-violet-300/50" },
+  { id: "culture", label: "Culture", color: "bg-emerald-300", border: "border-emerald-300/50" },
+  { id: "nightlife", label: "Nightlife", color: "bg-rose-300", border: "border-rose-300/50" },
 ];
 
 export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const [activeCategory, setActiveCategory] = useState<MapCategoryId>("all");
   const [sheetExpanded, setSheetExpanded] = useState(true);
-  const [showRoutePreview, setShowRoutePreview] = useState(false);
+  const [showRoutePreview, setShowRoutePreview] = useState(true);
 
   const visibleDestinations = useMemo(() => {
     const query = app.search.trim().toLowerCase();
@@ -71,23 +81,29 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
 
   const selectedDestination =
     DESTINATIONS.find((destination) => destination.id === app.plannerBaseId) ?? visibleDestinations[0] ?? DESTINATIONS[0];
+  const selectedCategory = getDestinationPinCategory(selectedDestination);
   const isSaved = app.savedPlaces.has(selectedDestination.id);
+  const routeSummary = app.itinerary.routeSummary;
+  const selectedRouteStop = routeSummary.stops.find((stop) => stop.destinationId === selectedDestination.id);
+  const nextRouteStop = selectedRouteStop
+    ? routeSummary.stops.find((stop) => stop.day === selectedRouteStop.day + 1)
+    : routeSummary.stops[1];
+  const activeCategoryLabel = MAP_CATEGORIES.find((category) => category.id === activeCategory)?.label ?? "All";
   const nearbyExperiences = useMemo(
     () => getNearbyExperiences(selectedDestination).slice(0, 4),
     [selectedDestination]
   );
   const routeDestinations = useMemo(
     () =>
-      app.itinerary.routeSummary.stops
+      routeSummary.stops
         .map((stop) => DESTINATIONS.find((destination) => destination.id === stop.destinationId))
         .filter((destination): destination is Destination => Boolean(destination)),
-    [app.itinerary.routeSummary.stops]
+    [routeSummary.stops]
   );
 
   const handleSelectDestination = (destinationId: string) => {
     app.setPlannerBaseId(destinationId);
     setSheetExpanded(true);
-    setShowRoutePreview(false);
   };
 
   const handleAddToTrip = () => {
@@ -104,7 +120,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   };
 
   return (
-    <section className="relative h-[calc(100vh-7rem)] min-h-[640px] overflow-hidden bg-slate-950">
+    <section className="relative isolate h-[calc(100vh-7rem)] min-h-[700px] overflow-hidden bg-slate-950">
       <TravelMap
         destinations={visibleDestinations}
         selectedDestinationId={selectedDestination.id}
@@ -118,82 +134,113 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         routeDestinations={routeDestinations}
       />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-4 sm:p-5">
-        <div className="pointer-events-auto mx-auto max-w-5xl space-y-3">
-          <div className="rounded-3xl border border-white/15 bg-slate-950/82 p-3 shadow-2xl shadow-slate-950/50 backdrop-blur-xl">
-            <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3">
-              <Search className="h-4 w-4 text-slate-500" />
-              <input
-                type="search"
-                value={app.search}
-                onChange={(event) => app.setSearch(event.target.value)}
-                placeholder="Search places, food, music, beaches..."
-                className="w-full bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
-              />
-              {!!app.search && (
-                <button
-                  type="button"
-                  onClick={() => app.setSearch("")}
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-700 text-slate-400 hover:text-slate-100"
-                  aria-label="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(2,6,23,0.92)_0%,rgba(2,6,23,0.34)_24%,rgba(2,6,23,0.08)_50%,rgba(2,6,23,0.78)_100%)]" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-1/3 bg-[linear-gradient(90deg,rgba(2,6,23,0.82),rgba(2,6,23,0))]" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-1/4 bg-[linear-gradient(270deg,rgba(2,6,23,0.66),rgba(2,6,23,0))]" />
+
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 p-3 sm:p-5">
+        <div className="pointer-events-auto mx-auto grid max-w-7xl gap-3 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/78 shadow-2xl shadow-slate-950/50 backdrop-blur-2xl">
+            <div className="flex flex-col gap-3 border-b border-white/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-300/12 text-cyan-200 shadow-lg shadow-cyan-950/40">
+                  <Compass className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[0.62rem] uppercase tracking-[0.28em] text-cyan-200/80">IrieVerse Map</p>
+                  <h1 className="truncate text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                    Jamaica route command
+                  </h1>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 text-center text-xs sm:w-[22rem]">
+                <HudMetric icon={Radar} label="Pins" value={visibleDestinations.length.toString()} />
+                <HudMetric icon={Gauge} label="Route" value={routeSummary.routeTone.replace(" route", "")} />
+                <HudMetric icon={Clock3} label="Drive" value={formatDriveTime(routeSummary.totalDriveMinutes)} />
+              </div>
             </div>
 
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-              {MAP_CATEGORIES.map((category) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => setActiveCategory(category.id)}
-                  className={classNames(
-                    "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-[0.68rem] font-semibold uppercase tracking-[0.14em] transition",
-                    activeCategory === category.id
-                      ? "border-cyan-300 bg-cyan-300 text-slate-950"
-                      : "border-white/10 bg-slate-950/80 text-slate-300 hover:border-cyan-300/50"
-                  )}
-                >
-                  <span className={classNames("h-2.5 w-2.5 rounded-full", category.color)} />
-                  {category.label}
-                </button>
-              ))}
+            <div className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <div className="flex min-h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 shadow-inner shadow-slate-950/40">
+                <Search className="h-4 w-4 shrink-0 text-cyan-200" />
+                <input
+                  type="search"
+                  value={app.search}
+                  onChange={(event) => app.setSearch(event.target.value)}
+                  placeholder="Search beaches, food, music, culture..."
+                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+                />
+                {!!app.search && (
+                  <button
+                    type="button"
+                    onClick={() => app.setSearch("")}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-slate-400 hover:border-cyan-300/60 hover:text-cyan-100"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-1 lg:max-w-[34rem]">
+                {MAP_CATEGORIES.map((category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => setActiveCategory(category.id)}
+                    className={classNames(
+                      "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[0.68rem] font-bold uppercase tracking-[0.14em] transition duration-200",
+                      activeCategory === category.id
+                        ? `${category.border} bg-white text-slate-950 shadow-lg shadow-slate-950/40`
+                        : "border-white/10 bg-slate-950/72 text-slate-300 hover:border-cyan-300/50 hover:bg-slate-900/90"
+                    )}
+                  >
+                    <span className={classNames("h-2.5 w-2.5 rounded-full", category.color)} />
+                    {category.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-between gap-3 text-xs text-slate-300">
-            <span className="rounded-full border border-white/10 bg-slate-950/75 px-3 py-2 backdrop-blur">
-              {visibleDestinations.length} visible pins
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setShowRoutePreview(true);
-                setSheetExpanded(true);
-              }}
-              className="inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-slate-950/75 px-3 py-2 font-semibold text-cyan-100 backdrop-blur"
-            >
-              <Route className="h-3.5 w-3.5" /> Route preview
-            </button>
+          <RouteHud
+            stops={routeSummary.stops}
+            selectedDestinationId={selectedDestination.id}
+            onSelectDestination={handleSelectDestination}
+            onOpenTrips={() => onNavigate("trips")}
+          />
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute bottom-[9rem] left-3 z-20 hidden max-w-xs lg:block">
+        <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/74 p-3 text-xs text-slate-300 shadow-2xl shadow-slate-950/50 backdrop-blur-2xl">
+          <div className="flex items-center gap-2">
+            <Layers3 className="h-4 w-4 text-cyan-200" />
+            <span className="font-semibold text-white">{activeCategoryLabel}</span>
+            <span className="text-slate-500">layer</span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <MiniSignal label="Selected" value={selectedDestination.name} />
+            <MiniSignal label="Next" value={nextRouteStop?.name ?? "Open route"} />
           </div>
         </div>
       </div>
 
       {!visibleDestinations.length && (
-        <div className="absolute left-1/2 top-1/2 z-20 w-[min(90vw,28rem)] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-slate-800 bg-slate-950/90 p-5 text-center shadow-2xl shadow-slate-950/60 backdrop-blur-xl">
-          <MapPin className="mx-auto h-7 w-7 text-cyan-300" />
+        <div className="absolute left-1/2 top-1/2 z-40 w-[min(90vw,28rem)] -translate-x-1/2 -translate-y-1/2 rounded-[2rem] border border-white/10 bg-slate-950/92 p-6 text-center shadow-2xl shadow-slate-950/70 backdrop-blur-2xl">
+          <MapPin className="mx-auto h-8 w-8 text-cyan-300" />
           <h2 className="mt-3 text-lg font-semibold">No map pins match</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">
-            Clear search or switch categories to bring Jamaica pins back onto the map.
+            Clear search or switch layers to bring Jamaica pins back onto the map.
           </p>
         </div>
       )}
 
       <aside
         className={classNames(
-          "absolute inset-x-0 bottom-0 z-30 mx-auto max-w-3xl overflow-hidden rounded-t-3xl border border-slate-800 bg-slate-950/96 shadow-2xl shadow-slate-950/80 backdrop-blur-xl transition-[max-height] duration-300",
-          sheetExpanded ? "max-h-[78vh]" : "max-h-24"
+          "absolute inset-x-3 bottom-3 z-40 mx-auto max-w-6xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/92 shadow-2xl shadow-slate-950/80 backdrop-blur-2xl transition-[max-height,transform] duration-300 sm:inset-x-5",
+          sheetExpanded ? "max-h-[80vh]" : "max-h-[7.25rem]"
         )}
       >
         <button
@@ -202,173 +249,316 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
           className="flex w-full items-center justify-center py-3 text-slate-500"
           aria-label={sheetExpanded ? "Collapse selected place" : "Expand selected place"}
         >
-          <span className="h-1.5 w-12 rounded-full bg-slate-700" />
+          <span className="h-1.5 w-14 rounded-full bg-white/20" />
         </button>
 
-        <div className="px-4 pb-4 sm:px-5">
-          <div className="flex items-center gap-4">
-            <img
-              src={selectedDestination.heroImage}
-              alt={selectedDestination.name}
-              className="h-20 w-20 rounded-2xl object-cover"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-1 text-xs uppercase tracking-[0.22em] text-cyan-300">
-                <MapPin className="h-3 w-3" /> {selectedDestination.region}
-              </p>
-              <h2 className="mt-1 truncate text-xl font-semibold">{selectedDestination.name}</h2>
-              <p className="mt-1 flex items-center gap-1 text-sm text-amber-200">
-                <Star className="h-4 w-4 fill-current" />
-                {selectedDestination.rating.toFixed(1)} · {"$".repeat(selectedDestination.priceLevel)}
-              </p>
+        <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+          <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)_19rem]">
+            <div className="relative min-h-32 overflow-hidden rounded-[1.5rem] border border-white/10 lg:min-h-56">
+              <img
+                src={selectedDestination.heroImage}
+                alt={selectedDestination.name}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
+              <div className="absolute bottom-3 left-3 right-3">
+                <p className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-slate-950/70 px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.18em] text-cyan-100 backdrop-blur">
+                  <Plane className="h-3 w-3" /> {selectedDestination.airportCode}
+                </p>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setSheetExpanded((prev) => !prev)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-800 text-slate-300"
-              aria-label={sheetExpanded ? "Collapse sheet" : "Expand sheet"}
-            >
-              {sheetExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-            </button>
-          </div>
 
-          {sheetExpanded && (
-            <div className="mt-4 max-h-[calc(78vh-8rem)] overflow-y-auto pb-3">
-              <p className="text-sm leading-6 text-slate-400">{selectedDestination.description}</p>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {selectedDestination.vibes.slice(0, 4).map((vibe) => (
-                  <span
-                    key={vibe}
-                    className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.14em] text-cyan-100"
-                  >
-                    {vibe}
-                  </span>
-                ))}
-              </div>
-
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-                <MapFact label="Airport" value={selectedDestination.airportCode} />
-                <MapFact label="Pins" value={getDestinationPinCategory(selectedDestination)} />
-                <MapFact label="Nearby" value={`${nearbyExperiences.length} ideas`} />
-              </div>
-
-              <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                <button
-                  type="button"
-                  onClick={() => app.toggleSavedPlace(selectedDestination.id)}
-                  className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-700/80 px-4 py-3 text-sm text-slate-100"
-                >
-                  <Heart className={classNames("h-4 w-4", isSaved ? "fill-rose-400 text-rose-400" : "")} />
-                  {isSaved ? "Saved" : "Save"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddToTrip}
-                  className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-3 text-sm font-bold text-slate-950"
-                >
-                  <Plus className="h-4 w-4" /> Add to trip
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowRoutePreview(true);
-                    setSheetExpanded(true);
-                  }}
-                  className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-700/80 px-4 py-3 text-sm font-semibold text-slate-100"
-                >
-                  <Route className="h-4 w-4" /> Plan route
-                </button>
-              </div>
-
-              {showRoutePreview && (
-                <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[0.65rem] uppercase tracking-[0.24em] text-cyan-200">Route preview</p>
-                      <h3 className="mt-1 font-semibold text-slate-100">
-                        {app.itinerary.routeSummary.routeTone}
-                      </h3>
-                      <p className="mt-1 text-xs text-cyan-100/70">
-                        {app.itinerary.routeSummary.totalDistanceKm} km · {formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onNavigate("trips")}
-                      className="rounded-full bg-cyan-300 px-3 py-2 text-xs font-bold text-slate-950"
-                    >
-                      Open Trips
-                    </button>
-                  </div>
-                  <ol className="mt-3 space-y-2 text-sm text-slate-300">
-                    {app.itinerary.routeSummary.stops
-                      .slice(0, 4)
-                      .map((stop, index) => (
-                        <li key={stop.destinationId} className="flex items-center gap-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-xs text-cyan-200">
-                            {index + 1}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate">{stop.name}</span>
-                            <span className="block text-xs text-slate-500">
-                              {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"} · {stop.region}
-                            </span>
-                          </span>
-                        </li>
-                      ))}
-                  </ol>
+            <div className="min-w-0">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1 text-xs uppercase tracking-[0.22em] text-cyan-300">
+                    <MapPin className="h-3 w-3" /> {selectedDestination.region}
+                  </p>
+                  <h2 className="mt-1 truncate text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                    {selectedDestination.name}
+                  </h2>
+                  <p className="mt-2 flex items-center gap-2 text-sm text-amber-200">
+                    <Star className="h-4 w-4 fill-current" />
+                    {selectedDestination.rating.toFixed(1)}
+                    <span className="text-slate-600">/</span>
+                    {"$".repeat(selectedDestination.priceLevel)}
+                    <span className="text-slate-600">/</span>
+                    <span className="capitalize text-slate-300">{selectedCategory}</span>
+                  </p>
                 </div>
-              )}
 
-              {!!nearbyExperiences.length && (
-                <div className="mt-4 border-t border-slate-800 pt-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-[0.65rem] uppercase tracking-[0.25em] text-slate-500">
-                      Nearby experiences
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => onNavigate("explore")}
-                      className="text-xs font-semibold text-cyan-300"
-                    >
-                      Explore
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {nearbyExperiences.map((experience) => (
-                      <button
-                        key={experience.id}
-                        type="button"
-                        onClick={() => handleNearbyExperience(experience)}
-                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 px-3 py-3 text-left"
+                <button
+                  type="button"
+                  onClick={() => setSheetExpanded((prev) => !prev)}
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-slate-300 hover:border-cyan-300/60 hover:text-cyan-100"
+                  aria-label={sheetExpanded ? "Collapse sheet" : "Expand sheet"}
+                >
+                  {sheetExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                </button>
+              </div>
+
+              {sheetExpanded && (
+                <div className="mt-4 max-h-[calc(80vh-13rem)] overflow-y-auto pr-1">
+                  <p className="max-w-2xl text-sm leading-6 text-slate-300">{selectedDestination.description}</p>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {selectedDestination.vibes.slice(0, 5).map((vibe) => (
+                      <span
+                        key={vibe}
+                        className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.14em] text-cyan-100"
                       >
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium text-slate-100">{experience.title}</span>
-                          <span className="text-xs text-slate-500">
-                            {experience.type} · {experience.bestTime} · {experience.approxCost}
-                          </span>
-                        </span>
-                        <CalendarDays className="h-4 w-4 shrink-0 text-emerald-300" />
-                      </button>
+                        {vibe}
+                      </span>
                     ))}
                   </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <MapFact icon={Navigation} label="Stop" value={selectedRouteStop ? `Day ${selectedRouteStop.day}` : "Flex"} />
+                    <MapFact icon={Clock3} label="Transfer" value={selectedRouteStop?.driveMinutesFromPrevious ? formatDriveTime(selectedRouteStop.driveMinutesFromPrevious) : "Arrival"} />
+                    <MapFact icon={Sparkles} label="Nearby" value={`${nearbyExperiences.length} ideas`} />
+                  </div>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    <MapAction
+                      icon={Heart}
+                      label={isSaved ? "Saved" : "Save"}
+                      onClick={() => app.toggleSavedPlace(selectedDestination.id)}
+                      active={isSaved}
+                    />
+                    <MapAction icon={Plus} label="Add trip" onClick={handleAddToTrip} primary />
+                    <MapAction
+                      icon={Route}
+                      label="Route"
+                      onClick={() => {
+                        setShowRoutePreview((prev) => !prev);
+                        setSheetExpanded(true);
+                      }}
+                      active={showRoutePreview}
+                    />
+                  </div>
+
+                  {showRoutePreview && (
+                    <div className="mt-4 rounded-[1.5rem] border border-cyan-300/20 bg-cyan-300/10 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[0.65rem] uppercase tracking-[0.24em] text-cyan-200">Route pulse</p>
+                          <h3 className="mt-1 font-semibold text-slate-100">{routeSummary.routeTone}</h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onNavigate("trips")}
+                          className="inline-flex items-center gap-1 rounded-full bg-cyan-300 px-3 py-2 text-xs font-bold text-slate-950"
+                        >
+                          Trips <ArrowUpRight className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        {routeSummary.stops.slice(0, 4).map((stop) => (
+                          <button
+                            key={stop.destinationId}
+                            type="button"
+                            onClick={() => handleSelectDestination(stop.destinationId)}
+                            className={classNames(
+                              "flex items-center gap-3 rounded-2xl border px-3 py-2 text-left transition",
+                              stop.destinationId === selectedDestination.id
+                                ? "border-cyan-300 bg-cyan-300 text-slate-950"
+                                : "border-white/10 bg-slate-950/60 text-slate-300 hover:border-cyan-300/50"
+                            )}
+                          >
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-black text-cyan-200">
+                              {stop.day}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-semibold">{stop.name}</span>
+                              <span className={classNames("block truncate text-xs", stop.destinationId === selectedDestination.id ? "text-slate-700" : "text-slate-500")}>
+                                {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Arrival"} · {stop.region}
+                              </span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
+
+            {sheetExpanded && (
+              <div className="min-h-0 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-[0.65rem] uppercase tracking-[0.25em] text-slate-500">Nearby</p>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate("explore")}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-300"
+                  >
+                    Explore <ArrowUpRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                <div className="grid max-h-[calc(80vh-14rem)] gap-2 overflow-y-auto">
+                  {nearbyExperiences.map((experience) => (
+                    <button
+                      key={experience.id}
+                      type="button"
+                      onClick={() => handleNearbyExperience(experience)}
+                      className="group overflow-hidden rounded-2xl border border-white/10 bg-slate-950/72 text-left transition hover:border-cyan-300/50"
+                    >
+                      <div className="flex gap-3 p-2">
+                        <img
+                          src={experience.imageUrl}
+                          alt={experience.title}
+                          className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                        />
+                        <span className="min-w-0 flex-1 py-1">
+                          <span className="block truncate text-sm font-semibold text-slate-100 group-hover:text-cyan-100">
+                            {experience.title}
+                          </span>
+                          <span className="mt-1 block text-xs capitalize text-slate-500">
+                            {experience.type} · {experience.bestTime}
+                          </span>
+                          <span className="mt-1 inline-flex items-center gap-1 text-[0.68rem] text-emerald-300">
+                            <CalendarDays className="h-3 w-3" /> {experience.approxCost}
+                          </span>
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
     </section>
   );
 }
 
-function MapFact({ label, value }: { label: string; value: string }) {
+function HudMetric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-slate-900/80 p-3">
-      <p className="text-slate-500">{label}</p>
-      <p className="font-semibold capitalize text-slate-100">{value}</p>
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.05] px-2 py-2">
+      <Icon className="mx-auto h-3.5 w-3.5 text-cyan-200" />
+      <p className="mt-1 truncate text-[0.6rem] uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <p className="truncate text-xs font-bold text-slate-100">{value}</p>
     </div>
+  );
+}
+
+function RouteHud({
+  stops,
+  selectedDestinationId,
+  onSelectDestination,
+  onOpenTrips,
+}: {
+  stops: Array<{
+    destinationId: string;
+    name: string;
+    region: string;
+    day: number;
+    driveMinutesFromPrevious: number;
+  }>;
+  selectedDestinationId: string;
+  onSelectDestination: (destinationId: string) => void;
+  onOpenTrips: () => void;
+}) {
+  return (
+    <div className="hidden overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/78 shadow-2xl shadow-slate-950/50 backdrop-blur-2xl lg:block">
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <div>
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-cyan-200/80">Island Route</p>
+          <h2 className="text-lg font-semibold text-white">{stops.length} stop flow</h2>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenTrips}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-950/40"
+          aria-label="Open Trips"
+        >
+          <ArrowUpRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="max-h-72 space-y-2 overflow-y-auto p-3">
+        {stops.map((stop, index) => (
+          <button
+            key={stop.destinationId}
+            type="button"
+            onClick={() => onSelectDestination(stop.destinationId)}
+            className={classNames(
+              "relative flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition",
+              stop.destinationId === selectedDestinationId
+                ? "border-cyan-300 bg-cyan-300 text-slate-950"
+                : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-cyan-300/50 hover:bg-white/[0.08]"
+            )}
+          >
+            {index < stops.length - 1 && (
+              <span className="absolute left-[1.55rem] top-[2.8rem] h-5 w-px bg-white/15" />
+            )}
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-black text-cyan-200">
+              {stop.day}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold">{stop.name}</span>
+              <span className={classNames("block truncate text-xs", stop.destinationId === selectedDestinationId ? "text-slate-700" : "text-slate-500")}>
+                {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"} · {stop.region}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MiniSignal({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-2">
+      <p className="text-[0.6rem] uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className="truncate text-xs font-semibold text-slate-100">{value}</p>
+    </div>
+  );
+}
+
+function MapFact({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-3 text-left">
+      <Icon className="h-4 w-4 text-cyan-200" />
+      <p className="mt-2 text-[0.6rem] uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <p className="truncate text-sm font-semibold capitalize text-slate-100">{value}</p>
+    </div>
+  );
+}
+
+function MapAction({
+  icon: Icon,
+  label,
+  onClick,
+  active,
+  primary,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={classNames(
+        "inline-flex min-h-12 items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-bold transition",
+        primary
+          ? "border-cyan-300 bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-950/40"
+          : active
+            ? "border-rose-300/50 bg-rose-300/10 text-rose-100"
+            : "border-white/10 bg-white/[0.05] text-slate-100 hover:border-cyan-300/50 hover:text-cyan-100"
+      )}
+    >
+      <Icon className={classNames("h-4 w-4", active && label === "Saved" ? "fill-current" : "")} />
+      {label}
+    </button>
   );
 }
 
