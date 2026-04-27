@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Experience } from "../types/travel";
 import { classNames } from "../utils/classNames";
+import { glassCard, glassControlMuted } from "../utils/glass";
 import { capitalise } from "../utils/text";
 
 interface ExperiencesGridProps {
@@ -24,7 +25,7 @@ interface ExperiencesGridProps {
 export function ExperiencesGrid({ items, saved, onToggleSaved, onAddToTrip }: ExperiencesGridProps) {
   if (!items.length) {
     return (
-      <div className="mt-5 rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-6 text-sm text-slate-400">
+      <div className={classNames("mt-5 rounded-2xl border-dashed p-6 text-sm text-slate-400", glassControlMuted)}>
         No experiences match those filters yet. Try a different type, vibe or search.
       </div>
     );
@@ -38,7 +39,7 @@ export function ExperiencesGrid({ items, saved, onToggleSaved, onAddToTrip }: Ex
         return (
           <article
             key={experience.id}
-            className="group overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-slate-950/40"
+            className={classNames("group overflow-hidden rounded-[1.35rem] transition duration-300 hover:-translate-y-0.5 hover:border-emerald-300/35", glassCard)}
           >
             <div className="relative h-48 overflow-hidden">
               <img
@@ -83,7 +84,7 @@ export function ExperiencesGrid({ items, saved, onToggleSaved, onAddToTrip }: Ex
 
               <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-300">{experience.description}</p>
 
-              <dl className="mt-4 grid grid-cols-3 gap-2 text-xs">
+              <dl className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
                 <ExperienceFact icon={Gauge} label="Energy" value={experience.energy} />
                 <ExperienceFact icon={Clock} label="Best time" value={experience.bestTime} />
                 <ExperienceFact icon={WalletCards} label="Cost" value={experience.approxCost} />
@@ -115,7 +116,7 @@ function ExperienceFact({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-2">
+    <div className={classNames("rounded-xl p-2", glassControlMuted)}>
       <dt className="flex items-center gap-1 text-[0.62rem] uppercase tracking-[0.12em] text-slate-500">
         <Icon className="h-3 w-3" /> {label}
       </dt>

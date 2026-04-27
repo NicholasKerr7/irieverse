@@ -1,5 +1,7 @@
 import { AlertTriangle, CalendarDays, Clock3, Gauge, MapPin, Music2, PartyPopper, Route, Utensils, WalletCards } from "lucide-react";
 import { ItineraryPlan } from "../types/travel";
+import { classNames } from "../utils/classNames";
+import { glassCard, glassControlMuted } from "../utils/glass";
 import { capitalise } from "../utils/text";
 
 interface ItineraryViewProps {
@@ -11,7 +13,7 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+      <div className={classNames("rounded-2xl p-4", glassCard)}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="flex items-center gap-2 text-base font-semibold">
@@ -79,7 +81,7 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
                 ? "border-rose-300/30 bg-rose-300/10"
                 : day.transferSeverity === "moderate"
                   ? "border-amber-300/30 bg-amber-300/10"
-                  : "border-slate-800 bg-slate-950/75",
+                  : "border-white/10 bg-white/[0.045] backdrop-blur-xl",
             ].join(" ")}
           >
             <div className="flex items-start justify-between gap-3">
@@ -121,7 +123,7 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
             <p className="mt-4 text-sm leading-6 text-slate-300">{day.highlight}.</p>
 
             {day.experience && (
-              <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
+              <div className={classNames("mt-4 rounded-2xl p-3", glassControlMuted)}>
                 <div className="flex gap-3">
                   <div className="mt-1">
                     {day.experience.type === "food" && <Utensils className="h-4 w-4 text-emerald-300" />}
@@ -159,7 +161,7 @@ function RouteMetric({
   helper: string;
 }) {
   return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+    <article className={classNames("rounded-2xl p-4", glassCard)}>
       <Icon className="h-4 w-4 text-cyan-300" />
       <p className="mt-3 text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">{label}</p>
       <h3 className="mt-1 text-sm font-semibold text-slate-100">{value}</h3>

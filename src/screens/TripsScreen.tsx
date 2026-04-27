@@ -34,6 +34,7 @@ import { DESTINATIONS, EXPERIENCES, VIBE_OPTIONS } from "../data/content";
 import { formatLocalTime, type TravelOS } from "../hooks/useTravelOS";
 import type { Experience, ImportedIdea, Vibe } from "../types/travel";
 import { classNames } from "../utils/classNames";
+import { glassCard, glassControlMuted, glassPanel, glassPanelStrong } from "../utils/glass";
 
 type TripsScreenProps = {
   app: TravelOS;
@@ -69,7 +70,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
 
   return (
     <section className="mx-auto min-h-screen max-w-7xl px-4 py-5 sm:px-6 lg:px-10">
-      <header className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-slate-950/40">
+      <header className={classNames("overflow-hidden rounded-3xl", glassPanel)}>
         <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="relative min-h-72">
             <img src={app.destination.heroImage} alt={app.destination.name} className="absolute inset-0 h-full w-full object-cover" />
@@ -94,7 +95,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[22rem_1fr]">
         <aside className="space-y-4">
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+          <div className={classNames("rounded-3xl p-4", glassPanel)}>
             <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-500">Guided builder</p>
             <div className="mt-4 space-y-2">
               {WIZARD_STEPS.map((step, index) => (
@@ -106,7 +107,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                     "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition",
                     activeStep === step.id
                       ? "border-cyan-300 bg-cyan-300 text-slate-950"
-                      : "border-slate-800 bg-slate-950/70 text-slate-300 hover:border-cyan-300/50"
+                      : `${glassControlMuted} text-slate-300 hover:border-cyan-300/50`
                   )}
                 >
                   <span className={classNames(
@@ -134,7 +135,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
         </aside>
 
         <div className="space-y-4">
-          <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+          <section className={classNames("rounded-3xl p-4", glassPanel)}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <CalendarDays className="h-5 w-5 text-cyan-300" />
@@ -172,7 +173,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
 
           <IntegrationStatusPanel app={app} />
 
-          <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+          <section className={classNames("rounded-3xl p-4", glassPanel)}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Daily plan</p>
@@ -243,7 +244,7 @@ function WizardPanel({
   onNavigate: (tab: MobileTabId) => void;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+    <div className={classNames("rounded-3xl p-4", glassPanel)}>
       {activeStep === "base" && (
         <div className="space-y-3">
           <WizardTitle title="Choose base city" body="Pick the island anchor for flights, events, bookings, and route starts." />
@@ -385,7 +386,7 @@ function WizardPanel({
       {activeStep === "generate" && (
         <div className="space-y-3">
           <WizardTitle title="Generate itinerary" body="The daily plan updates live as base, dates, vibe, and budget change." />
-          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4">
+          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4 backdrop-blur-xl">
             <p className="text-sm font-semibold text-slate-100">
               {app.plannerDays} days based in {app.destination.name}
             </p>
@@ -471,7 +472,7 @@ function FlightSnapshot({ app }: { app: TravelOS }) {
   const sourceStatus = getFlightSourceStatus(app);
 
   return (
-    <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
+    <div className={classNames("rounded-3xl p-4", glassPanel)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Flights</p>
@@ -495,7 +496,7 @@ function FlightSnapshot({ app }: { app: TravelOS }) {
         {app.flightOptions.slice(0, 3).map((flight) => (
           <div
             key={`${flight.flightNumber}-${flight.departureTimeUTC}`}
-            className="flex flex-col gap-1 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
+            className={classNames("flex flex-col gap-1 rounded-2xl px-4 py-3", glassCard)}
           >
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold">{flight.flightNumber}</p>
@@ -568,7 +569,7 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
   }>;
 
   return (
-    <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+    <section className={classNames("rounded-3xl p-4", glassPanel)}>
       <div className="flex items-center gap-3">
         <RadioTower className="h-5 w-5 text-cyan-300" />
         <div>
@@ -729,7 +730,7 @@ function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (ta
   const canEditRoute = routeSummary.stops.length > 1;
 
   return (
-    <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+    <section className={classNames("rounded-3xl p-4", glassPanel)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Route className="h-5 w-5 text-cyan-300" />
@@ -889,7 +890,7 @@ function IconRouteButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 bg-slate-950/70 text-slate-300 hover:border-cyan-300/60 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-35"
+      className={classNames("inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-300 hover:border-cyan-300/60 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-35", glassPanelStrong)}
     >
       {children}
     </button>
@@ -906,7 +907,7 @@ function RouteStat({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+    <div className={classNames("rounded-2xl p-3", glassCard)}>
       <Icon className="h-4 w-4 text-cyan-300" />
       <p className="mt-2 text-[0.65rem] uppercase tracking-[0.18em] text-slate-500">{label}</p>
       <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
@@ -916,7 +917,7 @@ function RouteStat({
 
 function SharePanel({ app }: { app: TravelOS }) {
   return (
-    <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-4">
+    <div className={classNames("rounded-3xl p-4", glassPanel)}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Export / Share</p>
@@ -991,7 +992,7 @@ function MiniCard({
   body: string;
 }) {
   return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+    <article className={classNames("rounded-2xl p-4", glassCard)}>
       <Icon className="h-5 w-5 text-cyan-300" />
       <h3 className="mt-3 font-semibold">{title}</h3>
       <p className="mt-1 text-xs leading-5 text-slate-400">{body}</p>

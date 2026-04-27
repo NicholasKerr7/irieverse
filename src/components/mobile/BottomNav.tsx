@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
 import type { LucideProps } from "lucide-react";
 import { CalendarDays, Compass, Heart, Home, MapPinned } from "lucide-react";
+import { classNames } from "../../utils/classNames";
+import { glassPanelStrong } from "../../utils/glass";
 
 export type MobileTabId = "home" | "explore" | "map" | "saved" | "trips";
 
@@ -26,10 +28,10 @@ type BottomNavProps = {
 export function BottomNav({ activeTab, onChange }: BottomNavProps) {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 select-none border-t border-slate-800/90 bg-slate-950/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2 backdrop-blur-xl"
+      className="fixed inset-x-0 bottom-0 z-50 select-none border-t border-white/10 bg-slate-950/72 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2 backdrop-blur-2xl"
       aria-label="Primary navigation"
     >
-      <div className="mx-auto grid max-w-lg grid-cols-5 gap-1 rounded-2xl border border-slate-800 bg-slate-900/95 p-1 shadow-2xl shadow-slate-950/70">
+      <div className={classNames("mx-auto grid max-w-lg grid-cols-5 gap-1 rounded-2xl p-1", glassPanelStrong)}>
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

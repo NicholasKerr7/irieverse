@@ -3,6 +3,8 @@ import { HeroSection } from "../components/HeroSection";
 import { PageFooter } from "../components/PageFooter";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import type { TravelOS } from "../hooks/useTravelOS";
+import { classNames } from "../utils/classNames";
+import { glassCard, glassPanel } from "../utils/glass";
 
 type HomeScreenProps = {
   app: TravelOS;
@@ -25,7 +27,7 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen">
       <HeroSection
         search={app.search}
         onSearchChange={app.setSearch}
@@ -37,7 +39,7 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
       />
 
       <main className="mx-auto grid max-w-6xl gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:px-10">
-        <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4 shadow-xl shadow-slate-950/40">
+        <section className={classNames("rounded-3xl p-4", glassPanel)}>
           <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">
             Continue
           </p>
@@ -74,7 +76,7 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
           </div>
         </section>
 
-        <aside className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/60 shadow-xl shadow-slate-950/40">
+        <aside className={classNames("overflow-hidden rounded-3xl", glassPanel)}>
           <img
             src={app.destination.heroImage}
             alt={app.destination.name}
@@ -117,7 +119,7 @@ function HomeAction({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-left transition hover:border-cyan-300/60 hover:bg-slate-900"
+      className={classNames("rounded-2xl p-4 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/60", glassCard)}
     >
       <Icon className="h-5 w-5 text-cyan-300" />
       <p className="mt-3 text-sm font-semibold text-slate-100">{label}</p>

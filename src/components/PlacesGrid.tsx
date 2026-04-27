@@ -1,6 +1,7 @@
 import { CalendarDays, Heart, MapPin, Route, Star } from "lucide-react";
 import { Destination } from "../types/travel";
 import { classNames } from "../utils/classNames";
+import { glassCard, glassControlMuted, glassPanelStrong } from "../utils/glass";
 
 interface PlacesGridProps {
   items: Destination[];
@@ -21,7 +22,7 @@ export function PlacesGrid({
 }: PlacesGridProps) {
   if (!items.length) {
     return (
-      <div className="mt-5 rounded-2xl border border-dashed border-slate-700 bg-slate-900/40 p-6 text-sm text-slate-400">
+      <div className={classNames("mt-5 rounded-2xl border-dashed p-6 text-sm text-slate-400", glassControlMuted)}>
         No destinations match those filters yet. Try a different vibe or search.
       </div>
     );
@@ -36,7 +37,7 @@ export function PlacesGrid({
         return (
           <article
             key={destination.id}
-            className="group overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-slate-950/40"
+            className={classNames("group overflow-hidden rounded-[1.35rem] transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/35", glassCard)}
           >
             <div className="relative h-56 overflow-hidden">
               <img
@@ -72,7 +73,7 @@ export function PlacesGrid({
                 <span className="inline-flex items-center gap-1 font-semibold text-amber-200">
                   <Star className="h-4 w-4 fill-current" /> {destination.rating.toFixed(1)}
                 </span>
-                <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-xs font-semibold text-slate-300">
+                <span className={classNames("rounded-full px-3 py-1 text-xs font-semibold text-slate-300", glassPanelStrong)}>
                   {priceLabel}
                 </span>
               </div>
@@ -103,7 +104,7 @@ export function PlacesGrid({
                   <button
                     type="button"
                     onClick={() => onViewMap(destination.id)}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-700 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-cyan-300/60"
+                    className={classNames("inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-slate-100 transition hover:border-cyan-300/60", glassPanelStrong)}
                   >
                     <Route className="h-4 w-4" /> View map
                   </button>

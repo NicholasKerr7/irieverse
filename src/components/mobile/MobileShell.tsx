@@ -54,7 +54,7 @@ export function MobileShell() {
   }, [activeTab, travelOS]);
 
   return (
-    <div className="min-h-dvh bg-slate-950 text-slate-100 [padding-top:env(safe-area-inset-top)]">
+    <div className="min-h-dvh bg-[linear-gradient(160deg,#020617_0%,#07111f_48%,#031a1d_100%)] text-slate-100 [padding-top:env(safe-area-inset-top)]">
       <div className="pb-[calc(env(safe-area-inset-bottom)+7.5rem)]">
         <Suspense fallback={<ScreenFallback />}>{screen}</Suspense>
       </div>

@@ -1,6 +1,8 @@
 import { memo } from "react";
 import { LiveEvent } from "../types/travel";
 import { CalendarDays, RefreshCcw } from "lucide-react";
+import { classNames } from "../utils/classNames";
+import { glassCard, glassPanel } from "../utils/glass";
 
 interface LiveEventsFeedProps {
   events: LiveEvent[];
@@ -18,7 +20,7 @@ export const LiveEventsFeed = memo(function LiveEventsFeed({
   selectedRegion,
 }: LiveEventsFeedProps) {
   return (
-    <section className="max-w-6xl mx-auto bg-slate-950/80 border border-slate-800 rounded-3xl shadow-[0_24px_80px_rgba(15,23,42,0.9)] backdrop-blur-xl p-4 sm:p-6 space-y-4">
+    <section className={classNames("max-w-6xl mx-auto rounded-3xl p-4 sm:p-6 space-y-4", glassPanel)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Live events</p>
@@ -50,7 +52,7 @@ export const LiveEventsFeed = memo(function LiveEventsFeed({
         {events.map((event) => (
           <article
             key={event.id}
-            className="rounded-2xl border border-slate-800/80 bg-slate-950/70 p-4 flex flex-col gap-2 shadow shadow-slate-950/30"
+            className={classNames("rounded-2xl p-4 flex flex-col gap-2", glassCard)}
           >
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold">{event.title}</h3>

@@ -1,4 +1,6 @@
 import { BedDouble, Car, Utensils, Waves } from "lucide-react";
+import { classNames } from "../utils/classNames";
+import { glassCard, glassPanel } from "../utils/glass";
 
 interface BudgetInsightProps {
   perDay: {
@@ -46,7 +48,7 @@ export function BudgetInsight({ perDay, transportPerTrip, days, vibe }: BudgetIn
   ];
 
   return (
-    <section className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-slate-950/30">
+    <section className={classNames("rounded-3xl p-4", glassPanel)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[0.65rem] uppercase tracking-[0.3em] text-amber-300/80">Budget breakdown</p>
@@ -68,7 +70,7 @@ export function BudgetInsight({ perDay, transportPerTrip, days, vibe }: BudgetIn
         {lines.map((line) => {
           const Icon = line.icon;
           return (
-            <article key={line.label} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+            <article key={line.label} className={classNames("rounded-2xl p-4", glassCard)}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-300/10 text-cyan-200">

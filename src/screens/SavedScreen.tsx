@@ -16,6 +16,7 @@ import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
 import type { Destination, Experience, ImportedIdea, ImportedIdeaCategory } from "../types/travel";
 import { classNames } from "../utils/classNames";
+import { glassCard, glassControl, glassControlMuted, glassField, glassPanel } from "../utils/glass";
 
 type SavedScreenProps = {
   app: TravelOS;
@@ -236,7 +237,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
 
   return (
     <section className="mx-auto min-h-screen max-w-7xl px-4 py-5 sm:px-6 lg:px-10">
-      <header className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-slate-950/40">
+      <header className={classNames("overflow-hidden rounded-3xl", glassPanel)}>
         <div className="grid gap-0 lg:grid-cols-[1fr_0.75fr]">
           <div className="p-5 sm:p-6">
             <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Saved</p>
@@ -257,7 +258,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
 
       <form
         onSubmit={handleImportSubmit}
-        className="mt-5 rounded-3xl border border-slate-800 bg-slate-900/60 p-4 shadow-xl shadow-slate-950/30"
+        className={classNames("mt-5 rounded-3xl p-4", glassPanel)}
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -278,7 +279,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
         <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_0.75fr]">
           <label className="flex flex-col gap-2 text-sm text-slate-300">
             <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Paste link</span>
-            <span className="flex items-center gap-2 rounded-2xl border border-slate-700/80 bg-slate-950/80 px-3 py-2">
+            <span className={classNames("flex items-center gap-2 rounded-2xl px-3 py-2", glassControl)}>
               <Link className="h-4 w-4 text-cyan-300" />
               <input
                 type="url"
@@ -297,7 +298,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
               value={importForm.title}
               onChange={(event) => setImportForm((prev) => ({ ...prev, title: event.target.value }))}
               placeholder="Jerk stop in Port Antonio"
-              className="rounded-2xl border border-slate-700/80 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-600 focus:outline-none"
+              className={classNames("rounded-2xl px-3 py-2 text-slate-100 placeholder:text-slate-600 focus:outline-none", glassField)}
             />
           </label>
         </div>
@@ -310,7 +311,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
               onChange={(event) => setImportForm((prev) => ({ ...prev, note: event.target.value }))}
               placeholder="Why this belongs in the trip"
               rows={3}
-              className="resize-none rounded-2xl border border-slate-700/80 bg-slate-950/80 px-3 py-2 text-slate-100 placeholder:text-slate-600 focus:outline-none"
+              className={classNames("resize-none rounded-2xl px-3 py-2 text-slate-100 placeholder:text-slate-600 focus:outline-none", glassField)}
             />
           </label>
 
@@ -319,7 +320,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
             <select
               value={importForm.collectionId}
               onChange={(event) => setImportForm((prev) => ({ ...prev, collectionId: event.target.value as CollectionId }))}
-              className="rounded-2xl border border-slate-700/80 bg-slate-950/80 px-3 py-2 text-slate-100 focus:outline-none"
+              className={classNames("rounded-2xl px-3 py-2 text-slate-100 focus:outline-none", glassField)}
             >
               {COLLECTIONS.filter((collection) => collection.id !== "all").map((collection) => (
                 <option key={collection.id} value={collection.id}>
@@ -334,7 +335,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
             <select
               value={importForm.linkedDestinationId}
               onChange={(event) => setImportForm((prev) => ({ ...prev, linkedDestinationId: event.target.value }))}
-              className="rounded-2xl border border-slate-700/80 bg-slate-950/80 px-3 py-2 text-slate-100 focus:outline-none"
+              className={classNames("rounded-2xl px-3 py-2 text-slate-100 focus:outline-none", glassField)}
             >
               <option value="">Attach later</option>
               {DESTINATIONS.map((destination) => (
@@ -366,7 +367,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       </form>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[18rem_1fr]">
-        <aside className="rounded-3xl border border-slate-800 bg-slate-900/60 p-3">
+        <aside className={classNames("rounded-3xl p-3", glassPanel)}>
           <div className="space-y-2">
             {COLLECTIONS.map((collection) => {
               const count = getCollectionCount(savedItems, collection.id);
@@ -379,7 +380,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
                     "w-full rounded-2xl border px-4 py-3 text-left transition",
                     activeCollection === collection.id
                       ? "border-cyan-300 bg-cyan-300 text-slate-950"
-                      : "border-slate-800 bg-slate-950/60 text-slate-300 hover:border-cyan-300/50"
+                      : `${glassControlMuted} text-slate-300 hover:border-cyan-300/50`
                   )}
                 >
                   <span className="flex items-center justify-between gap-3">
@@ -397,7 +398,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
 
         <div>
           {!hasSavedItems && (
-            <div className="rounded-3xl border border-dashed border-slate-700 bg-slate-900/40 p-8 text-center">
+            <div className={classNames("rounded-3xl border-dashed p-8 text-center", glassControlMuted)}>
               <Heart className="mx-auto h-8 w-8 text-cyan-300" />
               <h2 className="mt-3 text-lg font-semibold">No saved Jamaica ideas yet</h2>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400">
@@ -436,7 +437,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
                   />
                 ))
               ) : (
-                <div className="rounded-3xl border border-dashed border-slate-700 bg-slate-900/40 p-8 text-center text-sm text-slate-400 md:col-span-2">
+                <div className={classNames("rounded-3xl border-dashed p-8 text-center text-sm text-slate-400 md:col-span-2", glassControlMuted)}>
                   No saved items in this board yet.
                 </div>
               )}
@@ -490,7 +491,7 @@ function SavedCard({
         : savedItem.item.note || savedItem.item.url || "Manual Jamaica idea";
 
   return (
-    <article className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-slate-950/30">
+    <article className={classNames("overflow-hidden rounded-3xl", glassCard)}>
       <div className="relative h-40">
         {image ? (
           <img src={image} alt={title} className="h-full w-full object-cover" />
@@ -520,7 +521,7 @@ function SavedCard({
           </a>
         )}
 
-        <label className="mt-4 flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-400">
+        <label className={classNames("mt-4 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs text-slate-400", glassControlMuted)}>
           <MoveRight className="h-3.5 w-3.5 text-cyan-300" />
           <span className="shrink-0 uppercase tracking-[0.16em]">Move</span>
           <select
@@ -537,7 +538,7 @@ function SavedCard({
         </label>
 
         {savedItem.kind === "import" && (
-          <label className="mt-2 flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-400">
+          <label className={classNames("mt-2 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs text-slate-400", glassControlMuted)}>
             <MapPinned className="h-3.5 w-3.5 text-cyan-300" />
             <span className="shrink-0 uppercase tracking-[0.16em]">Map</span>
             <select
