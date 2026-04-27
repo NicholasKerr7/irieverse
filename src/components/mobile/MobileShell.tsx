@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { DesktopNav } from "../DesktopNav";
 import { useTravelOS } from "../../hooks/useTravelOS";
 import { ExploreScreen } from "../../screens/ExploreScreen";
 import { HomeScreen } from "../../screens/HomeScreen";
@@ -55,7 +56,8 @@ export function MobileShell() {
 
   return (
     <div className="min-h-dvh bg-[linear-gradient(160deg,#020617_0%,#07111f_48%,#031a1d_100%)] text-slate-100 [padding-top:env(safe-area-inset-top)]">
-      <div className="pb-[calc(env(safe-area-inset-bottom)+7.5rem)]">
+      <DesktopNav activeTab={activeTab} onChange={setActiveTab} />
+      <div className="pb-[calc(env(safe-area-inset-bottom)+6.1rem)] md:pb-0">
         <Suspense fallback={<ScreenFallback />}>{screen}</Suspense>
       </div>
       <BottomNav activeTab={activeTab} onChange={setActiveTab} />

@@ -26,6 +26,8 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
   await openTab(page, "");
   await expect(page).toHaveTitle(/IrieVerse/);
   await expect(page.getByText("IrieVerse Travel OS").first()).toBeVisible();
+  await expect(page.getByTestId("mobile-bottom-nav")).toBeVisible();
+  await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
   await screenshot(page, "mobile-home.png");
 
   await openTab(page, "explore");
@@ -40,6 +42,8 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
 
   await openTab(page, "map");
   await expect(page.getByText("IrieVerse Map")).toBeVisible();
+  await expect(page.getByTestId("desktop-header-nav")).toBeVisible();
+  await expect(page.getByTestId("mobile-bottom-nav")).toBeHidden();
   await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
   await page.waitForTimeout(4500);
   await screenshot(page, "mobile-map.png");

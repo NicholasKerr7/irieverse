@@ -12,7 +12,7 @@ type MobileTab = {
   icon: ComponentType<LucideProps>;
 };
 
-const TABS: MobileTab[] = [
+export const NAV_TABS: MobileTab[] = [
   { id: "home", label: "Home", icon: Home },
   { id: "explore", label: "Explore", icon: Compass },
   { id: "map", label: "Map", icon: MapPinned },
@@ -28,11 +28,12 @@ type BottomNavProps = {
 export function BottomNav({ activeTab, onChange }: BottomNavProps) {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 select-none border-t border-white/10 bg-slate-950/72 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2 backdrop-blur-2xl"
+      className="fixed inset-x-0 bottom-0 z-50 select-none border-t border-white/10 bg-slate-950/78 px-2 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-1.5 backdrop-blur-2xl md:hidden"
       aria-label="Primary navigation"
+      data-testid="mobile-bottom-nav"
     >
-      <div className={classNames("mx-auto grid max-w-lg grid-cols-5 gap-1 rounded-2xl p-1", glassPanelStrong)}>
-        {TABS.map((tab) => {
+      <div className={classNames("mx-auto grid max-w-md grid-cols-5 gap-1 rounded-[1.15rem] p-1", glassPanelStrong)}>
+        {NAV_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
 
@@ -41,7 +42,7 @@ export function BottomNav({ activeTab, onChange }: BottomNavProps) {
               key={tab.id}
               type="button"
               onClick={() => onChange(tab.id)}
-              className={`flex min-h-14 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl text-[0.68rem] font-medium transition ${
+              className={`flex min-h-12 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-xl text-[0.62rem] font-medium transition ${
                 isActive
                   ? "bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-500/25"
                   : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
@@ -49,7 +50,7 @@ export function BottomNav({ activeTab, onChange }: BottomNavProps) {
               aria-current={isActive ? "page" : undefined}
               aria-label={tab.label}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-3.5 w-3.5" />
               <span>{tab.label}</span>
             </button>
           );
