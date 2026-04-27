@@ -42,8 +42,8 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
 
   await openTab(page, "map");
   await expect(page.getByText("IrieVerse Map")).toBeVisible();
-  await expect(page.getByTestId("desktop-header-nav")).toBeVisible();
-  await expect(page.getByTestId("mobile-bottom-nav")).toBeHidden();
+  await expect(page.getByTestId("mobile-bottom-nav")).toBeVisible();
+  await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
   await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
   await page.waitForTimeout(4500);
   await screenshot(page, "mobile-map.png");
@@ -100,6 +100,8 @@ test("production desktop map screenshot", async ({ browser }) => {
 
   await openTab(page, "map");
   await expect(page.getByText("IrieVerse Map")).toBeVisible();
+  await expect(page.getByTestId("desktop-header-nav")).toBeVisible();
+  await expect(page.getByTestId("mobile-bottom-nav")).toBeHidden();
   await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
   await page.waitForTimeout(4500);
   await screenshot(page, "desktop-map.png");
@@ -112,7 +114,7 @@ async function openTab(page, tab) {
   const url = tab ? `${BASE_URL}/?tab=${tab}` : BASE_URL;
   await page.goto(url, { waitUntil: "domcontentloaded" });
   await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
-  await expect(page.getByLabel("Primary navigation")).toBeVisible();
+  await expectVisibleNavigation(page);
 }
 
 async function openSharedIdea(page) {
@@ -126,7 +128,19 @@ async function openSharedIdea(page) {
 
   await page.goto(`${BASE_URL}/?${params}`, { waitUntil: "domcontentloaded" });
   await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
-  await expect(page.getByLabel("Primary navigation")).toBeVisible();
+  await expectVisibleNavigation(page);
+}
+
+async function expectVisibleNavigation(page) {
+  const viewport = page.viewportSize();
+  if (viewport && viewport.width >= 768) {
+    await expect(page.getByTestId("desktop-header-nav")).toBeVisible();
+    await expect(page.getByTestId("mobile-bottom-nav")).toBeHidden();
+    return;
+  }
+
+  await expect(page.getByTestId("mobile-bottom-nav")).toBeVisible();
+  await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
 }
 
 async function screenshot(page, filename) {
