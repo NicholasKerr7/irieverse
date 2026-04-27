@@ -1,14 +1,28 @@
 {
+  "id": "/?source=pwa",
   "name": "IrieVerse Travel OS",
   "short_name": "IrieVerse",
   "description": "A Jamaica-first travel OS for exploring places, saving ideas, mapping routes, and building trips.",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
   "orientation": "portrait-primary",
   "background_color": "#020617",
   "theme_color": "#020617",
   "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/icon.svg",
       "sizes": "any",
@@ -16,5 +30,30 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["travel", "navigation", "lifestyle"]
+  "shortcuts": [
+    {
+      "name": "Explore Jamaica",
+      "short_name": "Explore",
+      "description": "Browse places and experiences by vibe.",
+      "url": "/?tab=explore",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Open Map",
+      "short_name": "Map",
+      "description": "Open the interactive Jamaica route map.",
+      "url": "/?tab=map",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Build Trip",
+      "short_name": "Trips",
+      "description": "Review itinerary, budget, flights, events, and sharing.",
+      "url": "/?tab=trips",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
+  "categories": ["travel", "navigation", "lifestyle"],
+  "lang": "en-US",
+  "dir": "ltr"
 }

@@ -154,4 +154,5 @@ Then test:
 - Flights display live data or a clear empty/error state.
 - Booking cards display from the configured endpoint.
 - Map route lines follow roads or gracefully fall back when the routing service is unavailable.
+- `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, and `apple-touch-icon.png` return `200`.
 - App still works with any optional variable removed.

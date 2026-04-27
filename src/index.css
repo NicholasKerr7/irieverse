@@ -2,8 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  min-height: 100%;
+  background: #020617;
+  color-scheme: dark;
+}
+
 body {
   @apply bg-slate-950 text-slate-100;
+  min-height: 100%;
+  margin: 0;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100%;
+  isolation: isolate;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.28);
 }
 
 .hero-title:hover {
