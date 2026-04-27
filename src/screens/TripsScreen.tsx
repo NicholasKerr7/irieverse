@@ -1,11 +1,14 @@
-import type { ComponentType } from "react";
+import { useMemo, useState, type ComponentType } from "react";
 import type { LucideProps } from "lucide-react";
 import {
   CalendarDays,
+  Check,
   Download,
-  ExternalLink,
+  Heart,
   Plane,
+  Route,
   Share2,
+  Sparkles,
   Users,
   WalletCards,
 } from "lucide-react";
@@ -14,125 +17,109 @@ import { BudgetInsight } from "../components/BudgetInsight";
 import { ItineraryView } from "../components/ItineraryView";
 import { LiveEventsFeed } from "../components/LiveEventsFeed";
 import type { MobileTabId } from "../components/mobile/BottomNav";
-import { DESTINATIONS, VIBE_OPTIONS } from "../data/content";
+import { DESTINATIONS, EXPERIENCES, VIBE_OPTIONS } from "../data/content";
 import { formatLocalTime, type TravelOS } from "../hooks/useTravelOS";
-import type { Vibe } from "../types/travel";
+import type { Experience, Vibe } from "../types/travel";
+import { classNames } from "../utils/classNames";
 
 type TripsScreenProps = {
   app: TravelOS;
   onNavigate: (tab: MobileTabId) => void;
 };
 
-const STEPS = [
-  "Choose base city",
-  "Choose dates",
-  "Choose vibe",
-  "Choose budget",
-  "Add saved spots",
-  "Generate itinerary",
-  "Export or share",
-];
+const WIZARD_STEPS = [
+  { id: "base", label: "Choose base city" },
+  { id: "dates", label: "Choose dates" },
+  { id: "vibe", label: "Choose vibe" },
+  { id: "budget", label: "Choose budget" },
+  { id: "saved", label: "Add saved spots" },
+  { id: "generate", label: "Generate itinerary" },
+  { id: "share", label: "Export or share" },
+] as const;
+
+type WizardStepId = (typeof WIZARD_STEPS)[number]["id"];
 
 export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
+  const [activeStep, setActiveStep] = useState<WizardStepId>("base");
+  const savedDestinations = useMemo(
+    () => DESTINATIONS.filter((destination) => app.savedPlaces.has(destination.id)),
+    [app.savedPlaces]
+  );
+  const savedExperiences = useMemo(
+    () => EXPERIENCES.filter((experience) => app.savedExperiences.has(experience.id)),
+    [app.savedExperiences]
+  );
+  const estimatedTotal =
+    (app.perDayBudget.lodging + app.perDayBudget.dining + app.perDayBudget.experiences) * app.plannerDays +
+    app.transportBudget;
+
   return (
-    <section className="mx-auto min-h-screen max-w-6xl px-4 py-5 sm:px-6 lg:px-10">
-      <header className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/60 shadow-xl shadow-slate-950/40">
-        <div className="relative h-64">
-          <img src={app.destination.heroImage} alt={app.destination.name} className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent" />
-          <div className="absolute bottom-5 left-5 right-5">
-            <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/90">Trips</p>
-            <h1 className="mt-2 text-3xl font-semibold">Build your Jamaica plan.</h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
-              Guided planning, budget, flights, events, booking recommendations, export, and sharing in one workspace.
-            </p>
+    <section className="mx-auto min-h-screen max-w-7xl px-4 py-5 sm:px-6 lg:px-10">
+      <header className="overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/70 shadow-xl shadow-slate-950/40">
+        <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="relative min-h-72">
+            <img src={app.destination.heroImage} alt={app.destination.name} className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-transparent" />
+            <div className="absolute bottom-5 left-5 right-5">
+              <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/90">Trips</p>
+              <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Build your Jamaica plan.</h1>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
+                Step through the essentials, then review itinerary, budget, flights, events, bookings, export, and sharing.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 bg-slate-950/50 sm:grid-cols-4 lg:grid-cols-2">
+            <TripMetric label="Base" value={app.destination.name} />
+            <TripMetric label="Days" value={app.plannerDays.toString()} />
+            <TripMetric label="Budget" value={`$${app.plannerBudget}/day`} />
+            <TripMetric label="Estimate" value={`$${estimatedTotal.toLocaleString()}`} />
           </div>
         </div>
       </header>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
+      <div className="mt-5 grid gap-4 lg:grid-cols-[22rem_1fr]">
         <aside className="space-y-4">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
-            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-500">Planner flow</p>
+            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-500">Guided builder</p>
             <div className="mt-4 space-y-2">
-              {STEPS.map((step, index) => (
-                <div key={step} className="flex items-center gap-3 rounded-2xl bg-slate-950/70 p-3">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-300 text-xs font-bold text-slate-950">
+              {WIZARD_STEPS.map((step, index) => (
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={() => setActiveStep(step.id)}
+                  className={classNames(
+                    "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition",
+                    activeStep === step.id
+                      ? "border-cyan-300 bg-cyan-300 text-slate-950"
+                      : "border-slate-800 bg-slate-950/70 text-slate-300 hover:border-cyan-300/50"
+                  )}
+                >
+                  <span className={classNames(
+                    "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold",
+                    activeStep === step.id ? "bg-slate-950 text-cyan-200" : "bg-cyan-300 text-slate-950"
+                  )}>
                     {index + 1}
                   </span>
-                  <span className="text-sm text-slate-200">{step}</span>
-                </div>
+                  <span className="flex-1 text-sm font-semibold">{step.label}</span>
+                  {index < getCompletedStepIndex(app) && <Check className="h-4 w-4" />}
+                </button>
               ))}
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
-            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-500">Trip controls</p>
-            <div className="mt-4 grid gap-3">
-              <PlannerSelect
-                label="Origin airport"
-                value={app.originAirportId}
-                onChange={app.handleOriginAirportChange}
-                options={app.originAirports.map((airport) => ({ value: airport.id, label: airport.name }))}
-              />
-              <PlannerSelect
-                label="Base destination"
-                value={app.plannerBaseId}
-                onChange={app.setPlannerBaseId}
-                options={DESTINATIONS.map((destination) => ({ value: destination.id, label: destination.name }))}
-              />
-              <label className="flex flex-col gap-1 text-sm text-slate-300">
-                <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Days</span>
-                <input
-                  type="number"
-                  min={3}
-                  max={14}
-                  value={app.plannerDays}
-                  onChange={(event) => app.setPlannerDays(Number(event.target.value))}
-                  className="rounded-xl border border-slate-700/80 bg-slate-950/80 px-3 py-2"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm text-slate-300">
-                <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Start date</span>
-                <input
-                  type="date"
-                  value={app.plannerStartDate}
-                  onChange={(event) => app.setPlannerStartDate(event.target.value)}
-                  className="rounded-xl border border-slate-700/80 bg-slate-950/80 px-3 py-2"
-                />
-              </label>
-              <PlannerSelect
-                label="Daily vibe"
-                value={app.plannerVibe}
-                onChange={(value) => app.setPlannerVibe(value as Vibe)}
-                options={[
-                  { value: "mixed", label: "Mixed" },
-                  ...VIBE_OPTIONS.filter((option) => option.id !== "all").map((option) => ({
-                    value: option.id,
-                    label: option.label,
-                  })),
-                ]}
-              />
-              <label className="flex flex-col gap-1 text-sm text-slate-300">
-                <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">
-                  Budget per day (USD)
-                </span>
-                <input
-                  type="number"
-                  min={75}
-                  max={400}
-                  step={25}
-                  value={app.plannerBudget}
-                  onChange={(event) => app.setPlannerBudget(Number(event.target.value))}
-                  className="rounded-xl border border-slate-700/80 bg-slate-950/80 px-3 py-2"
-                />
-              </label>
-            </div>
-          </div>
+          <WizardPanel
+            app={app}
+            activeStep={activeStep}
+            setActiveStep={setActiveStep}
+            savedDestinations={savedDestinations}
+            savedExperiences={savedExperiences}
+            onNavigate={onNavigate}
+          />
         </aside>
 
         <div className="space-y-4">
-          <article className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+          <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <CalendarDays className="h-5 w-5 text-cyan-300" />
@@ -142,52 +129,46 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                {app.collaborationReady && (
-                  <button
-                    type="button"
-                    onClick={app.handleShareTrip}
-                    disabled={app.isSyncingTrip}
-                    className="inline-flex items-center gap-2 rounded-full border border-cyan-400/60 bg-cyan-400/10 px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200 hover:bg-cyan-400/20 disabled:opacity-50"
-                  >
-                    <Share2 className="h-3.5 w-3.5" />
-                    {app.tripId ? "Update share" : "Share trip"}
-                  </button>
-                )}
                 <button
                   type="button"
-                  onClick={app.handleExportItinerary}
-                  className="inline-flex items-center gap-2 rounded-full border border-emerald-400/60 bg-emerald-400/10 px-4 py-2 text-[0.7rem] uppercase tracking-[0.18em] text-emerald-200 hover:bg-emerald-400/20"
+                  onClick={() => onNavigate("saved")}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60"
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  Export ICS
+                  <Heart className="h-3.5 w-3.5" /> Saved
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNavigate("map")}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60"
+                >
+                  <Route className="h-3.5 w-3.5" /> Map route
                 </button>
               </div>
             </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <MiniCard icon={WalletCards} title="Budget" body={`$${estimatedTotal.toLocaleString()} trip estimate.`} />
+              <MiniCard icon={Plane} title="Flights" body={`${app.originAirport.code} to ${app.destination.airportCode}.`} />
+              <MiniCard icon={Users} title="Saved" body={`${savedDestinations.length + savedExperiences.length} ideas ready.`} />
+              <MiniCard icon={Sparkles} title="Vibe" body={app.plannerVibe === "mixed" ? "Mixed island flow." : `${app.plannerVibe} focused.`} />
+            </div>
+          </section>
 
-            <p className="mt-3 text-sm leading-6 text-slate-400">
-              Add saved places from Explore or Map, then tune the base, dates, vibe, and budget here.
-            </p>
-            <button
-              type="button"
-              onClick={() => onNavigate("explore")}
-              className="mt-4 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-slate-950"
-            >
-              Add places from Explore
-            </button>
-          </article>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <MiniCard icon={WalletCards} title="Budget" body={`$${app.plannerBudget}/day working target.`} />
-            <MiniCard icon={Plane} title="Flights" body={`${app.originAirport.code} to ${app.destination.airportCode}.`} />
-            <MiniCard icon={Users} title="Saved" body={`${app.savedPlaces.size + app.savedExperiences.size} ideas ready.`} />
-            <MiniCard icon={ExternalLink} title="Share" body={app.collaborationReady ? "Supabase sharing enabled." : "Configure Supabase to share."} />
-          </div>
-
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+          <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Daily plan</p>
+                <h2 className="text-lg font-semibold">{app.plannerDays} day itinerary</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveStep("generate")}
+                className="rounded-full border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300"
+              >
+                Tune
+              </button>
+            </div>
             <ItineraryView itinerary={app.itinerary} />
-          </div>
-
-          <FlightSnapshot app={app} />
+          </section>
 
           <BudgetInsight
             perDay={app.perDayBudget}
@@ -196,7 +177,10 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
             vibe={app.plannerVibe}
           />
 
-          <SharePanel app={app} />
+          <section className="grid gap-4 xl:grid-cols-2">
+            <FlightSnapshot app={app} />
+            <SharePanel app={app} />
+          </section>
         </div>
       </div>
 
@@ -218,6 +202,189 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
         />
       </div>
     </section>
+  );
+}
+
+function WizardPanel({
+  app,
+  activeStep,
+  setActiveStep,
+  savedDestinations,
+  savedExperiences,
+  onNavigate,
+}: {
+  app: TravelOS;
+  activeStep: WizardStepId;
+  setActiveStep: (step: WizardStepId) => void;
+  savedDestinations: typeof DESTINATIONS;
+  savedExperiences: Experience[];
+  onNavigate: (tab: MobileTabId) => void;
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+      {activeStep === "base" && (
+        <div className="space-y-3">
+          <WizardTitle title="Choose base city" body="Pick the island anchor for flights, events, bookings, and route starts." />
+          <PlannerSelect
+            label="Base destination"
+            value={app.plannerBaseId}
+            onChange={app.setPlannerBaseId}
+            options={DESTINATIONS.map((destination) => ({ value: destination.id, label: destination.name }))}
+          />
+          <PlannerSelect
+            label="Origin airport"
+            value={app.originAirportId}
+            onChange={app.handleOriginAirportChange}
+            options={app.originAirports.map((airport) => ({ value: airport.id, label: airport.name }))}
+          />
+        </div>
+      )}
+
+      {activeStep === "dates" && (
+        <div className="space-y-3">
+          <WizardTitle title="Choose dates" body="Set the start day and how many days the generated plan should cover." />
+          <label className="flex flex-col gap-1 text-sm text-slate-300">
+            <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Start date</span>
+            <input
+              type="date"
+              value={app.plannerStartDate}
+              onChange={(event) => app.setPlannerStartDate(event.target.value)}
+              className="rounded-xl border border-slate-700/80 bg-slate-950/80 px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-slate-300">
+            <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Days</span>
+            <input
+              type="number"
+              min={3}
+              max={14}
+              value={app.plannerDays}
+              onChange={(event) => app.setPlannerDays(Number(event.target.value))}
+              className="rounded-xl border border-slate-700/80 bg-slate-950/80 px-3 py-2"
+            />
+          </label>
+        </div>
+      )}
+
+      {activeStep === "vibe" && (
+        <div className="space-y-3">
+          <WizardTitle title="Choose vibe" body="Drive the daily plan toward the trip style you want." />
+          <div className="grid grid-cols-2 gap-2">
+            <VibeButton active={app.plannerVibe === "mixed"} label="Mixed" onClick={() => app.setPlannerVibe("mixed")} />
+            {VIBE_OPTIONS.filter((option) => option.id !== "all").map((option) => (
+              <VibeButton
+                key={option.id}
+                active={app.plannerVibe === option.id}
+                label={option.label}
+                onClick={() => app.setPlannerVibe(option.id as Vibe)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeStep === "budget" && (
+        <div className="space-y-3">
+          <WizardTitle title="Choose budget" body="Tune the daily target used by the budget and itinerary cards." />
+          <label className="flex flex-col gap-2 text-sm text-slate-300">
+            <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Budget per day</span>
+            <input
+              type="range"
+              min={75}
+              max={400}
+              step={25}
+              value={app.plannerBudget}
+              onChange={(event) => app.setPlannerBudget(Number(event.target.value))}
+              className="accent-cyan-300"
+            />
+            <span className="text-2xl font-semibold text-cyan-200">${app.plannerBudget}</span>
+          </label>
+        </div>
+      )}
+
+      {activeStep === "saved" && (
+        <div className="space-y-3">
+          <WizardTitle title="Add saved spots" body="Saved places can become the trip base; saved experiences stay ready for daily plans." />
+          <div className="space-y-2">
+            {savedDestinations.slice(0, 4).map((destination) => (
+              <button
+                key={destination.id}
+                type="button"
+                onClick={() => app.setPlannerBaseId(destination.id)}
+                className="flex w-full items-center justify-between rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-left text-sm text-slate-200"
+              >
+                {destination.name}
+                {app.plannerBaseId === destination.id && <Check className="h-4 w-4 text-cyan-300" />}
+              </button>
+            ))}
+            {!savedDestinations.length && (
+              <button
+                type="button"
+                onClick={() => onNavigate("explore")}
+                className="w-full rounded-2xl border border-dashed border-slate-700 p-4 text-sm text-slate-400"
+              >
+                Browse Explore to save places
+              </button>
+            )}
+          </div>
+          {!!savedExperiences.length && (
+            <p className="text-xs text-slate-500">{savedExperiences.length} saved experiences will stay available for planning.</p>
+          )}
+        </div>
+      )}
+
+      {activeStep === "generate" && (
+        <div className="space-y-3">
+          <WizardTitle title="Generate itinerary" body="The daily plan updates live as base, dates, vibe, and budget change." />
+          <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4">
+            <p className="text-sm font-semibold text-slate-100">
+              {app.plannerDays} days based in {app.destination.name}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-slate-400">
+              {app.itinerary.daysPlan.length} daily cards generated with matched highlights and experiences.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {activeStep === "share" && (
+        <div className="space-y-3">
+          <WizardTitle title="Export or share" body="Keep calendar export available and enable Supabase sharing when configured." />
+          <button
+            type="button"
+            onClick={app.handleExportItinerary}
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-emerald-300 px-4 py-3 text-sm font-bold text-slate-950"
+          >
+            <Download className="h-4 w-4" /> Export ICS
+          </button>
+          <button
+            type="button"
+            onClick={app.handleShareTrip}
+            disabled={!app.collaborationReady || app.isSyncingTrip}
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-cyan-300/60 px-4 py-3 text-sm font-bold text-cyan-100 disabled:opacity-50"
+          >
+            <Share2 className="h-4 w-4" /> {app.tripId ? "Update share link" : "Share trip"}
+          </button>
+        </div>
+      )}
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveStep(previousStep(activeStep))}
+          className="rounded-full border border-slate-700 px-4 py-2 text-xs font-semibold text-slate-300"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveStep(nextStep(activeStep))}
+          className="rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950"
+        >
+          Next
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -250,37 +417,17 @@ function PlannerSelect({
   );
 }
 
-function MiniCard({
-  icon: Icon,
-  title,
-  body,
-}: {
-  icon: ComponentType<LucideProps>;
-  title: string;
-  body: string;
-}) {
-  return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-      <Icon className="h-5 w-5 text-cyan-300" />
-      <h3 className="mt-3 font-semibold">{title}</h3>
-      <p className="mt-1 text-xs leading-5 text-slate-400">{body}</p>
-    </article>
-  );
-}
-
 function FlightSnapshot({ app }: { app: TravelOS }) {
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Flight snapshot</p>
+          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Flights</p>
           <h3 className="text-base font-semibold">
             {app.originAirport.code} to {app.destination.airportCode}
           </h3>
         </div>
-        {app.isFetchingFlights && (
-          <span className="animate-pulse text-xs text-slate-400">Syncing gate info...</span>
-        )}
+        {app.isFetchingFlights && <span className="animate-pulse text-xs text-slate-400">Syncing gate info...</span>}
       </div>
       {app.flightsError && <p className="mt-2 text-xs text-rose-300">{app.flightsError}</p>}
       {!app.flightsError && !app.flightOptions.length && !app.isFetchingFlights && (
@@ -292,7 +439,7 @@ function FlightSnapshot({ app }: { app: TravelOS }) {
         {app.flightOptions.slice(0, 3).map((flight) => (
           <div
             key={`${flight.flightNumber}-${flight.departureTimeUTC}`}
-            className="flex flex-col gap-1 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3 shadow shadow-slate-950/40"
+            className="flex flex-col gap-1 rounded-2xl border border-slate-800/80 bg-slate-950/70 px-4 py-3"
           >
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold">{flight.flightNumber}</p>
@@ -320,41 +467,127 @@ function SharePanel({ app }: { app: TravelOS }) {
     <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Collaboration</p>
-          <h3 className="text-base font-semibold">Share with your crew</h3>
+          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Export / Share</p>
+          <h3 className="text-base font-semibold">Calendar and crew link</h3>
         </div>
         {app.isSyncingTrip && <span className="animate-pulse text-xs text-slate-400">Syncing trip...</span>}
       </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={app.handleExportItinerary}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-emerald-400/60 bg-emerald-400/10 px-4 py-2 text-xs font-bold text-emerald-100"
+        >
+          <Download className="h-4 w-4" /> Export ICS
+        </button>
+        <button
+          type="button"
+          onClick={app.handleShareTrip}
+          disabled={!app.collaborationReady || app.isSyncingTrip}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-cyan-400/60 bg-cyan-400/10 px-4 py-2 text-xs font-bold text-cyan-100 disabled:opacity-50"
+        >
+          <Share2 className="h-4 w-4" /> Share
+        </button>
+      </div>
+
       {!app.collaborationReady && (
-        <p className="mt-2 text-xs text-slate-400">
+        <p className="mt-3 text-xs text-slate-400">
           Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable live sharing.
         </p>
       )}
       {app.collaborationReady && (
-        <div className="mt-3 space-y-2">
-          <label className="text-[0.7rem] uppercase tracking-[0.2em] text-slate-500">
-            Shareable link
-          </label>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              type="text"
-              readOnly
-              value={app.tripShareUrl}
-              placeholder="Create a share link to collaborate"
-              className="flex-1 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-300"
-            />
-            <button
-              type="button"
-              onClick={app.handleCopyShareLink}
-              disabled={!app.tripShareUrl}
-              className="rounded-2xl border border-slate-600 px-3 py-2 text-xs uppercase tracking-[0.2em] text-slate-200 disabled:opacity-40"
-            >
-              Copy
-            </button>
-          </div>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <input
+            type="text"
+            readOnly
+            value={app.tripShareUrl}
+            placeholder="Create a share link to collaborate"
+            className="flex-1 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-300"
+          />
+          <button
+            type="button"
+            onClick={app.handleCopyShareLink}
+            disabled={!app.tripShareUrl}
+            className="rounded-2xl border border-slate-600 px-3 py-2 text-xs uppercase tracking-[0.2em] text-slate-200 disabled:opacity-40"
+          >
+            Copy
+          </button>
         </div>
       )}
       {app.tripStatusMessage && <p className="mt-2 text-xs text-slate-400">{app.tripStatusMessage}</p>}
     </div>
   );
+}
+
+function TripMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border-b border-r border-slate-800 p-4">
+      <p className="line-clamp-1 text-lg font-semibold text-cyan-200">{value}</p>
+      <p className="mt-1 text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+function MiniCard({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: ComponentType<LucideProps>;
+  title: string;
+  body: string;
+}) {
+  return (
+    <article className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+      <Icon className="h-5 w-5 text-cyan-300" />
+      <h3 className="mt-3 font-semibold">{title}</h3>
+      <p className="mt-1 text-xs leading-5 text-slate-400">{body}</p>
+    </article>
+  );
+}
+
+function WizardTitle({ title, body }: { title: string; body: string }) {
+  return (
+    <div>
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <p className="mt-1 text-sm leading-6 text-slate-400">{body}</p>
+    </div>
+  );
+}
+
+function VibeButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={classNames(
+        "rounded-2xl border px-3 py-3 text-sm font-semibold transition",
+        active ? "border-cyan-300 bg-cyan-300 text-slate-950" : "border-slate-800 bg-slate-950/70 text-slate-300"
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+function getCompletedStepIndex(app: TravelOS) {
+  if (app.tripShareUrl) return 7;
+  if (app.itinerary.daysPlan.length) return 6;
+  if (app.savedPlaces.size || app.savedExperiences.size) return 5;
+  if (app.plannerBudget) return 4;
+  if (app.plannerVibe) return 3;
+  if (app.plannerStartDate && app.plannerDays) return 2;
+  if (app.plannerBaseId) return 1;
+  return 0;
+}
+
+function nextStep(step: WizardStepId): WizardStepId {
+  const index = WIZARD_STEPS.findIndex((item) => item.id === step);
+  return WIZARD_STEPS[Math.min(index + 1, WIZARD_STEPS.length - 1)].id;
+}
+
+function previousStep(step: WizardStepId): WizardStepId {
+  const index = WIZARD_STEPS.findIndex((item) => item.id === step);
+  return WIZARD_STEPS[Math.max(index - 1, 0)].id;
 }
