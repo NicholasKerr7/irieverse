@@ -43,9 +43,19 @@ interface TravelMapProps {
   getMarkerCategory?: (destination: Destination) => MapPinCategory;
   routeDestinations?: Destination[];
   routeLegs?: RouteLeg[];
+  selectedRouteLegId?: string | null;
+  onSelectRouteLeg?: (routeLegId: string) => void;
+  onRouteStatusChange?: (status: RouteRenderStatus) => void;
   autoFitKey?: string;
   bottomInset?: "compact" | "expanded";
 }
+
+export type RouteRenderStatus = {
+  isLoading: boolean;
+  totalLegs: number;
+  roadLegs: number;
+  fallbackLegs: number;
+};
 
 export const TravelMap = memo(function TravelMap({
   destinations,
@@ -59,6 +69,9 @@ export const TravelMap = memo(function TravelMap({
   getMarkerCategory = () => "default",
   routeDestinations = [],
   routeLegs = [],
+  selectedRouteLegId = null,
+  onSelectRouteLeg,
+  onRouteStatusChange,
   autoFitKey = "",
   bottomInset = "compact",
 }: TravelMapProps) {
@@ -66,6 +79,8 @@ export const TravelMap = memo(function TravelMap({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [roadRoutesById, setRoadRoutesById] = useState<Record<string, RoadRoute>>({});
+  const [isLoadingRoadRoutes, setIsLoadingRoadRoutes] = useState(false);
+  const [routeRevealProgress, setRouteRevealProgress] = useState(0);
   const routeRequests = useMemo(
     () => buildRouteRequests(routeDestinations, routeLegs),
     [routeDestinations, routeLegs]
@@ -74,6 +89,9 @@ export const TravelMap = memo(function TravelMap({
     () => buildRouteSegments(routeRequests, roadRoutesById),
     [roadRoutesById, routeRequests]
   );
+  const selectedRouteSegment = selectedRouteLegId
+    ? routeSegments.find((segment) => segment.id === selectedRouteLegId)
+    : null;
   const geojson = {
     type: "FeatureCollection" as const,
     features: destinations.map((destination) => {
@@ -97,7 +115,7 @@ export const TravelMap = memo(function TravelMap({
   };
   const routeGeojson = {
     type: "FeatureCollection" as const,
-    features: routeSegments.map((segment) => ({
+    features: routeSegments.map((segment, index) => ({
       type: "Feature" as const,
       geometry: {
         type: "LineString" as const,
@@ -108,28 +126,34 @@ export const TravelMap = memo(function TravelMap({
         color: segment.color,
         label: segment.label,
         source: segment.source,
+        opacity: getSegmentRevealOpacity(routeRevealProgress, index),
       },
     })),
   };
   const routeIndexByDestination = new globalThis.Map(
     routeDestinations.map((destination, index) => [destination.id, index + 1])
   );
-  const fitTargets = routeDestinations.length > 1 ? routeDestinations : destinations;
+  const fitTargets = selectedRouteSegment
+    ? [selectedRouteSegment.from, selectedRouteSegment.to]
+    : routeDestinations.length > 1 ? routeDestinations : destinations;
   const fitKey = [
     autoFitKey,
     bottomInset,
+    selectedRouteLegId ?? "overview",
     fitTargets.map((destination) => destination.id).join("|"),
   ].join(":");
 
   useEffect(() => {
     if (!routeRequests.length) {
       setRoadRoutesById({});
+      setIsLoadingRoadRoutes(false);
       return;
     }
 
     const controller = new AbortController();
 
     async function loadRoadRoutes() {
+      setIsLoadingRoadRoutes(true);
       const entries = await Promise.all(
         routeRequests.map(async (request) => {
           try {
@@ -152,14 +176,56 @@ export const TravelMap = memo(function TravelMap({
         });
         return shallowRoadRoutesEqual(prev, next) ? prev : next;
       });
+      setIsLoadingRoadRoutes(false);
     }
 
     loadRoadRoutes();
 
     return () => {
       controller.abort();
+      setIsLoadingRoadRoutes(false);
     };
   }, [routeRequests]);
+
+  const routeAnimationKey = routeSegments
+    .map((segment) => `${segment.id}:${segment.source}:${segment.coordinates.length}`)
+    .join("|");
+
+  useEffect(() => {
+    if (!routeSegments.length) {
+      setRouteRevealProgress(0);
+      return;
+    }
+
+    let frame = 0;
+    const startedAt = performance.now();
+    const duration = Math.max(850, routeSegments.length * 380);
+
+    const tick = (timestamp: number) => {
+      const elapsed = timestamp - startedAt;
+      const progress = Math.min(routeSegments.length, (elapsed / duration) * routeSegments.length);
+      setRouteRevealProgress(progress);
+      if (progress < routeSegments.length) {
+        frame = window.requestAnimationFrame(tick);
+      }
+    };
+
+    setRouteRevealProgress(0);
+    frame = window.requestAnimationFrame(tick);
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [routeAnimationKey, routeSegments.length]);
+
+  useEffect(() => {
+    if (!onRouteStatusChange) return;
+    const roadLegs = routeSegments.filter((segment) => segment.source === "road").length;
+    onRouteStatusChange({
+      isLoading: isLoadingRoadRoutes,
+      totalLegs: routeSegments.length,
+      roadLegs,
+      fallbackLegs: Math.max(0, routeSegments.length - roadLegs),
+    });
+  }, [isLoadingRoadRoutes, onRouteStatusChange, routeSegments]);
 
   const fitMapToTargets = useCallback(() => {
     if (!mapReady || fitTargets.length < 2 || !mapRef.current) return;
@@ -212,6 +278,14 @@ export const TravelMap = memo(function TravelMap({
         {...viewState}
         onMove={onMove}
         onLoad={() => setMapReady(true)}
+        interactiveLayerIds={["route-preview-hit"]}
+        onClick={(event) => {
+          const routeFeature = event.features?.find((feature) => feature.layer.id === "route-preview-hit");
+          const routeLegId = routeFeature?.properties?.id;
+          if (typeof routeLegId === "string") {
+            onSelectRouteLeg?.(routeLegId);
+          }
+        }}
       >
         {!!routeGeojson.features.length && (
           <Source id="route-preview" type="geojson" data={routeGeojson}>
@@ -220,8 +294,13 @@ export const TravelMap = memo(function TravelMap({
               type="line"
               paint={{
                 "line-color": ["get", "color"],
-                "line-width": 15,
-                "line-opacity": 0.24,
+                "line-width": [
+                  "case",
+                  ["==", ["get", "id"], selectedRouteLegId ?? ""],
+                  23,
+                  15,
+                ],
+                "line-opacity": ["*", ["get", "opacity"], 0.24],
                 "line-blur": 5,
               }}
               layout={{
@@ -234,8 +313,26 @@ export const TravelMap = memo(function TravelMap({
               type="line"
               paint={{
                 "line-color": ["get", "color"],
-                "line-width": 5,
-                "line-opacity": 0.96,
+                "line-width": [
+                  "case",
+                  ["==", ["get", "id"], selectedRouteLegId ?? ""],
+                  8,
+                  5,
+                ],
+                "line-opacity": ["*", ["get", "opacity"], 0.96],
+              }}
+              layout={{
+                "line-cap": "round",
+                "line-join": "round",
+              }}
+            />
+            <Layer
+              id="route-preview-hit"
+              type="line"
+              paint={{
+                "line-color": "#ffffff",
+                "line-width": 30,
+                "line-opacity": 0,
               }}
               layout={{
                 "line-cap": "round",
@@ -245,7 +342,11 @@ export const TravelMap = memo(function TravelMap({
           </Source>
         )}
 
-        {routeSegments.map((segment) => (
+        {routeSegments.map((segment, index) => {
+          const opacity = getSegmentRevealOpacity(routeRevealProgress, index);
+          const isSelectedRouteLeg = segment.id === selectedRouteLegId;
+
+          return (
           <Marker
             key={`label-${segment.id}`}
             longitude={segment.midpoint.longitude}
@@ -253,16 +354,22 @@ export const TravelMap = memo(function TravelMap({
             anchor="center"
           >
             <div
-              className="pointer-events-none rounded-full px-3 py-1.5 text-[0.72rem] font-black text-white shadow-2xl ring-2 ring-white/70 backdrop-blur sm:text-xs"
+              className={classNames(
+                "pointer-events-none rounded-full px-3 py-1.5 text-[0.72rem] font-black text-white shadow-2xl ring-2 backdrop-blur transition duration-300 sm:text-xs",
+                isSelectedRouteLeg ? "ring-white" : "ring-white/55"
+              )}
               style={{
                 backgroundColor: segment.color,
                 boxShadow: `0 10px 26px ${segment.color}66`,
+                opacity,
+                transform: `scale(${isSelectedRouteLeg ? 1.08 : 1})`,
               }}
             >
               {segment.label}
             </div>
           </Marker>
-        ))}
+          );
+        })}
 
         <Source id="destinations" type="geojson" data={geojson}>
           <Layer
@@ -498,6 +605,10 @@ function shallowRoadRoutesEqual(first: Record<string, RoadRoute>, second: Record
   const secondKeys = Object.keys(second);
   if (firstKeys.length !== secondKeys.length) return false;
   return firstKeys.every((key) => first[key] === second[key]);
+}
+
+function getSegmentRevealOpacity(progress: number, index: number): number {
+  return Math.max(0, Math.min(1, progress - index));
 }
 
 function buildDirectRouteCoordinates(from: Destination, to: Destination): Array<[number, number]> {
