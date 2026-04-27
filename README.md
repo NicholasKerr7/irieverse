@@ -33,9 +33,8 @@ If env vars are absent, the app falls back to local sample data in `public/data`
 See `docs/production-env.md` for production platform setup, booking API response shape, and Supabase migration details.
 
 ## Deployment
-- Build output is static in `dist` (`npm run build`), so it works on Vercel, Netlify, or any static host.
 - Vercel: Import the repo, Framework = Vite, Build Command = `npm run build`, Output = `dist`, add env vars as needed.
-- Netlify: Build Command = `npm run build`, Publish directory = `dist`, set env vars. No functions required.
+- The booking integration uses the Vercel serverless route at `/api/bookings`.
 - Plain static hosting: run `npm run build` and serve the `dist` folder (e.g., `npx serve dist`).
 
 ## Launch checks

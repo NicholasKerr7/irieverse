@@ -52,15 +52,6 @@ For this Vercel app, `VITE_BOOKING_API_URL` should be:
 /api/bookings
 ```
 
-For Netlify:
-
-```bash
-netlify env:set VITE_SUPABASE_URL "https://your-project.supabase.co" --context production
-netlify env:set VITE_SUPABASE_ANON_KEY "your-anon-key" --context production
-netlify env:set VITE_AVIATIONSTACK_API_KEY "your-aviationstack-key" --context production
-netlify env:set VITE_BOOKING_API_URL "https://your-api.example.com/bookings" --context production
-```
-
 ## Supabase Sharing
 
 Trip sharing expects a Supabase table named `trips` with this shape:
