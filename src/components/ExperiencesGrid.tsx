@@ -1,4 +1,4 @@
-import { Heart, Music2, PartyPopper, Utensils } from "lucide-react";
+import { CalendarDays, Heart, Music2, PartyPopper, Utensils } from "lucide-react";
 import { Experience } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { capitalise } from "../utils/text";
@@ -7,9 +7,10 @@ interface ExperiencesGridProps {
   items: Experience[];
   saved: Set<string>;
   onToggleSaved: (id: string) => void;
+  onAddToTrip?: (id: string) => void;
 }
 
-export function ExperiencesGrid({ items, saved, onToggleSaved }: ExperiencesGridProps) {
+export function ExperiencesGrid({ items, saved, onToggleSaved, onAddToTrip }: ExperiencesGridProps) {
   if (!items.length) {
     return (
       <p className="mt-5 text-xs text-slate-400">
@@ -73,6 +74,15 @@ export function ExperiencesGrid({ items, saved, onToggleSaved }: ExperiencesGrid
                 <span>{experience.bestTime}</span>
                 <span className="text-slate-300">{experience.approxCost}</span>
               </div>
+              {onAddToTrip && (
+                <button
+                  type="button"
+                  onClick={() => onAddToTrip(experience.id)}
+                  className="mt-2 inline-flex items-center justify-center gap-1 rounded-full border border-emerald-400/70 bg-emerald-400/10 px-3 py-1.5 text-[0.7rem] text-emerald-200 hover:bg-emerald-400/20"
+                >
+                  <CalendarDays className="w-3 h-3" /> Add to trip
+                </button>
+              )}
             </div>
           </article>
         );

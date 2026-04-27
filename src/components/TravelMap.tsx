@@ -2,6 +2,7 @@ import { memo } from "react";
 import Map, { Layer, Marker, Source, ViewStateChangeEvent } from "react-map-gl";
 import type { Destination } from "../types/travel";
 import { MapPin } from "lucide-react";
+import { classNames } from "../utils/classNames";
 
 const MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
@@ -15,6 +16,9 @@ interface TravelMapProps {
     zoom: number;
   };
   onMove: (event: ViewStateChangeEvent) => void;
+  className?: string;
+  height?: number | string;
+  scrollZoom?: boolean;
 }
 
 export const TravelMap = memo(function TravelMap({
@@ -23,6 +27,9 @@ export const TravelMap = memo(function TravelMap({
   onSelectDestination,
   viewState,
   onMove,
+  className,
+  height = 420,
+  scrollZoom = false,
 }: TravelMapProps) {
   const geojson = {
     type: "FeatureCollection" as const,
@@ -42,13 +49,18 @@ export const TravelMap = memo(function TravelMap({
   };
 
   return (
-    <div className="rounded-3xl border border-slate-800 overflow-hidden bg-slate-950/60">
+    <div
+      className={classNames(
+        "rounded-3xl border border-slate-800 overflow-hidden bg-slate-950/60",
+        className
+      )}
+    >
       <Map
         reuseMaps
-        scrollZoom={false}
+        scrollZoom={scrollZoom}
         dragRotate={false}
         mapStyle={MAP_STYLE}
-        style={{ width: "100%", height: 420 }}
+        style={{ width: "100%", height }}
         mapLib={import("maplibre-gl")}
         {...viewState}
         onMove={onMove}

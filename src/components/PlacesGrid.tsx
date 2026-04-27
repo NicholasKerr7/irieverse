@@ -1,4 +1,4 @@
-import { CalendarDays, Heart, MapPin } from "lucide-react";
+import { CalendarDays, Heart, MapPin, Route } from "lucide-react";
 import { Destination } from "../types/travel";
 import { classNames } from "../utils/classNames";
 
@@ -7,9 +7,18 @@ interface PlacesGridProps {
   saved: Set<string>;
   onToggleSaved: (id: string) => void;
   onPlanFrom: (destinationId: string) => void;
+  onViewMap?: (destinationId: string) => void;
+  planLabel?: string;
 }
 
-export function PlacesGrid({ items, saved, onToggleSaved, onPlanFrom }: PlacesGridProps) {
+export function PlacesGrid({
+  items,
+  saved,
+  onToggleSaved,
+  onPlanFrom,
+  onViewMap,
+  planLabel = "Plan from here",
+}: PlacesGridProps) {
   if (!items.length) {
     return (
       <p className="mt-5 text-xs text-slate-400">
@@ -76,13 +85,24 @@ export function PlacesGrid({ items, saved, onToggleSaved, onPlanFrom }: PlacesGr
                 <span>{"💸".repeat(destination.priceLevel)}</span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => onPlanFrom(destination.id)}
-                className="mt-2 inline-flex items-center gap-1 text-[0.7rem] px-3 py-1.5 rounded-full border border-cyan-400/80 text-cyan-200 bg-cyan-400/10 hover:bg-cyan-400/20"
-              >
-                <CalendarDays className="w-3 h-3" /> Plan from here
-              </button>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => onPlanFrom(destination.id)}
+                  className="inline-flex flex-1 items-center justify-center gap-1 rounded-full border border-cyan-400/80 bg-cyan-400/10 px-3 py-1.5 text-[0.7rem] text-cyan-200 hover:bg-cyan-400/20"
+                >
+                  <CalendarDays className="w-3 h-3" /> {planLabel}
+                </button>
+                {onViewMap && (
+                  <button
+                    type="button"
+                    onClick={() => onViewMap(destination.id)}
+                    className="inline-flex items-center justify-center gap-1 rounded-full border border-slate-700/80 bg-slate-950/70 px-3 py-1.5 text-[0.7rem] text-slate-200 hover:bg-slate-900/90"
+                  >
+                    <Route className="w-3 h-3" /> Map
+                  </button>
+                )}
+              </div>
             </div>
           </article>
         );

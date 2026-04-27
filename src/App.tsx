@@ -1,5 +1,5 @@
-import { HomePage } from "./pages/HomePage";
+import { MobileShell } from "./components/mobile/MobileShell";
 
 export default function App() {
-  return <HomePage />;
+  return <MobileShell />;
 }
