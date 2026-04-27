@@ -65,6 +65,7 @@ updated_at timestamptz
 ```
 
 The migration in `supabase/migrations/20260427120000_create_trips_sharing.sql` creates the MVP sharing table and public anon policies. The app stores planner settings, saved places, saved experiences, and imported ideas in the `data` JSON payload.
+The migration in `supabase/migrations/20260427195500_add_production_qa_trip_cleanup.sql` adds a QA-only delete policy and indexes so production QA share rows can be removed after automated verification.
 
 To apply it with the Supabase CLI:
 
@@ -151,6 +152,7 @@ npm run build
 Then test:
 
 - Share trip creates and reloads a `?trip=` URL.
+- `npm run qa:production` removes any Supabase share row it creates after marking it as production QA data.
 - Flights display live data or a clear empty/error state.
 - Booking cards display from the configured endpoint.
 - Map route lines follow roads or gracefully fall back when the routing service is unavailable.

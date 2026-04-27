@@ -16,6 +16,8 @@ test.use({
 
 test("production mobile flows, screenshots, and live integrations", async ({ page, request }) => {
   const issues = collectPageIssues(page);
+  const qaRunId = `production-qa-${Date.now()}`;
+  const supabaseRest = trackSupabaseRest(page);
   fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
   await verifyProductionAssets(request);
@@ -68,6 +70,14 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
   if (await shareButton.isEnabled()) {
     await shareButton.click();
     await expect(page.getByText(/Share link updated|Unable to share trip right now/)).toBeVisible({ timeout: 15000 });
+    const shareUrl = await page
+      .locator('input[placeholder="Create a share link to collaborate"]')
+      .inputValue()
+      .catch(() => "");
+    const sharedTripId = extractSharedTripId(shareUrl);
+    if (sharedTripId) {
+      await cleanupSharedTrip(request, supabaseRest.getCredentials(), sharedTripId, qaRunId);
+    }
   } else {
     await expect(page.getByText(/enable live sharing/i)).toBeVisible();
   }
@@ -129,6 +139,86 @@ function collectPageIssues(page) {
   });
 
   return issues;
+}
+
+function trackSupabaseRest(page) {
+  let credentials = null;
+
+  page.on("request", (request) => {
+    const requestUrl = request.url();
+    if (!requestUrl.includes(".supabase.co/rest/v1/trips")) return;
+
+    const headers = request.headers();
+    if (!headers.apikey || !headers.authorization) return;
+
+    credentials = {
+      origin: new URL(requestUrl).origin,
+      apiKey: headers.apikey,
+      authorization: headers.authorization,
+    };
+  });
+
+  return {
+    getCredentials: () => credentials,
+  };
+}
+
+function extractSharedTripId(shareUrl) {
+  if (!shareUrl) return null;
+  try {
+    return new URL(shareUrl).searchParams.get("trip");
+  } catch {
+    return null;
+  }
+}
+
+async function cleanupSharedTrip(request, credentials, tripId, qaRunId) {
+  expect(credentials, "Supabase REST request credentials should be captured").toBeTruthy();
+
+  const tripFilter = `id=eq.${encodeURIComponent(tripId)}`;
+  const tripEndpoint = `${credentials.origin}/rest/v1/trips`;
+  const headers = {
+    apikey: credentials.apiKey,
+    authorization: credentials.authorization,
+    "content-type": "application/json",
+  };
+
+  const fetchResponse = await request.get(`${tripEndpoint}?${tripFilter}&select=data`, { headers });
+  expect(fetchResponse.ok(), "shared QA trip should be readable before cleanup").toBe(true);
+  const rows = await fetchResponse.json();
+  expect(rows).toHaveLength(1);
+
+  const markedData = {
+    ...(rows[0].data ?? {}),
+    qa: {
+      source: "production-qa",
+      runId: qaRunId,
+      markedAt: new Date().toISOString(),
+    },
+  };
+
+  const markResponse = await request.patch(`${tripEndpoint}?${tripFilter}`, {
+    headers: {
+      ...headers,
+      prefer: "return=minimal",
+    },
+    data: {
+      data: markedData,
+    },
+  });
+  expect(markResponse.ok(), "shared QA trip should be marked for cleanup").toBe(true);
+
+  const deleteResponse = await request.delete(`${tripEndpoint}?${tripFilter}`, {
+    headers: {
+      ...headers,
+      prefer: "return=minimal",
+    },
+  });
+  expect(deleteResponse.ok(), "marked QA trip should be deleted").toBe(true);
+
+  const verifyResponse = await request.get(`${tripEndpoint}?${tripFilter}&select=id`, { headers });
+  expect(verifyResponse.ok(), "cleanup verification query should succeed").toBe(true);
+  expect(await verifyResponse.json()).toEqual([]);
 }
 
 async function verifyProductionAssets(request) {

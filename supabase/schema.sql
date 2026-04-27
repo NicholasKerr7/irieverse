@@ -28,6 +28,7 @@ alter table public.trips enable row level security;
 drop policy if exists "Public trips are readable by share id" on public.trips;
 drop policy if exists "Public trips can be created" on public.trips;
 drop policy if exists "Public trips can be updated by share id" on public.trips;
+drop policy if exists "Production QA trips can be deleted" on public.trips;
 
 create policy "Public trips are readable by share id"
 on public.trips
@@ -47,3 +48,18 @@ for update
 to anon
 using (true)
 with check (true);
+
+create policy "Production QA trips can be deleted"
+on public.trips
+for delete
+to anon
+using (
+  data -> 'qa' ->> 'source' = 'production-qa'
+);
+
+create index if not exists trips_updated_at_idx
+on public.trips (updated_at);
+
+create index if not exists trips_qa_source_idx
+on public.trips ((data -> 'qa' ->> 'source'))
+where data ? 'qa';

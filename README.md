@@ -9,6 +9,7 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 - Flight snapshot (live via AviationStack, sample data fallback)
 - Live events feed and booking recommendations (sample data fallback)
 - Optional Supabase-backed trip sharing
+- Production QA deletes its own Supabase test share rows after verification
 - PWA manifest, install icons, app shortcuts, and same-origin offline cache for fallback data/assets
 
 ## Quick start

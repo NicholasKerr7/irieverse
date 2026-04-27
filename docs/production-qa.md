@@ -19,6 +19,7 @@ Coverage:
 - Mobile screens: Home, Explore places, Explore experiences, Map, Saved import, Trips
 - Desktop screen: Map
 - User flows: save destination, import saved idea, add saved idea to trip, export ICS, share-link availability
+- Supabase sharing: when a share link is created, the test verifies the row is readable, marks it as production QA data, deletes it through the QA-only delete policy, and verifies the row is gone
 - Map routing: `/api/road-route` returns OSRM road geometry with more than 100 coordinates
 - Runtime checks: no page errors or same-origin request failures during the tested flows
 
@@ -26,7 +27,7 @@ Notes:
 
 - The expected `hero.mp4` abort during tab navigation is ignored by the QA spec because the browser cancels the video request when leaving Home.
 - The Map screen now opens with the selected-place sheet compact by default so road routes stay visible on mobile and desktop.
-- If Supabase sharing is enabled, the share check can create a disposable test share row from the generated QA trip state.
+- If Supabase sharing is enabled, the share check creates a disposable test share row from the generated QA trip state and removes it before the test completes.
 
 Screenshots:
 
