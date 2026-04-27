@@ -341,11 +341,15 @@ export function useTravelOS() {
   }, [loadEvents]);
 
   const loadBookings = useCallback(
-    async (destinationAirport: string, originAirportCode: string) => {
+    async (destinationAirport: string, originAirportCode: string, checkInDate: string, tripDays: number) => {
       setIsLoadingBookings(true);
       setBookingError(null);
       try {
-        const options = await fetchBookingOptions(destinationAirport, originAirportCode);
+        const options = await fetchBookingOptions(destinationAirport, originAirportCode, {
+          checkInDate,
+          checkOutDate: addDaysToISODate(checkInDate, tripDays),
+          adults: 2,
+        });
         setBookingOptions(options);
       } catch (error) {
         console.error(error);
@@ -359,8 +363,8 @@ export function useTravelOS() {
   );
 
   const refreshBookings = useCallback(() => {
-    loadBookings(destination.airportCode, originAirport.code);
-  }, [destination.airportCode, loadBookings, originAirport.code]);
+    loadBookings(destination.airportCode, originAirport.code, plannerStartDate, plannerDays);
+  }, [destination.airportCode, loadBookings, originAirport.code, plannerDays, plannerStartDate]);
 
   useEffect(() => {
     refreshBookings();
@@ -831,6 +835,14 @@ function clampPlannerDays(days: number): number {
 function clampPlannerBudget(budget: number): number {
   if (!Number.isFinite(budget)) return 150;
   return Math.max(50, Math.min(Math.round(budget), 600));
+}
+
+function addDaysToISODate(startDateISO: string, days: number): string | undefined {
+  const startDate = new Date(`${startDateISO}T00:00:00`);
+  if (Number.isNaN(startDate.getTime())) return undefined;
+  const checkoutDate = new Date(startDate);
+  checkoutDate.setDate(startDate.getDate() + clampPlannerDays(days));
+  return checkoutDate.toISOString().slice(0, 10);
 }
 
 function buildDestinationPool(base: Destination, preferredDestinationIds: Set<string>, plannerVibe: Vibe | "mixed"): Destination[] {

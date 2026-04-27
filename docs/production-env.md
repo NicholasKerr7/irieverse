@@ -9,7 +9,12 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | `VITE_SUPABASE_URL` | Optional | Enables shared trip links with Supabase. |
 | `VITE_SUPABASE_ANON_KEY` | Optional | Public anon key for the Supabase project. |
 | `VITE_AVIATIONSTACK_API_KEY` | Optional | Enables live flight snapshots through AviationStack. |
-| `VITE_BOOKING_API_URL` | Optional | Enables live booking recommendations from your own booking endpoint. |
+| `VITE_BOOKING_API_URL` | Optional | Enables live booking recommendations from the server booking endpoint. |
+| `AMADEUS_CLIENT_ID` | Optional | Server-only Amadeus API key used by `api/bookings.js`. |
+| `AMADEUS_CLIENT_SECRET` | Optional | Server-only Amadeus API secret used by `api/bookings.js`. |
+| `AMADEUS_BASE_URL` | Optional | Amadeus base URL. Defaults to `https://test.api.amadeus.com`; use `https://api.amadeus.com` for production credentials. |
+
+Only variables prefixed with `VITE_` are exposed to the browser. Keep Amadeus credentials server-only.
 
 ## Local Setup
 
@@ -36,6 +41,15 @@ vercel env add VITE_SUPABASE_URL production
 vercel env add VITE_SUPABASE_ANON_KEY production
 vercel env add VITE_AVIATIONSTACK_API_KEY production
 vercel env add VITE_BOOKING_API_URL production
+vercel env add AMADEUS_CLIENT_ID production
+vercel env add AMADEUS_CLIENT_SECRET production
+vercel env add AMADEUS_BASE_URL production
+```
+
+For this Vercel app, `VITE_BOOKING_API_URL` should be:
+
+```text
+/api/bookings
 ```
 
 For Netlify:
@@ -70,10 +84,10 @@ For manual setup, run `supabase/schema.sql` in the Supabase SQL editor. Keep it 
 
 ## Booking API Contract
 
-When `VITE_BOOKING_API_URL` is set, IrieVerse calls:
+This repo includes a Vercel serverless booking endpoint at `api/bookings.js`. It proxies Amadeus Hotels so Amadeus secrets never ship to the browser. When `VITE_BOOKING_API_URL` is set, IrieVerse calls:
 
 ```text
-GET {VITE_BOOKING_API_URL}?destination={airportCode}&origin={airportCode}
+GET {VITE_BOOKING_API_URL}?destination={airportCode}&origin={airportCode}&checkInDate={YYYY-MM-DD}&checkOutDate={YYYY-MM-DD}&adults=2
 ```
 
 The endpoint can return either:
@@ -103,7 +117,21 @@ or:
 }
 ```
 
-If the variable is missing, the app uses `public/data/bookings.json`.
+The endpoint returns fallback booking data when Amadeus credentials are missing, Amadeus has no matching offers, or the provider request fails. If `VITE_BOOKING_API_URL` is missing entirely, the browser uses `public/data/bookings.json`.
+
+## Amadeus Setup
+
+Create an Amadeus for Developers account, create an app in the Self-Service workspace, and copy the API Key and API Secret into server-only Vercel variables:
+
+```bash
+vercel env add AMADEUS_CLIENT_ID production
+vercel env add AMADEUS_CLIENT_SECRET production
+vercel env add AMADEUS_BASE_URL production
+```
+
+Use `https://test.api.amadeus.com` while testing. Switch `AMADEUS_BASE_URL` to `https://api.amadeus.com` only after your Amadeus app is approved for production access.
+
+The endpoint uses Amadeus OAuth client credentials, then looks up hotels by Jamaica city code and fetches Hotel Search v3 offers.
 
 ## Flight API
 

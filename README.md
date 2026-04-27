@@ -24,7 +24,9 @@ Copy `.env.example` to `.env.local` and fill any of the following:
 VITE_SUPABASE_URL=your_supabase_url           # enables trip sharing
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key # enables trip sharing
 VITE_AVIATIONSTACK_API_KEY=your_key           # live flights; otherwise uses public/data/flights-sample.json
-VITE_BOOKING_API_URL=https://.../bookings     # live bookings; otherwise uses public/data/bookings.json
+VITE_BOOKING_API_URL=/api/bookings            # live bookings through the Vercel Amadeus proxy
+AMADEUS_CLIENT_ID=your_amadeus_api_key        # server-only; do not prefix with VITE_
+AMADEUS_CLIENT_SECRET=your_amadeus_api_secret # server-only; do not prefix with VITE_
 ```
 
 If env vars are absent, the app falls back to local sample data in `public/data`.

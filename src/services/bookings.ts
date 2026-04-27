@@ -2,9 +2,19 @@ import { BookingOption } from "../types/travel";
 
 const BOOKINGS_API = import.meta.env.VITE_BOOKING_API_URL?.trim();
 
-export async function fetchBookingOptions(destinationAirportCode: string, originAirportCode: string) {
+interface BookingSearchParams {
+  checkInDate?: string;
+  checkOutDate?: string;
+  adults?: number;
+}
+
+export async function fetchBookingOptions(
+  destinationAirportCode: string,
+  originAirportCode: string,
+  searchParams: BookingSearchParams = {}
+) {
   const endpoint = BOOKINGS_API
-    ? `${BOOKINGS_API}?destination=${encodeURIComponent(destinationAirportCode)}&origin=${encodeURIComponent(originAirportCode)}`
+    ? buildBookingEndpoint(destinationAirportCode, originAirportCode, searchParams)
     : `/data/bookings.json`;
 
   const response = await fetch(endpoint);
@@ -16,6 +26,21 @@ export async function fetchBookingOptions(destinationAirportCode: string, origin
     ? normalizeBookingResponse(payload)
     : getFallbackBookingOptions(payload, destinationAirportCode);
   return data.slice(0, 4);
+}
+
+function buildBookingEndpoint(
+  destinationAirportCode: string,
+  originAirportCode: string,
+  searchParams: BookingSearchParams
+) {
+  const baseUrl = typeof window === "undefined" ? "http://localhost" : window.location.origin;
+  const url = new URL(BOOKINGS_API as string, baseUrl);
+  url.searchParams.set("destination", destinationAirportCode);
+  url.searchParams.set("origin", originAirportCode);
+  if (searchParams.checkInDate) url.searchParams.set("checkInDate", searchParams.checkInDate);
+  if (searchParams.checkOutDate) url.searchParams.set("checkOutDate", searchParams.checkOutDate);
+  if (searchParams.adults) url.searchParams.set("adults", String(searchParams.adults));
+  return url.toString();
 }
 
 function normalizeBookingResponse(payload: unknown): BookingOption[] {

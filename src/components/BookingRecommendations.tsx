@@ -21,9 +21,9 @@ export function BookingRecommendations({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <p className="text-[0.65rem] uppercase tracking-[0.3em] text-emerald-300/80">Book the vibe</p>
-          <h2 className="text-lg sm:text-xl font-semibold">Curated stays + flights for {destinationName}</h2>
+          <h2 className="text-lg sm:text-xl font-semibold">Curated stays for {destinationName}</h2>
           <p className="text-xs sm:text-[0.8rem] text-slate-400">
-            Pulled from boutique partners + Duffel quotes. Swap origin/destination to refresh.
+            Pulled from the Amadeus hotel feed when configured, with local fallbacks when partners are offline.
           </p>
         </div>
         <button
@@ -77,7 +77,7 @@ export function BookingRecommendations({
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-xs text-emerald-300 hover:text-emerald-100"
             >
-              Book this {option.type} <ExternalLink className="w-3.5 h-3.5" />
+              View this {option.type} <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </article>
         ))}
