@@ -3,8 +3,10 @@ import type { LucideProps } from "lucide-react";
 import {
   CalendarDays,
   Check,
+  Clock3,
   Download,
   Heart,
+  MapPinned,
   Plane,
   Route,
   Share2,
@@ -154,6 +156,8 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
               <MiniCard icon={Sparkles} title="Vibe" body={app.plannerVibe === "mixed" ? "Mixed island flow." : `${app.plannerVibe} focused.`} />
             </div>
           </section>
+
+          <RoutePreviewPanel app={app} onNavigate={onNavigate} />
 
           <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -372,7 +376,8 @@ function WizardPanel({
               {app.plannerDays} days based in {app.destination.name}
             </p>
             <p className="mt-1 text-xs leading-5 text-slate-400">
-              {app.itinerary.daysPlan.length} daily cards generated with matched highlights and experiences.
+              {app.itinerary.daysPlan.length} daily cards generated across {app.itinerary.routeSummary.regionCount} regions,
+              with {formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)} of estimated driving.
             </p>
           </div>
         </div>
@@ -493,6 +498,74 @@ function FlightSnapshot({ app }: { app: TravelOS }) {
   );
 }
 
+function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab: MobileTabId) => void }) {
+  const routeSummary = app.itinerary.routeSummary;
+
+  return (
+    <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Route className="h-5 w-5 text-cyan-300" />
+          <div>
+            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Route intelligence</p>
+            <h2 className="text-lg font-semibold">{routeSummary.routeTone}</h2>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onNavigate("map")}
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-cyan-300/50 px-4 py-2 text-xs font-bold text-cyan-100"
+        >
+          <MapPinned className="h-4 w-4" /> Preview map
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <RouteStat icon={Clock3} label="Drive time" value={formatDriveTime(routeSummary.totalDriveMinutes)} />
+        <RouteStat icon={Route} label="Distance" value={`${routeSummary.totalDistanceKm} km`} />
+        <RouteStat icon={MapPinned} label="Regions" value={routeSummary.regionCount.toString()} />
+      </div>
+
+      <ol className="mt-4 grid gap-2 md:grid-cols-2">
+        {routeSummary.stops.map((stop, index) => (
+          <li
+            key={stop.destinationId}
+            className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-3"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-xs font-bold text-slate-950">
+              {index + 1}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-slate-100">{stop.name}</span>
+              <span className="block text-xs text-slate-500">
+                {stop.region} · {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function RouteStat({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: ComponentType<LucideProps>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+      <Icon className="h-4 w-4 text-cyan-300" />
+      <p className="mt-2 text-[0.65rem] uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
+    </div>
+  );
+}
+
 function SharePanel({ app }: { app: TravelOS }) {
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-4">
@@ -600,6 +673,15 @@ function VibeButton({ active, label, onClick }: { active: boolean; label: string
       {label}
     </button>
   );
+}
+
+function formatDriveTime(minutes: number): string {
+  if (!minutes) return "0 min";
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return `${remainder} min`;
+  if (!remainder) return `${hours} hr`;
+  return `${hours} hr ${remainder} min`;
 }
 
 function getCompletedStepIndex(app: TravelOS) {

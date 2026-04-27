@@ -1,4 +1,4 @@
-import { CalendarDays, MapPin, Music2, PartyPopper, Utensils, WalletCards } from "lucide-react";
+import { CalendarDays, Clock3, Gauge, MapPin, Music2, PartyPopper, Route, Utensils, WalletCards } from "lucide-react";
 import { ItineraryPlan } from "../types/travel";
 import { capitalise } from "../utils/text";
 
@@ -7,7 +7,7 @@ interface ItineraryViewProps {
 }
 
 export function ItineraryView({ itinerary }: ItineraryViewProps) {
-  const { base, days, plannerVibe, budgetPerDay, daysPlan } = itinerary;
+  const { base, days, plannerVibe, budgetPerDay, daysPlan, routeSummary } = itinerary;
 
   return (
     <div className="space-y-4">
@@ -19,7 +19,7 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
               {days}-day {plannerVibe === "mixed" ? "mixed-vibe" : plannerVibe} trip based in {base.name}
             </h3>
             <p className="mt-1 text-sm leading-6 text-slate-400">
-              Flexible sketch with daily regions, highlights, matched experiences, and suggested spend.
+              Region-aware route with daily highlights, matched experiences, drive estimates, and suggested spend.
             </p>
           </div>
           <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-right">
@@ -27,6 +27,27 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
             <p className="text-xl font-semibold text-slate-100">${(budgetPerDay * days).toLocaleString()}</p>
           </div>
         </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <RouteMetric
+          icon={Route}
+          label="Route"
+          value={routeSummary.routeTone}
+          helper={`${routeSummary.stops.length} stops · ${routeSummary.regionCount} regions`}
+        />
+        <RouteMetric
+          icon={Clock3}
+          label="Driving"
+          value={formatDriveTime(routeSummary.totalDriveMinutes)}
+          helper={`${routeSummary.totalDistanceKm} km estimated`}
+        />
+        <RouteMetric
+          icon={Gauge}
+          label="Pacing"
+          value={getPacingLabel(routeSummary.totalDriveMinutes, days)}
+          helper="High-energy days get recovery space"
+        />
       </div>
 
       <ol className="grid gap-3 md:grid-cols-2">
@@ -53,8 +74,19 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
               <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.14em] text-emerald-100">
                 <WalletCards className="h-3 w-3" /> ${day.suggestedBudget}
               </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.14em] text-slate-300">
+                <Clock3 className="h-3 w-3" />
+                {day.driveMinutesFromPrevious ? formatDriveTime(day.driveMinutesFromPrevious) : "Arrival"}
+              </span>
+              <span className="rounded-full border border-violet-300/20 bg-violet-300/10 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.14em] text-violet-100">
+                {day.energyLevel}
+              </span>
             </div>
 
+            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              {day.routeNote}
+              {day.distanceFromPreviousKm ? ` · ${day.distanceFromPreviousKm} km from previous stop` : ""}
+            </p>
             <p className="mt-4 text-sm leading-6 text-slate-300">{day.highlight}.</p>
 
             {day.experience && (
@@ -82,4 +114,41 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
       </ol>
     </div>
   );
+}
+
+function RouteMetric({
+  icon: Icon,
+  label,
+  value,
+  helper,
+}: {
+  icon: typeof Route;
+  label: string;
+  value: string;
+  helper: string;
+}) {
+  return (
+    <article className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+      <Icon className="h-4 w-4 text-cyan-300" />
+      <p className="mt-3 text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">{label}</p>
+      <h3 className="mt-1 text-sm font-semibold text-slate-100">{value}</h3>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{helper}</p>
+    </article>
+  );
+}
+
+function formatDriveTime(minutes: number): string {
+  if (!minutes) return "0 min";
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return `${remainder} min`;
+  if (!remainder) return `${hours} hr`;
+  return `${hours} hr ${remainder} min`;
+}
+
+function getPacingLabel(totalDriveMinutes: number, days: number): string {
+  const averageDrive = days ? totalDriveMinutes / days : 0;
+  if (averageDrive > 110) return "Ambitious";
+  if (averageDrive > 55) return "Balanced";
+  return "Relaxed";
 }

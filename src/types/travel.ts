@@ -88,13 +88,48 @@ export interface ImportedIdea {
 
 export interface PlannerDay {
   day: number;
+  destinationId: string;
   destName: string;
   destRegion: string;
   vibe: string;
   highlight: string;
   suggestedBudget: number;
   isBase: boolean;
+  routeNote: string;
+  distanceFromPreviousKm: number;
+  driveMinutesFromPrevious: number;
+  energyLevel: "soft" | "balanced" | "high";
   experience?: Experience;
+}
+
+export interface RouteStop {
+  destinationId: string;
+  name: string;
+  region: string;
+  latitude: number;
+  longitude: number;
+  day: number;
+  isBase: boolean;
+  distanceFromPreviousKm: number;
+  driveMinutesFromPrevious: number;
+}
+
+export interface RouteLeg {
+  fromDestinationId: string;
+  toDestinationId: string;
+  fromName: string;
+  toName: string;
+  distanceKm: number;
+  driveMinutes: number;
+}
+
+export interface RouteSummary {
+  totalDistanceKm: number;
+  totalDriveMinutes: number;
+  regionCount: number;
+  routeTone: string;
+  stops: RouteStop[];
+  legs: RouteLeg[];
 }
 
 export interface ItineraryPlan {
@@ -103,6 +138,7 @@ export interface ItineraryPlan {
   plannerVibe: Vibe | "mixed";
   budgetPerDay: number;
   daysPlan: PlannerDay[];
+  routeSummary: RouteSummary;
 }
 
 export interface OriginAirport {

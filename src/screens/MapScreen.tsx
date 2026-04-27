@@ -76,6 +76,13 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     () => getNearbyExperiences(selectedDestination).slice(0, 4),
     [selectedDestination]
   );
+  const routeDestinations = useMemo(
+    () =>
+      app.itinerary.routeSummary.stops
+        .map((stop) => DESTINATIONS.find((destination) => destination.id === stop.destinationId))
+        .filter((destination): destination is Destination => Boolean(destination)),
+    [app.itinerary.routeSummary.stops]
+  );
 
   const handleSelectDestination = (destinationId: string) => {
     app.setPlannerBaseId(destinationId);
@@ -108,6 +115,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         height="100%"
         scrollZoom
         getMarkerCategory={getDestinationPinCategory}
+        routeDestinations={routeDestinations}
       />
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-4 sm:p-5">
@@ -279,8 +287,11 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                     <div>
                       <p className="text-[0.65rem] uppercase tracking-[0.24em] text-cyan-200">Route preview</p>
                       <h3 className="mt-1 font-semibold text-slate-100">
-                        Start from {selectedDestination.name}
+                        {app.itinerary.routeSummary.routeTone}
                       </h3>
+                      <p className="mt-1 text-xs text-cyan-100/70">
+                        {app.itinerary.routeSummary.totalDistanceKm} km · {formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)}
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -291,15 +302,19 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                     </button>
                   </div>
                   <ol className="mt-3 space-y-2 text-sm text-slate-300">
-                    {[selectedDestination.name, ...app.itinerary.daysPlan.map((day) => day.destName)]
-                      .filter((value, index, items) => items.indexOf(value) === index)
+                    {app.itinerary.routeSummary.stops
                       .slice(0, 4)
-                      .map((name, index) => (
-                        <li key={`${name}-${index}`} className="flex items-center gap-2">
+                      .map((stop, index) => (
+                        <li key={stop.destinationId} className="flex items-center gap-2">
                           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-xs text-cyan-200">
                             {index + 1}
                           </span>
-                          {name}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate">{stop.name}</span>
+                            <span className="block text-xs text-slate-500">
+                              {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"} · {stop.region}
+                            </span>
+                          </span>
                         </li>
                       ))}
                   </ol>
@@ -442,4 +457,13 @@ function getNearbyExperiences(destination: Destination) {
       experienceRegion.includes(selectedName.split(" ")[0])
     );
   });
+}
+
+function formatDriveTime(minutes: number): string {
+  if (!minutes) return "0 min";
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return `${remainder} min`;
+  if (!remainder) return `${hours} hr`;
+  return `${hours} hr ${remainder} min`;
 }

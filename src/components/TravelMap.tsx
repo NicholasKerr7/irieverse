@@ -39,6 +39,7 @@ interface TravelMapProps {
   height?: number | string;
   scrollZoom?: boolean;
   getMarkerCategory?: (destination: Destination) => MapPinCategory;
+  routeDestinations?: Destination[];
 }
 
 export const TravelMap = memo(function TravelMap({
@@ -51,6 +52,7 @@ export const TravelMap = memo(function TravelMap({
   height = 420,
   scrollZoom = false,
   getMarkerCategory = () => "default",
+  routeDestinations = [],
 }: TravelMapProps) {
   const geojson = {
     type: "FeatureCollection" as const,
@@ -73,6 +75,21 @@ export const TravelMap = memo(function TravelMap({
       };
     }),
   };
+  const routeGeojson = {
+    type: "FeatureCollection" as const,
+    features: routeDestinations.length > 1
+      ? [
+          {
+            type: "Feature" as const,
+            geometry: {
+              type: "LineString" as const,
+              coordinates: routeDestinations.map((destination) => [destination.longitude, destination.latitude]),
+            },
+            properties: {},
+          },
+        ]
+      : [],
+  };
 
   return (
     <div
@@ -90,6 +107,24 @@ export const TravelMap = memo(function TravelMap({
         {...viewState}
         onMove={onMove}
       >
+        {!!routeGeojson.features.length && (
+          <Source id="route-preview" type="geojson" data={routeGeojson}>
+            <Layer
+              id="route-preview-line"
+              type="line"
+              paint={{
+                "line-color": "#06b6d4",
+                "line-width": 4,
+                "line-opacity": 0.78,
+              }}
+              layout={{
+                "line-cap": "round",
+                "line-join": "round",
+              }}
+            />
+          </Source>
+        )}
+
         <Source id="destinations" type="geojson" data={geojson}>
           <Layer
             id="destination-points"

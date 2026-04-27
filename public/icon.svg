@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="IrieVerse">
+  <rect width="512" height="512" rx="112" fill="#020617"/>
+  <path d="M92 320c66-78 122-118 168-120 40-2 73 24 105 78 14 24 34 39 61 45" fill="none" stroke="#22d3ee" stroke-width="34" stroke-linecap="round"/>
+  <path d="M128 354c54-39 100-58 138-57 37 1 68 19 95 55" fill="none" stroke="#34d399" stroke-width="28" stroke-linecap="round"/>
+  <circle cx="330" cy="158" r="44" fill="#fbbf24"/>
+  <path d="M128 184h78m-39-39v78" stroke="#f8fafc" stroke-width="22" stroke-linecap="round"/>
+  <path d="M102 393h308" stroke="#f8fafc" stroke-width="20" stroke-linecap="round" opacity=".85"/>
+</svg>
