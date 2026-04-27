@@ -5,7 +5,7 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 - Destination + experience explorer with vibe filters and search
 - Interactive map powered by MapLibre (no Mapbox token required)
 - Saved boards for places, experiences, pasted links, and manual Jamaica ideas
-- Region-aware trip planner with route pacing, drive estimates, budget, dates, and ICS export
+- Region-aware trip planner with editable route order, route pacing, drive estimates, budget, dates, and ICS export
 - Flight snapshot (live via AviationStack, sample data fallback)
 - Live events feed and booking recommendations (sample data fallback)
 - Optional Supabase-backed trip sharing

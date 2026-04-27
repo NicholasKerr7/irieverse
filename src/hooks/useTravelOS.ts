@@ -30,6 +30,7 @@ const STORAGE_KEY_ORIGIN_AIRPORT = "irieverse_origin_airport";
 const STORAGE_KEY_SAVED_PLACES = "irieverse_saved_places";
 const STORAGE_KEY_SAVED_EXPERIENCES = "irieverse_saved_experiences";
 const STORAGE_KEY_IMPORTED_IDEAS = "irieverse_imported_ideas";
+const STORAGE_KEY_MANUAL_ROUTE = "irieverse_manual_route";
 const STORAGE_KEY_THEME = "irieverse_theme";
 
 const AIRPORT_TIMEZONES: Record<string, string> = {
@@ -94,6 +95,7 @@ export function useTravelOS() {
   const [plannerStartDate, setPlannerStartDate] = useState(() =>
     new Date().toISOString().split("T")[0]
   );
+  const [manualRouteDestinationIds, setManualRouteDestinationIds] = useState<string[]>([]);
   const [originAirportId, setOriginAirportId] = useState(DEFAULT_ORIGIN_AIRPORT_ID);
   const [hasUserPreferredOrigin, setHasUserPreferredOrigin] = useState(false);
   const [liveFacts, setLiveFacts] = useState<QuickFact[] | null>(null);
@@ -131,6 +133,7 @@ export function useTravelOS() {
     const savedDestinations = localStorage.getItem(STORAGE_KEY_SAVED_PLACES);
     const savedExperiencesStored = localStorage.getItem(STORAGE_KEY_SAVED_EXPERIENCES);
     const importedIdeasStored = localStorage.getItem(STORAGE_KEY_IMPORTED_IDEAS);
+    const manualRouteStored = localStorage.getItem(STORAGE_KEY_MANUAL_ROUTE);
     const savedTheme = localStorage.getItem(STORAGE_KEY_THEME) as ThemeMode | null;
 
     if (savedDestinations) {
@@ -149,6 +152,16 @@ export function useTravelOS() {
         setImportedIdeas([]);
       }
     }
+    if (manualRouteStored) {
+      try {
+        const parsed = JSON.parse(manualRouteStored);
+        if (Array.isArray(parsed)) {
+          setManualRouteDestinationIds(parsed.filter((id): id is string => typeof id === "string"));
+        }
+      } catch {
+        setManualRouteDestinationIds([]);
+      }
+    }
     if (savedTheme === "dark" || savedTheme === "light") {
       setTheme(savedTheme);
     }
@@ -165,6 +178,17 @@ export function useTravelOS() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_IMPORTED_IDEAS, JSON.stringify(importedIdeas));
   }, [importedIdeas]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_MANUAL_ROUTE, JSON.stringify(manualRouteDestinationIds));
+  }, [manualRouteDestinationIds]);
+
+  useEffect(() => {
+    setManualRouteDestinationIds((prev) => {
+      const normalized = normalizeRouteDestinationIds(prev, plannerBaseId, plannerDays);
+      return arraysEqual(prev, normalized) ? prev : normalized;
+    });
+  }, [plannerBaseId, plannerDays]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -423,13 +447,22 @@ export function useTravelOS() {
     const safeDays = Number.isFinite(plannerDays) ? Math.max(1, Math.min(plannerDays, 14)) : 5;
     const preferredDestinationIds = new Set<string>([
       destination.id,
+      ...manualRouteDestinationIds,
       ...Array.from(savedPlaces),
       ...importedIdeas
         .map((idea) => idea.linkedDestinationId)
         .filter((id): id is string => Boolean(id)),
     ]);
     const candidatePool = buildDestinationPool(destination, preferredDestinationIds, plannerVibe);
-    const routeDestinations = buildRouteOrder(destination, candidatePool, preferredDestinationIds, plannerVibe, safeDays);
+    const optimizedRouteDestinations = buildRouteOrder(destination, candidatePool, preferredDestinationIds, plannerVibe, safeDays);
+    const manualRouteDestinations = buildManualRouteOrder(
+      destination,
+      manualRouteDestinationIds,
+      candidatePool,
+      safeDays
+    );
+    const routeDestinations = manualRouteDestinations ?? optimizedRouteDestinations;
+    const routeMode = manualRouteDestinations ? "manual" : "optimized";
     const expPool = EXPERIENCES.slice().sort((a, b) => b.rating - a.rating);
 
     const daysPlan = Array.from({ length: safeDays }, (_, index) => {
@@ -446,6 +479,7 @@ export function useTravelOS() {
           ))
         : 0;
       const driveMinutesFromPrevious = estimateDriveMinutes(distanceFromPreviousKm);
+      const transferSeverity = getTransferSeverity(driveMinutesFromPrevious);
       const destinationVibe = chooseDayVibe(tripDestination, plannerVibe, index);
       const energyLevel = chooseEnergyLevel(index, destinationVibe);
       const highlight =
@@ -466,6 +500,7 @@ export function useTravelOS() {
         routeNote: buildRouteNote(previousDestination, tripDestination, distanceFromPreviousKm, driveMinutesFromPrevious),
         distanceFromPreviousKm,
         driveMinutesFromPrevious,
+        transferSeverity,
         energyLevel,
         experience,
       };
@@ -477,9 +512,9 @@ export function useTravelOS() {
       plannerVibe,
       budgetPerDay: plannerBudget,
       daysPlan,
-      routeSummary: buildRouteSummary(routeDestinations, destination),
+      routeSummary: buildRouteSummary(routeDestinations, destination, routeMode),
     };
-  }, [destination, importedIdeas, plannerBudget, plannerDays, plannerVibe, savedPlaces]);
+  }, [destination, importedIdeas, manualRouteDestinationIds, plannerBudget, plannerDays, plannerVibe, savedPlaces]);
 
   const defaultFlightFact: QuickFact = {
     label: `From ${originAirport.shortLabel ?? originAirport.code}`,
@@ -515,6 +550,9 @@ export function useTravelOS() {
     if (payload.originAirportId && ORIGIN_AIRPORTS.some((airport) => airport.id === payload.originAirportId)) {
       setOriginAirportId(payload.originAirportId);
     }
+    setManualRouteDestinationIds(
+      normalizeRouteDestinationIds(payload.manualRouteDestinationIds ?? [], payload.plannerBaseId ?? "mobay", payload.plannerDays ?? 5)
+    );
     setSavedPlaces(new Set(payload.savedPlaces ?? []));
     setSavedExperiences(new Set(payload.savedExperiences ?? []));
     setImportedIdeas(payload.importedIdeas ?? []);
@@ -678,6 +716,7 @@ export function useTravelOS() {
         plannerBudget,
         plannerStartDate,
         originAirportId,
+        manualRouteDestinationIds,
         savedPlaces,
         savedExperiences,
         importedIdeas,
@@ -707,6 +746,70 @@ export function useTravelOS() {
     }
   };
 
+  const moveRouteStop = (destinationId: string, direction: -1 | 1) => {
+    if (destinationId === destination.id) return;
+    setManualRouteDestinationIds((prev) => {
+      const currentRoute = prev.length
+        ? prev
+        : itinerary.routeSummary.stops.slice(1).map((stop) => stop.destinationId);
+      const next = normalizeRouteDestinationIds(currentRoute, destination.id, plannerDays);
+      const index = next.indexOf(destinationId);
+      const targetIndex = index + direction;
+
+      if (index < 0 || targetIndex < 0 || targetIndex >= next.length) return next;
+
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  };
+
+  const pinDestinationToRoute = (destinationId: string) => {
+    if (destinationId === destination.id) return;
+    if (!DESTINATIONS.some((item) => item.id === destinationId)) return;
+    savePlace(destinationId);
+    setManualRouteDestinationIds((prev) => {
+      const maxStops = Math.max(0, clampPlannerDays(plannerDays) - 1);
+      const currentRoute = prev.length
+        ? prev
+        : itinerary.routeSummary.stops.slice(1).map((stop) => stop.destinationId);
+      const withoutPinnedDestination = currentRoute.filter((id) => id !== destinationId);
+      const nextRoute = maxStops > 0
+        ? [...withoutPinnedDestination.slice(0, Math.max(0, maxStops - 1)), destinationId]
+        : [];
+      return normalizeRouteDestinationIds(nextRoute, destination.id, plannerDays);
+    });
+  };
+
+  const removeDestinationFromRoute = (destinationId: string) => {
+    if (destinationId === destination.id) return;
+    setManualRouteDestinationIds((prev) => {
+      const currentRoute = prev.length
+        ? prev
+        : itinerary.routeSummary.stops.slice(1).map((stop) => stop.destinationId);
+      return normalizeRouteDestinationIds(
+        currentRoute.filter((id) => id !== destinationId),
+        destination.id,
+        plannerDays
+      );
+    });
+  };
+
+  const optimizeRouteOrder = () => {
+    const currentRouteIds = new Set(itinerary.routeSummary.stops.map((stop) => stop.destinationId));
+    const candidatePool = [
+      destination,
+      ...DESTINATIONS.filter((item) => item.id !== destination.id && currentRouteIds.has(item.id)),
+    ];
+    const optimized = buildRouteOrder(destination, candidatePool, currentRouteIds, plannerVibe, plannerDays)
+      .slice(1)
+      .map((item) => item.id);
+    setManualRouteDestinationIds(normalizeRouteDestinationIds(optimized, destination.id, plannerDays));
+  };
+
+  const resetRouteOrder = () => {
+    setManualRouteDestinationIds([]);
+  };
+
   useEffect(() => {
     if (!tripId || !collaborationReady) return;
     const payload = serializeTripState({
@@ -716,6 +819,7 @@ export function useTravelOS() {
       plannerBudget,
       plannerStartDate,
       originAirportId,
+      manualRouteDestinationIds,
       savedPlaces,
       savedExperiences,
       importedIdeas,
@@ -742,6 +846,7 @@ export function useTravelOS() {
     plannerBudget,
     plannerStartDate,
     originAirportId,
+    manualRouteDestinationIds,
     savedPlaces,
     savedExperiences,
     importedIdeas,
@@ -773,6 +878,8 @@ export function useTravelOS() {
     setPlannerBudget: handlePlannerBudgetChange,
     plannerStartDate,
     setPlannerStartDate,
+    manualRouteDestinationIds,
+    routeIsManual: manualRouteDestinationIds.length > 0,
     originAirportId,
     handleOriginAirportChange,
     originAirports: ORIGIN_AIRPORTS,
@@ -812,6 +919,11 @@ export function useTravelOS() {
     addImportedIdea,
     updateImportedIdea,
     removeImportedIdea,
+    moveRouteStop,
+    pinDestinationToRoute,
+    removeDestinationFromRoute,
+    optimizeRouteOrder,
+    resetRouteOrder,
     handleExportItinerary,
     handleShareTrip,
     handleCopyShareLink,
@@ -894,6 +1006,28 @@ function buildRouteOrder(
   return route;
 }
 
+function buildManualRouteOrder(
+  base: Destination,
+  manualDestinationIds: string[],
+  candidatePool: Destination[],
+  days: number
+): Destination[] | null {
+  const manualIds = normalizeRouteDestinationIds(manualDestinationIds, base.id, days);
+  if (!manualIds.length) return null;
+
+  const destinationsById = new Map(candidatePool.map((destination) => [destination.id, destination]));
+  const route: Destination[] = [base];
+
+  manualIds.forEach((id) => {
+    const destination = destinationsById.get(id);
+    if (destination && !route.some((stop) => stop.id === destination.id)) {
+      route.push(destination);
+    }
+  });
+
+  return route.slice(0, Math.max(1, days));
+}
+
 function routeCandidateScore(
   current: Destination,
   candidate: Destination,
@@ -960,7 +1094,11 @@ function buildRouteNote(
   return "Route-aware transfer";
 }
 
-function buildRouteSummary(routeDestinations: Destination[], base: Destination): ItineraryPlan["routeSummary"] {
+function buildRouteSummary(
+  routeDestinations: Destination[],
+  base: Destination,
+  routeMode: ItineraryPlan["routeSummary"]["routeMode"]
+): ItineraryPlan["routeSummary"] {
   const stops = routeDestinations.map((destination, index) => {
     const previousDestination = index > 0 ? routeDestinations[index - 1] : null;
     const distanceFromPreviousKm = previousDestination
@@ -972,6 +1110,7 @@ function buildRouteSummary(routeDestinations: Destination[], base: Destination):
         ))
       : 0;
     const driveMinutesFromPrevious = estimateDriveMinutes(distanceFromPreviousKm);
+    const transferSeverity = getTransferSeverity(driveMinutesFromPrevious);
 
     return {
       destinationId: destination.id,
@@ -983,6 +1122,7 @@ function buildRouteSummary(routeDestinations: Destination[], base: Destination):
       isBase: destination.id === base.id,
       distanceFromPreviousKm,
       driveMinutesFromPrevious,
+      transferSeverity,
     };
   });
   const legs = stops.slice(1).map((stop, index) => {
@@ -994,20 +1134,56 @@ function buildRouteSummary(routeDestinations: Destination[], base: Destination):
       toName: stop.name,
       distanceKm: stop.distanceFromPreviousKm,
       driveMinutes: stop.driveMinutesFromPrevious,
+      transferSeverity: stop.transferSeverity,
     };
   });
   const totalDistanceKm = legs.reduce((sum, leg) => sum + leg.distanceKm, 0);
   const totalDriveMinutes = legs.reduce((sum, leg) => sum + leg.driveMinutes, 0);
   const regionCount = new Set(stops.map((stop) => stop.region)).size;
+  const baseTone = totalDriveMinutes > 420 ? "Wide island loop" : totalDriveMinutes > 240 ? "Balanced island route" : "Compact regional route";
+  const warnings = buildRouteWarnings(legs);
 
   return {
     totalDistanceKm,
     totalDriveMinutes,
     regionCount,
-    routeTone: totalDriveMinutes > 420 ? "Wide island loop" : totalDriveMinutes > 240 ? "Balanced island route" : "Compact regional route",
+    routeTone: routeMode === "manual" ? `${baseTone} - edited` : baseTone,
+    routeMode,
     stops,
     legs,
+    warnings,
   };
+}
+
+function buildRouteWarnings(routeLegs: ItineraryPlan["routeSummary"]["legs"]): ItineraryPlan["routeSummary"]["warnings"] {
+  return routeLegs
+    .filter((leg) => leg.transferSeverity !== "easy")
+    .map((leg, index) => ({
+      id: `${leg.fromDestinationId}-${leg.toDestinationId}-${index}`,
+      day: index + 2,
+      severity: leg.transferSeverity === "long" ? "long" : "moderate",
+      title: leg.transferSeverity === "long" ? `Long transfer into ${leg.toName}` : `Busy transfer into ${leg.toName}`,
+      body: `${formatDriveTime(leg.driveMinutes)} from ${leg.fromName}; consider a lighter activity day.`,
+    }));
+}
+
+function normalizeRouteDestinationIds(ids: string[], baseId: string, days: number): string[] {
+  const maxStops = Math.max(0, clampPlannerDays(days) - 1);
+  const validDestinationIds = new Set(DESTINATIONS.map((destination) => destination.id));
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  ids.forEach((id) => {
+    if (id === baseId || !validDestinationIds.has(id) || seen.has(id)) return;
+    seen.add(id);
+    normalized.push(id);
+  });
+
+  return normalized.slice(0, maxStops);
+}
+
+function arraysEqual(first: string[], second: string[]): boolean {
+  return first.length === second.length && first.every((item, index) => item === second[index]);
 }
 
 function roundDistance(distanceKm: number): number {
@@ -1018,6 +1194,12 @@ function roundDistance(distanceKm: number): number {
 function estimateDriveMinutes(distanceKm: number): number {
   if (!distanceKm) return 0;
   return Math.max(20, Math.round((distanceKm / 52) * 60));
+}
+
+function getTransferSeverity(minutes: number): "easy" | "moderate" | "long" {
+  if (minutes >= 180) return "long";
+  if (minutes >= 110) return "moderate";
+  return "easy";
 }
 
 function formatDriveTime(minutes: number): string {

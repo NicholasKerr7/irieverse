@@ -1,4 +1,4 @@
-import { CalendarDays, Clock3, Gauge, MapPin, Music2, PartyPopper, Route, Utensils, WalletCards } from "lucide-react";
+import { AlertTriangle, CalendarDays, Clock3, Gauge, MapPin, Music2, PartyPopper, Route, Utensils, WalletCards } from "lucide-react";
 import { ItineraryPlan } from "../types/travel";
 import { capitalise } from "../utils/text";
 
@@ -46,15 +46,41 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
           icon={Gauge}
           label="Pacing"
           value={getPacingLabel(routeSummary.totalDriveMinutes, days)}
-          helper="High-energy days get recovery space"
+          helper={routeSummary.warnings.length ? `${routeSummary.warnings.length} transfer flags` : "High-energy days get recovery space"}
         />
       </div>
+
+      {!!routeSummary.warnings.length && (
+        <div className="grid gap-2">
+          {routeSummary.warnings.slice(0, 2).map((warning) => (
+            <div
+              key={warning.id}
+              className="rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100"
+            >
+              <div className="flex gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="font-semibold">{warning.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-300">{warning.body}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <ol className="grid gap-3 md:grid-cols-2">
         {daysPlan.map((day) => (
           <li
             key={day.day}
-            className="rounded-2xl border border-slate-800 bg-slate-950/75 p-4 shadow shadow-slate-950/30"
+            className={[
+              "rounded-2xl border p-4 shadow shadow-slate-950/30",
+              day.transferSeverity === "long"
+                ? "border-rose-300/30 bg-rose-300/10"
+                : day.transferSeverity === "moderate"
+                  ? "border-amber-300/30 bg-amber-300/10"
+                  : "border-slate-800 bg-slate-950/75",
+            ].join(" ")}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -78,6 +104,11 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
                 <Clock3 className="h-3 w-3" />
                 {day.driveMinutesFromPrevious ? formatDriveTime(day.driveMinutesFromPrevious) : "Arrival"}
               </span>
+              {day.transferSeverity !== "easy" && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.14em] text-amber-100">
+                  <AlertTriangle className="h-3 w-3" /> {day.transferSeverity} transfer
+                </span>
+              )}
               <span className="rounded-full border border-violet-300/20 bg-violet-300/10 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.14em] text-violet-100">
                 {day.energyLevel}
               </span>

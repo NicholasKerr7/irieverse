@@ -96,10 +96,7 @@ export const TravelMap = memo(function TravelMap({
       type: "Feature" as const,
       geometry: {
         type: "LineString" as const,
-        coordinates: [
-          [segment.from.longitude, segment.from.latitude],
-          [segment.to.longitude, segment.to.latitude],
-        ],
+        coordinates: segment.coordinates,
       },
       properties: {
         id: segment.id,
@@ -335,6 +332,7 @@ type RouteSegment = {
     longitude: number;
     latitude: number;
   };
+  coordinates: Array<[number, number]>;
 };
 
 function buildRouteSegments(routeDestinations: Destination[], routeLegs: RouteLeg[]): RouteSegment[] {
@@ -358,6 +356,12 @@ function buildRouteSegments(routeDestinations: Destination[], routeLegs: RouteLe
 
 function createRouteSegment(from: Destination, to: Destination, index: number, distanceKm: number): RouteSegment {
   const day = index + 2;
+  const coordinates = buildCurvedRouteCoordinates(from, to, index);
+  const midpoint = coordinates[Math.floor(coordinates.length / 2)] ?? [
+    (from.longitude + to.longitude) / 2,
+    (from.latitude + to.latitude) / 2,
+  ];
+
   return {
     id: `${from.id}-${to.id}-${index}`,
     from,
@@ -365,10 +369,34 @@ function createRouteSegment(from: Destination, to: Destination, index: number, d
     color: ROUTE_COLORS[index % ROUTE_COLORS.length],
     label: `Day ${day} · ${formatMiles(distanceKm)}`,
     midpoint: {
-      longitude: (from.longitude + to.longitude) / 2,
-      latitude: (from.latitude + to.latitude) / 2,
+      longitude: midpoint[0],
+      latitude: midpoint[1],
     },
+    coordinates,
   };
+}
+
+function buildCurvedRouteCoordinates(from: Destination, to: Destination, index: number): Array<[number, number]> {
+  const start: [number, number] = [from.longitude, from.latitude];
+  const end: [number, number] = [to.longitude, to.latitude];
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  const direction = index % 2 === 0 ? 1 : -1;
+  const curveStrength = Math.min(Math.max(distance * 0.16, 0.035), 0.18) * direction;
+  const normalLength = distance || 1;
+  const normalX = -dy / normalLength;
+  const normalY = dx / normalLength;
+  const steps = 24;
+
+  return Array.from({ length: steps + 1 }, (_, step) => {
+    const t = step / steps;
+    const wave = Math.sin(Math.PI * t) * curveStrength;
+    return [
+      start[0] + dx * t + normalX * wave,
+      start[1] + dy * t + normalY * wave,
+    ];
+  });
 }
 
 function formatMiles(distanceKm: number): string {

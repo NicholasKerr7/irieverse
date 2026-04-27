@@ -1,6 +1,9 @@
-import { useMemo, useState, type ComponentType } from "react";
+import { useMemo, useState, type ComponentType, type ReactNode } from "react";
 import type { LucideProps } from "lucide-react";
 import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   CalendarDays,
   Check,
   Clock3,
@@ -8,11 +11,15 @@ import {
   Heart,
   MapPinned,
   Plane,
+  Plus,
   Route,
+  RotateCcw,
   Share2,
   Sparkles,
   Users,
+  Wand2,
   WalletCards,
+  X,
 } from "lucide-react";
 import { BookingRecommendations } from "../components/BookingRecommendations";
 import { BudgetInsight } from "../components/BudgetInsight";
@@ -500,6 +507,11 @@ function FlightSnapshot({ app }: { app: TravelOS }) {
 
 function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab: MobileTabId) => void }) {
   const routeSummary = app.itinerary.routeSummary;
+  const routedDestinationIds = new Set(routeSummary.stops.map((stop) => stop.destinationId));
+  const addableSavedDestinations = DESTINATIONS.filter(
+    (destination) => app.savedPlaces.has(destination.id) && !routedDestinationIds.has(destination.id)
+  ).slice(0, 4);
+  const canEditRoute = routeSummary.stops.length > 1;
 
   return (
     <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
@@ -511,26 +523,80 @@ function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (ta
             <h2 className="text-lg font-semibold">{routeSummary.routeTone}</h2>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => onNavigate("map")}
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-cyan-300/50 px-4 py-2 text-xs font-bold text-cyan-100"
-        >
-          <MapPinned className="h-4 w-4" /> Preview map
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={app.optimizeRouteOrder}
+            disabled={!canEditRoute}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-emerald-300/50 px-4 py-2 text-xs font-bold text-emerald-100 disabled:opacity-40"
+          >
+            <Wand2 className="h-4 w-4" /> Optimize
+          </button>
+          {app.routeIsManual && (
+            <button
+              type="button"
+              onClick={app.resetRouteOrder}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-slate-700 px-4 py-2 text-xs font-bold text-slate-200"
+            >
+              <RotateCcw className="h-4 w-4" /> Auto
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onNavigate("map")}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-cyan-300/50 px-4 py-2 text-xs font-bold text-cyan-100"
+          >
+            <MapPinned className="h-4 w-4" /> Preview map
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <RouteStat icon={Clock3} label="Drive time" value={formatDriveTime(routeSummary.totalDriveMinutes)} />
         <RouteStat icon={Route} label="Distance" value={`${routeSummary.totalDistanceKm} km`} />
-        <RouteStat icon={MapPinned} label="Regions" value={routeSummary.regionCount.toString()} />
+        <RouteStat
+          icon={MapPinned}
+          label={routeSummary.routeMode === "manual" ? "Edited route" : "Auto route"}
+          value={`${routeSummary.regionCount} regions`}
+        />
       </div>
+
+      {!!routeSummary.warnings.length && (
+        <div className="mt-4 grid gap-2">
+          {routeSummary.warnings.slice(0, 2).map((warning) => (
+            <div
+              key={warning.id}
+              className={classNames(
+                "rounded-2xl border px-3 py-3 text-sm",
+                warning.severity === "long"
+                  ? "border-rose-300/30 bg-rose-300/10 text-rose-100"
+                  : "border-amber-300/30 bg-amber-300/10 text-amber-100"
+              )}
+            >
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="font-semibold">{warning.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-300">{warning.body}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <ol className="mt-4 grid gap-2 md:grid-cols-2">
         {routeSummary.stops.map((stop, index) => (
           <li
             key={stop.destinationId}
-            className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-3"
+            className={classNames(
+              "flex items-center gap-3 rounded-2xl border px-3 py-3",
+              stop.transferSeverity === "long"
+                ? "border-rose-300/30 bg-rose-300/10"
+                : stop.transferSeverity === "moderate"
+                  ? "border-amber-300/30 bg-amber-300/10"
+                  : "border-slate-800 bg-slate-950/70"
+            )}
           >
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-xs font-bold text-slate-950">
               {index + 1}
@@ -541,10 +607,77 @@ function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (ta
                 {stop.region} · {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"}
               </span>
             </span>
+            {!stop.isBase && (
+              <span className="flex shrink-0 items-center gap-1">
+                <IconRouteButton
+                  label="Move earlier"
+                  disabled={index <= 1}
+                  onClick={() => app.moveRouteStop(stop.destinationId, -1)}
+                >
+                  <ArrowUp className="h-3.5 w-3.5" />
+                </IconRouteButton>
+                <IconRouteButton
+                  label="Move later"
+                  disabled={index >= routeSummary.stops.length - 1}
+                  onClick={() => app.moveRouteStop(stop.destinationId, 1)}
+                >
+                  <ArrowDown className="h-3.5 w-3.5" />
+                </IconRouteButton>
+                <IconRouteButton
+                  label="Remove from route"
+                  onClick={() => app.removeDestinationFromRoute(stop.destinationId)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </IconRouteButton>
+              </span>
+            )}
           </li>
         ))}
       </ol>
+
+      {!!addableSavedDestinations.length && (
+        <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+          <p className="text-[0.65rem] uppercase tracking-[0.22em] text-slate-500">Add saved to route</p>
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {addableSavedDestinations.map((destination) => (
+              <button
+                key={destination.id}
+                type="button"
+                onClick={() => app.pinDestinationToRoute(destination.id)}
+                className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60"
+              >
+                <Plus className="h-3.5 w-3.5 text-cyan-300" /> {destination.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function IconRouteButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 bg-slate-950/70 text-slate-300 hover:border-cyan-300/60 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-35"
+    >
+      {children}
+    </button>
   );
 }
 

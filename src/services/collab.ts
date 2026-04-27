@@ -11,6 +11,7 @@ export type TripPayload = {
   plannerBudget: number;
   plannerStartDate: string;
   originAirportId: string;
+  manualRouteDestinationIds?: string[];
   savedPlaces: string[];
   savedExperiences: string[];
   importedIdeas: ImportedIdea[];
@@ -83,6 +84,7 @@ export function serializeTripState(args: {
   plannerBudget: number;
   plannerStartDate: string;
   originAirportId: string;
+  manualRouteDestinationIds: string[];
   savedPlaces: Set<string>;
   savedExperiences: Set<string>;
   importedIdeas: ImportedIdea[];
@@ -95,6 +97,7 @@ export function serializeTripState(args: {
     plannerBudget: args.plannerBudget,
     plannerStartDate: args.plannerStartDate,
     originAirportId: args.originAirportId,
+    manualRouteDestinationIds: args.manualRouteDestinationIds,
     savedPlaces: Array.from(args.savedPlaces),
     savedExperiences: Array.from(args.savedExperiences),
     importedIdeas: args.importedIdeas,

@@ -98,6 +98,7 @@ export interface PlannerDay {
   routeNote: string;
   distanceFromPreviousKm: number;
   driveMinutesFromPrevious: number;
+  transferSeverity: "easy" | "moderate" | "long";
   energyLevel: "soft" | "balanced" | "high";
   experience?: Experience;
 }
@@ -112,6 +113,7 @@ export interface RouteStop {
   isBase: boolean;
   distanceFromPreviousKm: number;
   driveMinutesFromPrevious: number;
+  transferSeverity: "easy" | "moderate" | "long";
 }
 
 export interface RouteLeg {
@@ -121,6 +123,15 @@ export interface RouteLeg {
   toName: string;
   distanceKm: number;
   driveMinutes: number;
+  transferSeverity: "easy" | "moderate" | "long";
+}
+
+export interface RouteWarning {
+  id: string;
+  day: number;
+  severity: "moderate" | "long";
+  title: string;
+  body: string;
 }
 
 export interface RouteSummary {
@@ -128,8 +139,10 @@ export interface RouteSummary {
   totalDriveMinutes: number;
   regionCount: number;
   routeTone: string;
+  routeMode: "optimized" | "manual";
   stops: RouteStop[];
   legs: RouteLeg[];
+  warnings: RouteWarning[];
 }
 
 export interface ItineraryPlan {

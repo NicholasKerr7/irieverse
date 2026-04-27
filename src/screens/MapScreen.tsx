@@ -388,6 +388,12 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                           </button>
                         ))}
                       </div>
+
+                      {!!routeSummary.warnings.length && (
+                        <div className="mt-3 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
+                          {routeSummary.warnings[0].title}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
