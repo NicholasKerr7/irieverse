@@ -6,11 +6,15 @@ import {
   ArrowUp,
   CalendarDays,
   Check,
+  CheckCircle2,
+  CloudOff,
   Clock3,
+  Database,
   Download,
   Heart,
   MapPinned,
   Plane,
+  RadioTower,
   Plus,
   Route,
   RotateCcw,
@@ -166,6 +170,8 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
 
           <RoutePreviewPanel app={app} onNavigate={onNavigate} />
 
+          <IntegrationStatusPanel app={app} />
+
           <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
@@ -204,6 +210,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
           error={app.bookingError}
           onRefresh={app.refreshBookings}
           destinationName={app.destination.name}
+          sourceMeta={app.bookingSourceMeta}
         />
 
         <LiveEventsFeed
@@ -461,6 +468,8 @@ function PlannerSelect({
 }
 
 function FlightSnapshot({ app }: { app: TravelOS }) {
+  const sourceStatus = getFlightSourceStatus(app);
+
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -470,8 +479,12 @@ function FlightSnapshot({ app }: { app: TravelOS }) {
             {app.originAirport.code} to {app.destination.airportCode}
           </h3>
         </div>
-        {app.isFetchingFlights && <span className="animate-pulse text-xs text-slate-400">Syncing gate info...</span>}
+        <div className="flex flex-wrap items-center gap-2">
+          <IntegrationBadge label={sourceStatus.status} tone={sourceStatus.tone} />
+          {app.isFetchingFlights && <span className="animate-pulse text-xs text-slate-400">Syncing gate info...</span>}
+        </div>
       </div>
+      <p className="mt-2 text-xs leading-5 text-slate-500">{sourceStatus.body}</p>
       {app.flightsError && <p className="mt-2 text-xs text-rose-300">{app.flightsError}</p>}
       {!app.flightsError && !app.flightOptions.length && !app.isFetchingFlights && (
         <p className="mt-2 text-xs text-slate-400">
@@ -503,6 +516,208 @@ function FlightSnapshot({ app }: { app: TravelOS }) {
       </div>
     </div>
   );
+}
+
+function IntegrationStatusPanel({ app }: { app: TravelOS }) {
+  const bookingStatus = getBookingIntegrationStatus(app);
+  const flightStatus = getFlightSourceStatus(app);
+  const integrationCards = [
+    {
+      icon: Share2,
+      title: "Trip sharing",
+      status: app.collaborationReady ? "Live" : "Setup needed",
+      tone: app.collaborationReady ? "live" : "fallback",
+      body: app.collaborationReady
+        ? "Supabase links can create, reload, and sync shared trip plans."
+        : "Sharing stays local until the Supabase public URL and anon key are connected.",
+    },
+    {
+      icon: Database,
+      title: "Bookings",
+      status: bookingStatus.status,
+      tone: bookingStatus.tone,
+      body: bookingStatus.body,
+    },
+    {
+      icon: Plane,
+      title: "Flights",
+      status: flightStatus.status,
+      tone: flightStatus.tone,
+      body: flightStatus.body,
+    },
+    {
+      icon: Route,
+      title: "Road routes",
+      status: "Live proxy",
+      tone: "live",
+      body: "Map route geometry uses the OSRM road-routing proxy, with local preview lines if routing fails.",
+    },
+    {
+      icon: CalendarDays,
+      title: "Events",
+      status: "Local feed",
+      tone: "fallback",
+      body: "Events use the bundled Jamaica calendar until a live events provider is added.",
+    },
+  ] satisfies Array<{
+    icon: ComponentType<LucideProps>;
+    title: string;
+    status: string;
+    tone: IntegrationTone;
+    body: string;
+  }>;
+
+  return (
+    <section className="rounded-3xl border border-slate-800 bg-slate-900/60 p-4">
+      <div className="flex items-center gap-3">
+        <RadioTower className="h-5 w-5 text-cyan-300" />
+        <div>
+          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Integration status</p>
+          <h2 className="text-lg font-semibold">Live and fallback coverage</h2>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {integrationCards.map((card) => (
+          <IntegrationStatusCard key={card.title} {...card} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+type IntegrationTone = "live" | "fallback" | "error";
+
+function IntegrationStatusCard({
+  icon: Icon,
+  title,
+  status,
+  tone,
+  body,
+}: {
+  icon: ComponentType<LucideProps>;
+  title: string;
+  status: string;
+  tone: IntegrationTone;
+  body: string;
+}) {
+  const StatusIcon = tone === "live" ? CheckCircle2 : tone === "error" ? AlertTriangle : CloudOff;
+
+  return (
+    <article
+      className={classNames(
+        "min-h-40 rounded-2xl border p-3",
+        tone === "live"
+          ? "border-emerald-300/25 bg-emerald-300/10"
+          : tone === "error"
+            ? "border-rose-300/25 bg-rose-300/10"
+            : "border-amber-300/25 bg-amber-300/10"
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <Icon
+          className={classNames(
+            "h-5 w-5",
+            tone === "live" ? "text-emerald-200" : tone === "error" ? "text-rose-200" : "text-amber-200"
+          )}
+        />
+        <StatusIcon
+          className={classNames(
+            "h-4 w-4",
+            tone === "live" ? "text-emerald-200" : tone === "error" ? "text-rose-200" : "text-amber-200"
+          )}
+        />
+      </div>
+      <p className="mt-3 text-[0.65rem] uppercase tracking-[0.18em] text-slate-500">{title}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-100">{status}</p>
+      <p className="mt-2 text-xs leading-5 text-slate-400">{body}</p>
+    </article>
+  );
+}
+
+function IntegrationBadge({ label, tone }: { label: string; tone: IntegrationTone }) {
+  return (
+    <span
+      className={classNames(
+        "inline-flex items-center rounded-full border px-3 py-1 text-[0.62rem] font-bold uppercase tracking-[0.18em]",
+        tone === "live"
+          ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-100"
+          : tone === "error"
+            ? "border-rose-300/40 bg-rose-300/10 text-rose-100"
+            : "border-amber-300/40 bg-amber-300/10 text-amber-100"
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+function getFlightSourceStatus(app: TravelOS): { status: string; tone: IntegrationTone; body: string } {
+  if (app.flightsError) {
+    return {
+      status: "Flight issue",
+      tone: "error",
+      body: app.liveFlightProviderConfigured
+        ? "The live flight provider is connected, but the latest lookup failed."
+        : "Fallback flight snapshots are unavailable right now.",
+    };
+  }
+
+  if (app.liveFlightProviderConfigured) {
+    return {
+      status: "Live provider",
+      tone: "live",
+      body: "Scheduled flights come from the configured AviationStack provider.",
+    };
+  }
+
+  return {
+    status: "Sample flights",
+    tone: "fallback",
+    body: "Using bundled flight snapshots until the live flight provider is connected.",
+  };
+}
+
+function getBookingIntegrationStatus(app: TravelOS): { status: string; tone: IntegrationTone; body: string } {
+  const meta = app.bookingSourceMeta;
+
+  if (app.bookingError) {
+    return {
+      status: "Booking issue",
+      tone: "error",
+      body: "The booking request failed, so the stay cards are temporarily empty.",
+    };
+  }
+
+  if (meta.source === "amadeus") {
+    return {
+      status: "Live Amadeus",
+      tone: "live",
+      body: "Booking cards are coming through the Amadeus hotel proxy.",
+    };
+  }
+
+  if (meta.source === "api") {
+    return {
+      status: "Live endpoint",
+      tone: "live",
+      body: "Booking cards are coming from the configured server endpoint.",
+    };
+  }
+
+  if (meta.endpointConfigured) {
+    return {
+      status: "API fallback",
+      tone: "fallback",
+      body: `${formatIntegrationReason(meta.reason)} Showing curated local stays until live offers return.`,
+    };
+  }
+
+  return {
+    status: "Local fallback",
+    tone: "fallback",
+    body: "Booking cards use bundled Jamaica stays until the booking endpoint is connected.",
+  };
 }
 
 function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab: MobileTabId) => void }) {
@@ -815,6 +1030,20 @@ function formatDriveTime(minutes: number): string {
   if (!hours) return `${remainder} min`;
   if (!remainder) return `${hours} hr`;
   return `${hours} hr ${remainder} min`;
+}
+
+function formatIntegrationReason(reason?: string): string {
+  const labels: Record<string, string> = {
+    "missing-amadeus-credentials": "Amadeus credentials are not connected.",
+    "no-amadeus-offers": "Amadeus returned no matching offers.",
+    "amadeus-request-failed": "The Amadeus request failed.",
+    "request-failed": "The booking request failed.",
+    "custom-endpoint": "The booking endpoint did not include source metadata.",
+    "endpoint-configured": "The booking endpoint is configured.",
+    "local-sample-data": "Local sample data is active.",
+  };
+
+  return reason ? labels[reason] ?? `${reason.replace(/-/g, " ")}.` : "Live booking data is not available yet.";
 }
 
 function getCompletedStepIndex(app: TravelOS) {

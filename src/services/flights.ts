@@ -4,6 +4,10 @@ let cachedSampleFlights: Record<string, FlightOption[]> | null = null;
 
 const AVIATIONSTACK_API_KEY = import.meta.env.VITE_AVIATIONSTACK_API_KEY?.trim();
 
+export function hasLiveFlightProvider(): boolean {
+  return Boolean(AVIATIONSTACK_API_KEY);
+}
+
 export async function fetchFlightOptions(originCode: string, destinationCode: string): Promise<FlightOption[]> {
   const routeKey = `${originCode}-${destinationCode}`.toUpperCase();
 

@@ -113,6 +113,12 @@ or:
 
 The endpoint returns fallback booking data when Amadeus credentials are missing, Amadeus has no matching offers, or the provider request fails. If `VITE_BOOKING_API_URL` is missing entirely, the browser uses `public/data/bookings.json`.
 
+The Trips screen shows the current booking source:
+
+- `Live Amadeus` when the Vercel endpoint returns Amadeus offers.
+- `API fallback` when the endpoint is configured but returns curated fallback data.
+- `Local fallback` when `VITE_BOOKING_API_URL` is not configured.
+
 ## Amadeus Setup
 
 Create an Amadeus for Developers account, create an app in the Self-Service workspace, and copy the API Key and API Secret into server-only Vercel variables:
@@ -140,6 +146,20 @@ https://router.project-osrm.org/route/v1/driving/{lon,lat};{lon,lat}?overview=fu
 ```
 
 That gives IrieVerse road-following GeoJSON lines while keeping the browser code provider-neutral. For production scale, set `ROUTING_API_BASE_URL` to your own OSRM-compatible service or a paid routing provider proxy. If road routing fails, the map falls back to the local preview route instead of breaking.
+
+## Integration Status
+
+Trips includes a compact integration status panel for launch QA:
+
+| Integration | Live state | Fallback state |
+| --- | --- | --- |
+| Supabase sharing | `Live` when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set. | `Setup needed` and sharing stays disabled. |
+| Bookings | `Live Amadeus` or `Live endpoint` when the configured booking source returns live data. | `API fallback` or `Local fallback` with curated Jamaica stays. |
+| Flights | `Live provider` when `VITE_AVIATIONSTACK_API_KEY` is set. | `Sample flights` from `public/data/flights-sample.json`. |
+| Road routes | `Live proxy` through `api/road-route.js`. | The map falls back to preview route lines if the proxy fails. |
+| Events | Not connected to a provider yet. | `Local feed` from `public/data/events.json`. |
+
+Use this panel after each deploy to confirm the app is honest about which integrations are live and which ones are still running on fallback data.
 
 ## Verification
 

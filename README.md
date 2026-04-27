@@ -6,6 +6,7 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 - Interactive map powered by MapLibre with road-following route overlays
 - Saved boards for places, experiences, pasted links, and manual Jamaica ideas
 - Region-aware trip planner with editable route order, route pacing, drive estimates, budget, dates, and ICS export
+- Trip integration status panel for Supabase sharing, booking source, flight source, road routes, and events
 - Flight snapshot (live via AviationStack, sample data fallback)
 - Live events feed and booking recommendations (sample data fallback)
 - Optional Supabase-backed trip sharing
@@ -38,6 +39,7 @@ See `docs/production-env.md` for production platform setup, booking API response
 - Vercel: Import the repo, Framework = Vite, Build Command = `npm run build`, Output = `dist`, add env vars as needed.
 - The booking integration uses the Vercel serverless route at `/api/bookings`.
 - The map driving overlay uses the Vercel serverless route at `/api/road-route`.
+- The Trips screen labels live integrations and fallbacks so production QA can verify what is connected.
 - PWA shortcuts open app tabs directly with `?tab=explore`, `?tab=map`, and `?tab=trips`.
 - Plain static hosting: run `npm run build` and serve the `dist` folder (e.g., `npx serve dist`).
 

@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ViewStateChangeEvent } from "react-map-gl/maplibre";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
-import { fetchBookingOptions } from "../services/bookings";
+import {
+  fetchBookingOptions,
+  getInitialBookingSourceMeta,
+  type BookingSourceMeta,
+} from "../services/bookings";
 import {
   type TripPayload,
   fetchTripState,
@@ -9,7 +13,7 @@ import {
   saveTripState,
   serializeTripState,
 } from "../services/collab";
-import { fetchFlightOptions } from "../services/flights";
+import { fetchFlightOptions, hasLiveFlightProvider } from "../services/flights";
 import type {
   BookingOption,
   Destination,
@@ -118,8 +122,10 @@ export function useTravelOS() {
   const [bookingOptions, setBookingOptions] = useState<BookingOption[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
+  const [bookingSourceMeta, setBookingSourceMeta] = useState<BookingSourceMeta>(getInitialBookingSourceMeta);
 
   const collaborationReady = hasCollaborationBackend();
+  const liveFlightProviderConfigured = hasLiveFlightProvider();
   const destination = useMemo(
     () => DESTINATIONS.find((item) => item.id === plannerBaseId) ?? DESTINATIONS[0],
     [plannerBaseId]
@@ -369,16 +375,22 @@ export function useTravelOS() {
       setIsLoadingBookings(true);
       setBookingError(null);
       try {
-        const options = await fetchBookingOptions(destinationAirport, originAirportCode, {
+        const { options, meta } = await fetchBookingOptions(destinationAirport, originAirportCode, {
           checkInDate,
           checkOutDate: addDaysToISODate(checkInDate, tripDays),
           adults: 2,
         });
         setBookingOptions(options);
+        setBookingSourceMeta(meta);
       } catch (error) {
         console.error(error);
         setBookingError("Booking partners unavailable right now.");
         setBookingOptions([]);
+        setBookingSourceMeta({
+          ...getInitialBookingSourceMeta(),
+          source: getInitialBookingSourceMeta().endpointConfigured ? "fallback" : "local",
+          reason: "request-failed",
+        });
       } finally {
         setIsLoadingBookings(false);
       }
@@ -888,6 +900,7 @@ export function useTravelOS() {
     flightOptions,
     isFetchingFlights,
     flightsError,
+    liveFlightProviderConfigured,
     mapViewState,
     handleMapMove,
     tripId,
@@ -902,6 +915,7 @@ export function useTravelOS() {
     bookingOptions,
     isLoadingBookings,
     bookingError,
+    bookingSourceMeta,
     refreshBookings,
     filteredDestinations,
     filteredExperiences,

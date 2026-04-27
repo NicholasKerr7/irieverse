@@ -1,5 +1,6 @@
-import { BookingOption } from "../types/travel";
 import { ExternalLink } from "lucide-react";
+import type { BookingSourceMeta } from "../services/bookings";
+import type { BookingOption } from "../types/travel";
 
 interface BookingRecommendationsProps {
   bookings: BookingOption[];
@@ -7,6 +8,7 @@ interface BookingRecommendationsProps {
   error: string | null;
   onRefresh: () => void;
   destinationName: string;
+  sourceMeta: BookingSourceMeta;
 }
 
 export function BookingRecommendations({
@@ -15,7 +17,10 @@ export function BookingRecommendations({
   error,
   onRefresh,
   destinationName,
+  sourceMeta,
 }: BookingRecommendationsProps) {
+  const sourceStatus = getBookingSourceStatus(sourceMeta);
+
   return (
     <section className="max-w-6xl mx-auto bg-slate-950/80 border border-slate-800 rounded-3xl shadow-[0_24px_80px_rgba(15,23,42,0.9)] backdrop-blur-xl p-4 sm:p-6 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -23,17 +28,20 @@ export function BookingRecommendations({
           <p className="text-[0.65rem] uppercase tracking-[0.3em] text-emerald-300/80">Book the vibe</p>
           <h2 className="text-lg sm:text-xl font-semibold">Curated stays for {destinationName}</h2>
           <p className="text-xs sm:text-[0.8rem] text-slate-400">
-            Pulled from the Amadeus hotel feed when configured, with local fallbacks when partners are offline.
+            {sourceStatus.body}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-3 py-1.5 text-[0.7rem] uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-900/60 disabled:opacity-40"
-          disabled={isLoading}
-        >
-          Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <BookingSourcePill label={sourceStatus.label} tone={sourceStatus.tone} />
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-3 py-1.5 text-[0.7rem] uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-900/60 disabled:opacity-40"
+            disabled={isLoading}
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       {error && <p className="text-xs text-rose-400">{error}</p>}
@@ -84,4 +92,76 @@ export function BookingRecommendations({
       </div>
     </section>
   );
+}
+
+function BookingSourcePill({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "live" | "fallback" | "error";
+}) {
+  return (
+    <span
+      className={
+        tone === "live"
+          ? "inline-flex items-center rounded-full border border-emerald-300/40 bg-emerald-300/10 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-emerald-100"
+          : tone === "error"
+            ? "inline-flex items-center rounded-full border border-rose-300/40 bg-rose-300/10 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-rose-100"
+            : "inline-flex items-center rounded-full border border-amber-300/40 bg-amber-300/10 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-amber-100"
+      }
+    >
+      {label}
+    </span>
+  );
+}
+
+function getBookingSourceStatus(meta: BookingSourceMeta): {
+  label: string;
+  tone: "live" | "fallback" | "error";
+  body: string;
+} {
+  if (meta.source === "amadeus") {
+    return {
+      label: "Live Amadeus",
+      tone: "live",
+      body: "Pulled from the Amadeus hotel feed through the server booking proxy.",
+    };
+  }
+
+  if (meta.source === "api") {
+    return {
+      label: "Live endpoint",
+      tone: "live",
+      body: "Pulled from the configured booking endpoint.",
+    };
+  }
+
+  if (meta.endpointConfigured) {
+    return {
+      label: "API fallback",
+      tone: meta.reason === "request-failed" ? "error" : "fallback",
+      body: `${formatBookingReason(meta.reason)} Showing curated local options until live offers return.`,
+    };
+  }
+
+  return {
+    label: "Local fallback",
+    tone: meta.reason === "request-failed" ? "error" : "fallback",
+    body: "Using bundled Jamaica stays because no booking endpoint is configured.",
+  };
+}
+
+function formatBookingReason(reason?: string): string {
+  const labels: Record<string, string> = {
+    "missing-amadeus-credentials": "Amadeus credentials are not set.",
+    "no-amadeus-offers": "Amadeus returned no matching offers.",
+    "amadeus-request-failed": "The Amadeus request failed.",
+    "request-failed": "The booking request failed.",
+    "custom-endpoint": "The booking endpoint did not include source metadata.",
+    "endpoint-configured": "The booking endpoint is configured.",
+    "local-sample-data": "Local sample data is active.",
+  };
+
+  return reason ? labels[reason] ?? `${reason.replace(/-/g, " ")}.` : "Live booking data is not available yet.";
 }
