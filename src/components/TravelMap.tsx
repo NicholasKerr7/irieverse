@@ -6,6 +6,25 @@ import { classNames } from "../utils/classNames";
 
 const MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
+export type MapPinCategory =
+  | "beaches"
+  | "food"
+  | "music"
+  | "culture"
+  | "nightlife"
+  | "adventure"
+  | "default";
+
+const CATEGORY_COLORS: Record<MapPinCategory, string> = {
+  beaches: "#22d3ee",
+  food: "#f59e0b",
+  music: "#a78bfa",
+  culture: "#34d399",
+  nightlife: "#fb7185",
+  adventure: "#84cc16",
+  default: "#38bdf8",
+};
+
 interface TravelMapProps {
   destinations: Destination[];
   selectedDestinationId: string;
@@ -19,6 +38,7 @@ interface TravelMapProps {
   className?: string;
   height?: number | string;
   scrollZoom?: boolean;
+  getMarkerCategory?: (destination: Destination) => MapPinCategory;
 }
 
 export const TravelMap = memo(function TravelMap({
@@ -30,22 +50,28 @@ export const TravelMap = memo(function TravelMap({
   className,
   height = 420,
   scrollZoom = false,
+  getMarkerCategory = () => "default",
 }: TravelMapProps) {
   const geojson = {
     type: "FeatureCollection" as const,
-    features: destinations.map((destination) => ({
-      type: "Feature" as const,
-      geometry: {
-        type: "Point" as const,
-        coordinates: [destination.longitude, destination.latitude],
-      },
-      properties: {
-        id: destination.id,
-        name: destination.name,
-        region: destination.region,
-        vibes: destination.vibes.join(", "),
-      },
-    })),
+    features: destinations.map((destination) => {
+      const category = getMarkerCategory(destination);
+
+      return {
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [destination.longitude, destination.latitude],
+        },
+        properties: {
+          id: destination.id,
+          name: destination.name,
+          region: destination.region,
+          vibes: destination.vibes.join(", "),
+          category,
+        },
+      };
+    }),
   };
 
   return (
@@ -79,38 +105,71 @@ export const TravelMap = memo(function TravelMap({
               "circle-color": [
                 "case",
                 ["==", ["get", "id"], selectedDestinationId],
-                "#22d3ee",
-                "#0ea5e9",
+                "#f8fafc",
+                [
+                  "match",
+                  ["get", "category"],
+                  "beaches",
+                  CATEGORY_COLORS.beaches,
+                  "food",
+                  CATEGORY_COLORS.food,
+                  "music",
+                  CATEGORY_COLORS.music,
+                  "culture",
+                  CATEGORY_COLORS.culture,
+                  "nightlife",
+                  CATEGORY_COLORS.nightlife,
+                  "adventure",
+                  CATEGORY_COLORS.adventure,
+                  CATEGORY_COLORS.default,
+                ],
               ],
-              "circle-stroke-width": 2,
-              "circle-stroke-color": "#0f172a",
+              "circle-stroke-width": [
+                "case",
+                ["==", ["get", "id"], selectedDestinationId],
+                4,
+                2,
+              ],
+              "circle-stroke-color": [
+                "case",
+                ["==", ["get", "id"], selectedDestinationId],
+                "#22d3ee",
+                "#0f172a",
+              ],
             }}
           />
         </Source>
 
-        {destinations.map((destination) => (
-          <Marker
-            key={destination.id}
-            longitude={destination.longitude}
-            latitude={destination.latitude}
-            anchor="center"
-            style={{ cursor: "pointer" }}
-            onClick={(event) => {
-              event.originalEvent.stopPropagation();
-              onSelectDestination(destination.id);
-            }}
-          >
-            <div
-              className={`${
-                selectedDestinationId === destination.id
-                  ? "scale-110 drop-shadow-[0_0_8px_rgba(45,212,191,0.7)]"
-                  : "opacity-80"
-              } transition`}
+        {destinations.map((destination) => {
+          const isSelected = selectedDestinationId === destination.id;
+          const color = CATEGORY_COLORS[getMarkerCategory(destination)];
+
+          return (
+            <Marker
+              key={destination.id}
+              longitude={destination.longitude}
+              latitude={destination.latitude}
+              anchor="center"
+              style={{ cursor: "pointer" }}
+              onClick={(event) => {
+                event.originalEvent.stopPropagation();
+                onSelectDestination(destination.id);
+              }}
             >
-              <MapPin className="w-5 h-5 text-cyan-300" />
-            </div>
-          </Marker>
-        ))}
+              <div
+                className={classNames(
+                  "rounded-full bg-slate-950/80 p-1 shadow-lg ring-2 ring-slate-950 transition",
+                  isSelected ? "scale-125 ring-cyan-200" : "opacity-90 hover:scale-110"
+                )}
+                style={{
+                  boxShadow: isSelected ? `0 0 18px ${color}` : undefined,
+                }}
+              >
+                <MapPin className="h-5 w-5" fill={color} color={color} />
+              </div>
+            </Marker>
+          );
+        })}
       </Map>
     </div>
   );
