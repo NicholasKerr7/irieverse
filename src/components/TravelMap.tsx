@@ -52,15 +52,30 @@ export type RouteRenderStatus = {
   totalLegs: number;
   roadLegs: number;
   fallbackLegs: number;
+  failedLegs: number;
 };
 
+export type RouteFallbackReason =
+  | "loading"
+  | "estimated"
+  | "request-failed"
+  | "invalid-response"
+  | "road-route-unavailable"
+  | "unsupported-route";
+
 export type RouteStep = {
+  id: string;
   instruction: string;
   distanceKm: number;
   durationMinutes: number;
   roadName: string;
   maneuverType: string;
   modifier: string;
+  direction: string;
+  exitNumber?: number;
+  location?: [number, number];
+  ref?: string;
+  destinations?: string;
 };
 
 export type RouteDetail = {
@@ -71,6 +86,8 @@ export type RouteDetail = {
   distanceKm: number;
   durationMinutes: number;
   source: "road" | "fallback";
+  fallbackReason?: RouteFallbackReason;
+  fallbackMessage?: string;
   steps: RouteStep[];
 };
 
@@ -98,6 +115,7 @@ export const TravelMap = memo(function TravelMap({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [roadRoutesById, setRoadRoutesById] = useState<Record<string, RoadRoute>>({});
+  const [routeFallbacksById, setRouteFallbacksById] = useState<Record<string, RouteFallbackInfo>>({});
   const [isLoadingRoadRoutes, setIsLoadingRoadRoutes] = useState(false);
   const [routeRevealProgress, setRouteRevealProgress] = useState(0);
   const routeRequests = useMemo(
@@ -105,8 +123,8 @@ export const TravelMap = memo(function TravelMap({
     [routeDestinations, routeLegs]
   );
   const routeSegments = useMemo(
-    () => buildRouteSegments(routeRequests, roadRoutesById),
-    [roadRoutesById, routeRequests]
+    () => buildRouteSegments(routeRequests, roadRoutesById, routeFallbacksById, isLoadingRoadRoutes),
+    [isLoadingRoadRoutes, roadRoutesById, routeFallbacksById, routeRequests]
   );
   const routeDetails = useMemo(
     () => routeSegments.map(routeSegmentToDetail),
@@ -149,6 +167,7 @@ export const TravelMap = memo(function TravelMap({
         color: segment.color,
         label: segment.label,
         source: segment.source,
+        fallbackReason: segment.fallbackReason ?? "",
         opacity: getSegmentRevealOpacity(routeRevealProgress, index),
       },
     })),
@@ -169,6 +188,7 @@ export const TravelMap = memo(function TravelMap({
   useEffect(() => {
     if (!routeRequests.length) {
       setRoadRoutesById({});
+      setRouteFallbacksById({});
       setIsLoadingRoadRoutes(false);
       return;
     }
@@ -177,27 +197,46 @@ export const TravelMap = memo(function TravelMap({
 
     async function loadRoadRoutes() {
       setIsLoadingRoadRoutes(true);
-      const entries = await Promise.all(
-        routeRequests.map(async (request) => {
-          try {
-            const route = await fetchRoadRoute(request, controller.signal);
-            return route ? [request.id, route] as const : null;
-          } catch (error) {
-            if (!controller.signal.aborted) {
-              console.error("Road route unavailable", error);
-            }
-            return null;
+      const entries: Array<{ id: string; result: RoadRouteFetchResult }> = [];
+
+      for (const request of routeRequests) {
+        if (controller.signal.aborted) return;
+        try {
+          const result = await fetchRoadRoute(request, controller.signal);
+          entries.push({ id: request.id, result });
+        } catch (error) {
+          if (!controller.signal.aborted) {
+            console.error("Road route unavailable", error);
           }
-        })
-      );
+          entries.push({
+            id: request.id,
+            result: {
+              route: null,
+              fallback: {
+                reason: "request-failed",
+                message: "Road route request failed. Using the estimated preview line for this leg.",
+              },
+            },
+          });
+        }
+
+        await waitForRouteSlot(controller.signal);
+      }
 
       if (controller.signal.aborted) return;
       setRoadRoutesById((prev) => {
         const next: Record<string, RoadRoute> = {};
         entries.forEach((entry) => {
-          if (entry) next[entry[0]] = entry[1];
+          if (entry.result.route) next[entry.id] = entry.result.route;
         });
         return shallowRoadRoutesEqual(prev, next) ? prev : next;
+      });
+      setRouteFallbacksById((prev) => {
+        const next: Record<string, RouteFallbackInfo> = {};
+        entries.forEach((entry) => {
+          if (entry.result.fallback) next[entry.id] = entry.result.fallback;
+        });
+        return shallowRouteFallbacksEqual(prev, next) ? prev : next;
       });
       setIsLoadingRoadRoutes(false);
     }
@@ -242,11 +281,18 @@ export const TravelMap = memo(function TravelMap({
   useEffect(() => {
     if (!onRouteStatusChange) return;
     const roadLegs = routeSegments.filter((segment) => segment.source === "road").length;
+    const failedLegs = routeSegments.filter(
+      (segment) =>
+        segment.source === "fallback" &&
+        segment.fallbackReason !== "loading" &&
+        segment.fallbackReason !== "estimated"
+    ).length;
     onRouteStatusChange({
       isLoading: isLoadingRoadRoutes,
       totalLegs: routeSegments.length,
       roadLegs,
       fallbackLegs: Math.max(0, routeSegments.length - roadLegs),
+      failedLegs,
     });
   }, [isLoadingRoadRoutes, onRouteStatusChange, routeSegments]);
 
@@ -327,7 +373,11 @@ export const TravelMap = memo(function TravelMap({
                   23,
                   15,
                 ],
-                "line-opacity": ["*", ["get", "opacity"], 0.24],
+                "line-opacity": [
+                  "*",
+                  ["get", "opacity"],
+                  ["case", ["==", ["get", "source"], "fallback"], 0.16, 0.24],
+                ],
                 "line-blur": 5,
               }}
               layout={{
@@ -346,7 +396,11 @@ export const TravelMap = memo(function TravelMap({
                   8,
                   5,
                 ],
-                "line-opacity": ["*", ["get", "opacity"], 0.96],
+                "line-opacity": [
+                  "*",
+                  ["get", "opacity"],
+                  ["case", ["==", ["get", "source"], "fallback"], 0.62, 0.96],
+                ],
               }}
               layout={{
                 "line-cap": "round",
@@ -515,6 +569,8 @@ type RouteSegment = {
   };
   coordinates: Array<[number, number]>;
   source: "road" | "fallback";
+  fallbackReason?: RouteFallbackReason;
+  fallbackMessage?: string;
   distanceKm: number;
   durationMinutes: number;
   steps: RouteStep[];
@@ -532,8 +588,19 @@ type RoadRoute = {
   coordinates: Array<[number, number]>;
   distanceKm: number;
   durationMinutes: number;
+  summary: string;
   steps: RouteStep[];
   source: string;
+};
+
+type RouteFallbackInfo = {
+  reason: RouteFallbackReason;
+  message: string;
+};
+
+type RoadRouteFetchResult = {
+  route: RoadRoute | null;
+  fallback?: RouteFallbackInfo;
 };
 
 function buildRouteRequests(routeDestinations: Destination[], routeLegs: RouteLeg[]): RouteRequest[] {
@@ -567,15 +634,24 @@ function buildRouteRequests(routeDestinations: Destination[], routeLegs: RouteLe
 
 function buildRouteSegments(
   routeRequests: RouteRequest[],
-  roadRoutesById: Record<string, RoadRoute>
+  roadRoutesById: Record<string, RoadRoute>,
+  routeFallbacksById: Record<string, RouteFallbackInfo>,
+  isLoadingRoadRoutes: boolean
 ): RouteSegment[] {
   return routeRequests.map((request, index) => {
     const roadRoute = roadRoutesById[request.id];
-    return createRouteSegment(request, index, roadRoute);
+    const fallbackInfo = routeFallbacksById[request.id];
+    return createRouteSegment(request, index, roadRoute, fallbackInfo, isLoadingRoadRoutes);
   });
 }
 
-function createRouteSegment(request: RouteRequest, index: number, roadRoute?: RoadRoute): RouteSegment {
+function createRouteSegment(
+  request: RouteRequest,
+  index: number,
+  roadRoute?: RoadRoute,
+  fallbackInfo?: RouteFallbackInfo,
+  isLoadingRoadRoutes = false
+): RouteSegment {
   const day = index + 2;
   const coordinates = roadRoute?.coordinates.length
     ? roadRoute.coordinates
@@ -586,6 +662,8 @@ function createRouteSegment(request: RouteRequest, index: number, roadRoute?: Ro
   ];
   const distanceKm = roadRoute?.distanceKm || request.fallbackDistanceKm;
   const durationMinutes = roadRoute?.durationMinutes || request.fallbackDurationMinutes;
+  const fallbackReason = roadRoute ? undefined : fallbackInfo?.reason ?? (isLoadingRoadRoutes ? "loading" : "estimated");
+  const fallbackMessage = roadRoute ? undefined : fallbackInfo?.message ?? getFallbackMessage(fallbackReason);
 
   return {
     id: request.id,
@@ -600,36 +678,62 @@ function createRouteSegment(request: RouteRequest, index: number, roadRoute?: Ro
     },
     coordinates,
     source: roadRoute ? "road" : "fallback",
+    fallbackReason,
+    fallbackMessage,
     distanceKm,
     durationMinutes,
     steps: roadRoute?.steps ?? [],
   };
 }
 
-async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promise<RoadRoute | null> {
+async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promise<RoadRouteFetchResult> {
   const params = new URLSearchParams({
     from: `${request.from.longitude},${request.from.latitude}`,
     to: `${request.to.longitude},${request.to.latitude}`,
   });
   const response = await fetch(`/api/road-route?${params}`, { signal });
   if (!response.ok) {
-    throw new Error(`Road route fetch failed: ${response.status}`);
+    return {
+      route: null,
+      fallback: {
+        reason: response.status === 400 ? "unsupported-route" : "request-failed",
+        message: response.status === 400
+          ? "This route is outside the supported road-routing range, so the map is using an estimated preview."
+          : "Road route request failed. Using the estimated preview line for this leg.",
+      },
+    };
   }
 
   const payload = await response.json();
   const data = payload?.data;
-  if (!data || !Array.isArray(data.coordinates) || data.coordinates.length < 2) return null;
+  if (!data || !Array.isArray(data.coordinates) || data.coordinates.length < 2) {
+    return {
+      route: null,
+      fallback: normalizeFallbackInfo(payload?.meta),
+    };
+  }
   const coordinates = data.coordinates
     .map((coordinate: unknown) => normalizeCoordinatePair(coordinate))
     .filter((coordinate: [number, number] | null): coordinate is [number, number] => Boolean(coordinate));
-  if (coordinates.length < 2) return null;
+  if (coordinates.length < 2) {
+    return {
+      route: null,
+      fallback: {
+        reason: "invalid-response",
+        message: "Road route geometry was incomplete, so this leg is using the estimated preview.",
+      },
+    };
+  }
 
   return {
-    coordinates,
-    distanceKm: Number(data.distanceKm) || request.fallbackDistanceKm,
-    durationMinutes: Number(data.durationMinutes) || 0,
-    steps: normalizeRouteSteps(data.steps),
-    source: String(data.source ?? "road"),
+    route: {
+      coordinates,
+      distanceKm: Number(data.distanceKm) || request.fallbackDistanceKm,
+      durationMinutes: Number(data.durationMinutes) || request.fallbackDurationMinutes,
+      summary: asString(data.summary) ?? "",
+      steps: normalizeRouteSteps(data.steps),
+      source: String(data.source ?? "road"),
+    },
   };
 }
 
@@ -642,6 +746,8 @@ function routeSegmentToDetail(segment: RouteSegment): RouteDetail {
     distanceKm: segment.distanceKm,
     durationMinutes: segment.durationMinutes,
     source: segment.source,
+    fallbackReason: segment.fallbackReason,
+    fallbackMessage: segment.fallbackMessage,
     steps: segment.steps,
   };
 }
@@ -659,13 +765,55 @@ function normalizeRouteStep(value: unknown): RouteStep | null {
   if (!instruction) return null;
 
   return {
+    id: asString(value.id) ?? instruction,
     instruction,
     distanceKm: asNumber(value.distanceKm) ?? 0,
     durationMinutes: asNumber(value.durationMinutes) ?? 0,
     roadName: asString(value.roadName) ?? "",
     maneuverType: asString(value.maneuverType) ?? "continue",
     modifier: asString(value.modifier) ?? "",
+    direction: asString(value.direction) ?? "Continue",
+    exitNumber: asNumber(value.exitNumber),
+    location: normalizeCoordinatePair(value.location) ?? undefined,
+    ref: asString(value.ref),
+    destinations: asString(value.destinations),
   };
+}
+
+function normalizeFallbackInfo(value: unknown): RouteFallbackInfo {
+  if (!isRecord(value)) {
+    return {
+      reason: "invalid-response",
+      message: "Road route data was unavailable, so this leg is using the estimated preview.",
+    };
+  }
+
+  const reason = normalizeFallbackReason(value.reason);
+  return {
+    reason,
+    message: asString(value.message) ?? getFallbackMessage(reason),
+  };
+}
+
+function normalizeFallbackReason(value: unknown): RouteFallbackReason {
+  if (
+    value === "request-failed" ||
+    value === "invalid-response" ||
+    value === "road-route-unavailable" ||
+    value === "unsupported-route"
+  ) {
+    return value;
+  }
+  return "road-route-unavailable";
+}
+
+function getFallbackMessage(reason: RouteFallbackReason | undefined): string {
+  if (reason === "loading") return "Road-following directions are still syncing for this leg.";
+  if (reason === "unsupported-route") return "This route is outside the supported road-routing range, so the map is using an estimated preview.";
+  if (reason === "request-failed") return "Road route request failed. Using the estimated preview line for this leg.";
+  if (reason === "invalid-response") return "Road route geometry was incomplete, so this leg is using the estimated preview.";
+  if (reason === "road-route-unavailable") return "Road-following directions are unavailable, so this leg is using the estimated preview.";
+  return "This leg uses an estimated preview until a road-following route is available.";
 }
 
 function asString(value: unknown): string | undefined {
@@ -693,6 +841,31 @@ function shallowRoadRoutesEqual(first: Record<string, RoadRoute>, second: Record
   const secondKeys = Object.keys(second);
   if (firstKeys.length !== secondKeys.length) return false;
   return firstKeys.every((key) => first[key] === second[key]);
+}
+
+function shallowRouteFallbacksEqual(first: Record<string, RouteFallbackInfo>, second: Record<string, RouteFallbackInfo>) {
+  const firstKeys = Object.keys(first);
+  const secondKeys = Object.keys(second);
+  if (firstKeys.length !== secondKeys.length) return false;
+  return firstKeys.every((key) => (
+    first[key]?.reason === second[key]?.reason &&
+    first[key]?.message === second[key]?.message
+  ));
+}
+
+function waitForRouteSlot(signal: AbortSignal): Promise<void> {
+  if (signal.aborted) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timeout = window.setTimeout(resolve, 120);
+    signal.addEventListener(
+      "abort",
+      () => {
+        window.clearTimeout(timeout);
+        resolve();
+      },
+      { once: true }
+    );
+  });
 }
 
 function getSegmentRevealOpacity(progress: number, index: number): number {

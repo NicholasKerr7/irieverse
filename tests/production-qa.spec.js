@@ -337,6 +337,16 @@ async function verifyRoadRouteApi(request) {
   expect(payload.data?.source).toBe("osrm");
   expect(payload.data?.coordinates?.length).toBeGreaterThan(100);
   expect(payload.data?.distanceKm).toBeGreaterThan(1);
+  expect(Array.isArray(payload.data?.steps)).toBe(true);
+  expect(payload.data.steps.length).toBeGreaterThan(1);
+  expect(payload.data.steps[0]).toEqual(
+    expect.objectContaining({
+      instruction: expect.any(String),
+      direction: expect.any(String),
+      maneuverType: expect.any(String),
+    })
+  );
+  expect(payload.meta?.stepCount).toBeGreaterThan(1);
 }
 
 async function verifyFlightApi(request) {

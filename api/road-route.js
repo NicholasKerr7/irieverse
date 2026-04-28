@@ -1,6 +1,6 @@
 const DEFAULT_ROUTING_BASE_URL = "https://router.project-osrm.org";
 const MAX_ROUTE_DISTANCE_KM = 400;
-const MAX_ROUTE_STEPS = 18;
+const MAX_ROUTE_STEPS = 32;
 
 module.exports = async function roadRouteHandler(req, res) {
   setResponseHeaders(res);
@@ -38,6 +38,10 @@ module.exports = async function roadRouteHandler(req, res) {
     const route = await fetchOsrmRoute(from, to);
     res.status(200).json({
       data: route,
+      meta: {
+        source: route.source,
+        stepCount: route.steps.length,
+      },
     });
   } catch (error) {
     console.error("Road route lookup failed", error);
@@ -46,6 +50,7 @@ module.exports = async function roadRouteHandler(req, res) {
       meta: {
         source: "fallback",
         reason: "road-route-unavailable",
+        message: "Road-following directions are unavailable, so the app can use its estimated preview route.",
       },
     });
   }
@@ -66,6 +71,7 @@ async function fetchOsrmRoute(from, to) {
   url.searchParams.set("geometries", "geojson");
   url.searchParams.set("steps", "true");
   url.searchParams.set("alternatives", "false");
+  url.searchParams.set("annotations", "distance,duration");
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -82,52 +88,79 @@ async function fetchOsrmRoute(from, to) {
 
   return {
     coordinates: coordinatesList.map(normalizeCoordinatePair).filter(Boolean),
-    distanceKm: Math.round(Number(route.distance ?? 0) / 1000),
+    distanceKm: roundTo(Number(route.distance ?? 0) / 1000, 1),
     durationMinutes: Math.max(1, Math.round(Number(route.duration ?? 0) / 60)),
+    summary: buildRouteSummary(route.legs),
     steps: normalizeRouteSteps(route.legs),
     source: "osrm",
   };
 }
 
 function normalizeRouteSteps(legs) {
-  return (Array.isArray(legs) ? legs : [])
+  const steps = (Array.isArray(legs) ? legs : [])
     .flatMap((leg) => Array.isArray(leg?.steps) ? leg.steps : [])
-    .map(mapOsrmStep)
+    .map((step, index) => mapOsrmStep(step, index))
     .filter(Boolean)
-    .filter((step) => step.instruction !== "Continue" || step.distanceKm >= 0.1)
-    .slice(0, MAX_ROUTE_STEPS);
+    .filter((step) => isUsefulStep(step));
+
+  if (steps.length <= MAX_ROUTE_STEPS) return steps;
+  return [
+    ...steps.slice(0, MAX_ROUTE_STEPS - 3),
+    ...steps.slice(-3),
+  ];
 }
 
-function mapOsrmStep(step) {
+function mapOsrmStep(step, index) {
   const distanceKm = roundTo(Number(step?.distance ?? 0) / 1000, 1);
   const durationMinutes = Math.max(0, Math.round(Number(step?.duration ?? 0) / 60));
-  const roadName = cleanRoadName(step?.name || step?.destinations || step?.ref);
+  const roadName = cleanRoadName(step?.name);
+  const roadRef = cleanRoadName(step?.ref);
+  const destinations = cleanRoadName(step?.destinations);
+  const rotaryName = cleanRoadName(step?.rotary_name);
+  const displayRoadName = roadName || roadRef || destinations || rotaryName;
   const maneuver = step?.maneuver ?? {};
   const maneuverType = typeof maneuver.type === "string" ? maneuver.type : "continue";
   const modifier = typeof maneuver.modifier === "string" ? maneuver.modifier : "";
-  const instruction = buildInstruction(maneuverType, modifier, roadName);
+  const exitNumber = Number.isFinite(Number(maneuver.exit)) ? Number(maneuver.exit) : undefined;
+  const location = normalizeCoordinatePair(maneuver.location);
+  const instruction = buildInstruction(maneuverType, modifier, displayRoadName, exitNumber);
 
   if (!instruction) return null;
 
   return {
+    id: `${index}-${maneuverType}-${modifier}-${displayRoadName}`,
     instruction,
     distanceKm,
     durationMinutes,
-    roadName,
+    roadName: displayRoadName,
     maneuverType,
     modifier,
+    direction: buildDirectionLabel(maneuverType, modifier, exitNumber),
+    exitNumber,
+    location: location || undefined,
+    ref: roadRef || undefined,
+    destinations: destinations || undefined,
   };
 }
 
-function buildInstruction(type, modifier, roadName) {
+function isUsefulStep(step) {
+  if (step.maneuverType === "depart" || step.maneuverType === "arrive") return true;
+  if (step.maneuverType === "roundabout" || step.maneuverType === "rotary") return true;
+  if (step.instruction !== "Continue") return true;
+  return step.distanceKm >= 0.2;
+}
+
+function buildInstruction(type, modifier, roadName, exitNumber) {
+  const direction = humanizeModifier(modifier);
+
   if (type === "depart") {
     return roadName ? `Start on ${roadName}` : "Start route";
   }
   if (type === "arrive") {
-    return "Arrive at destination";
+    return modifier ? `Arrive; destination is on the ${direction}` : "Arrive at destination";
   }
   if (type === "turn") {
-    return roadName ? `Turn ${modifier || "ahead"} onto ${roadName}` : `Turn ${modifier || "ahead"}`;
+    return roadName ? `Turn ${direction || "ahead"} onto ${roadName}` : `Turn ${direction || "ahead"}`;
   }
   if (type === "new name") {
     return roadName ? `Continue onto ${roadName}` : "Continue";
@@ -136,7 +169,7 @@ function buildInstruction(type, modifier, roadName) {
     return roadName ? `Continue on ${roadName}` : "Continue";
   }
   if (type === "merge") {
-    return roadName ? `Merge ${modifier || "ahead"} onto ${roadName}` : `Merge ${modifier || "ahead"}`;
+    return roadName ? `Merge ${direction || "ahead"} onto ${roadName}` : `Merge ${direction || "ahead"}`;
   }
   if (type === "on ramp") {
     return roadName ? `Take the ramp onto ${roadName}` : "Take the ramp";
@@ -145,14 +178,39 @@ function buildInstruction(type, modifier, roadName) {
     return roadName ? `Take the exit toward ${roadName}` : "Take the exit";
   }
   if (type === "roundabout" || type === "rotary") {
-    return roadName ? `Enter the roundabout toward ${roadName}` : "Enter the roundabout";
+    const exitText = exitNumber ? `take exit ${exitNumber}` : "continue through";
+    return roadName ? `At the roundabout, ${exitText} toward ${roadName}` : `At the roundabout, ${exitText}`;
   }
   if (type === "fork") {
-    return roadName ? `Keep ${modifier || "ahead"} toward ${roadName}` : `Keep ${modifier || "ahead"}`;
+    return roadName ? `Keep ${direction || "ahead"} toward ${roadName}` : `Keep ${direction || "ahead"}`;
+  }
+  if (type === "end of road") {
+    return roadName ? `At the end of the road, turn ${direction || "ahead"} onto ${roadName}` : `At the end of the road, turn ${direction || "ahead"}`;
   }
 
   const action = titleCase(type.replace(/_/g, " "));
   return roadName ? `${action} onto ${roadName}` : action;
+}
+
+function buildDirectionLabel(type, modifier, exitNumber) {
+  if ((type === "roundabout" || type === "rotary") && exitNumber) return `Exit ${exitNumber}`;
+  if (modifier) return titleCase(humanizeModifier(modifier));
+  return titleCase(type.replace(/_/g, " "));
+}
+
+function humanizeModifier(value) {
+  return typeof value === "string" ? value.replace(/_/g, " ").trim() : "";
+}
+
+function buildRouteSummary(legs) {
+  const roadNames = [];
+  (Array.isArray(legs) ? legs : []).forEach((leg) => {
+    (Array.isArray(leg?.steps) ? leg.steps : []).forEach((step) => {
+      const name = cleanRoadName(step?.ref || step?.name || step?.destinations);
+      if (name && !roadNames.includes(name)) roadNames.push(name);
+    });
+  });
+  return roadNames.slice(0, 4).join(" · ");
 }
 
 function cleanRoadName(value) {

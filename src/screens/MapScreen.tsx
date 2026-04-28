@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ArrowUpRight,
   CalendarDays,
   ChevronDown,
@@ -59,6 +60,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     totalLegs: 0,
     roadLegs: 0,
     fallbackLegs: 0,
+    failedLegs: 0,
   });
   const [routeDetails, setRouteDetails] = useState<RouteDetail[]>([]);
 
@@ -111,6 +113,10 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       leg,
     })),
     [routeSummary.legs]
+  );
+  const routeDetailsById = useMemo(
+    () => new Map(routeDetails.map((detail) => [detail.id, detail])),
+    [routeDetails]
   );
   const selectedRouteLeg = selectedRouteLegId
     ? routeLegOptions.find((option) => option.id === selectedRouteLegId) ?? null
@@ -277,6 +283,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
 
             <RouteDayChips
               routeLegOptions={routeLegOptions}
+              routeDetailsById={routeDetailsById}
               selectedRouteLegId={selectedRouteLegId}
               routeStatus={routeStatus}
               onSelectOverview={() => handleSelectRouteLeg(null)}
@@ -568,12 +575,14 @@ type RouteLegOption = {
 
 function RouteDayChips({
   routeLegOptions,
+  routeDetailsById,
   selectedRouteLegId,
   routeStatus,
   onSelectOverview,
   onSelectRouteLeg,
 }: {
   routeLegOptions: RouteLegOption[];
+  routeDetailsById: Map<string, RouteDetail>;
   selectedRouteLegId: string | null;
   routeStatus: RouteRenderStatus;
   onSelectOverview: () => void;
@@ -601,6 +610,9 @@ function RouteDayChips({
         {routeLegOptions.map((option) => {
           const color = getRouteColor(option.index);
           const isSelected = option.id === selectedRouteLegId;
+          const routeDetail = routeDetailsById.get(option.id);
+          const isFallback = routeDetail?.source === "fallback";
+          const isSyncing = !routeDetail || routeDetail.fallbackReason === "loading";
 
           return (
             <button
@@ -628,6 +640,13 @@ function RouteDayChips({
               <span className={classNames("text-[0.68rem]", isSelected ? "text-slate-600" : "text-slate-500")}>
                 {formatMiles(option.leg.distanceKm)}
               </span>
+              <span
+                className={classNames(
+                  "h-2 w-2 rounded-full",
+                  isSyncing ? "animate-pulse bg-cyan-300" : isFallback ? "bg-amber-300" : "bg-emerald-300"
+                )}
+                title={isSyncing ? "Road route syncing" : isFallback ? "Estimated preview" : "Road-following route"}
+              />
             </button>
           );
         })}
@@ -640,14 +659,21 @@ function RouteDayChips({
 
 function RouteStatusPill({ routeStatus }: { routeStatus: RouteRenderStatus }) {
   const label = getRouteStatusLabel(routeStatus);
+  const tone = routeStatus.isLoading
+    ? "loading"
+    : routeStatus.failedLegs > 0
+      ? "fallback"
+      : routeStatus.roadLegs > 0
+        ? "road"
+        : "fallback";
 
   return (
     <span
       className={classNames(
         "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold",
-        routeStatus.isLoading
+        tone === "loading"
           ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-100"
-          : routeStatus.roadLegs
+          : tone === "road"
             ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-100"
             : "border-amber-300/40 bg-amber-300/10 text-amber-100"
       )}
@@ -655,10 +681,13 @@ function RouteStatusPill({ routeStatus }: { routeStatus: RouteRenderStatus }) {
       <span
         className={classNames(
           "h-2 w-2 rounded-full",
-          routeStatus.isLoading ? "animate-pulse bg-cyan-300" : routeStatus.roadLegs ? "bg-emerald-300" : "bg-amber-300"
+          tone === "loading" ? "animate-pulse bg-cyan-300" : tone === "road" ? "bg-emerald-300" : "bg-amber-300"
         )}
       />
       {label}
+      {!routeStatus.isLoading && routeStatus.fallbackLegs > 0 && (
+        <span className="text-[0.65rem] opacity-75">{routeStatus.fallbackLegs} est</span>
+      )}
     </span>
   );
 }
@@ -687,15 +716,37 @@ function RouteDirectionsPanel({
 
   const steps = selectedRouteDetail?.steps ?? [];
   const hasRoadSteps = selectedRouteDetail?.source === "road" && steps.length > 0;
+  const visibleSteps = steps.slice(0, 8);
+  const hiddenStepCount = Math.max(0, steps.length - visibleSteps.length);
+  const panelTone = routeStatus.isLoading && !selectedRouteDetail
+    ? "loading"
+    : hasRoadSteps
+      ? "road"
+      : "fallback";
+  const statusText = hasRoadSteps
+    ? "Road-following OSRM route with maneuver previews."
+    : selectedRouteDetail?.fallbackMessage ?? "Road-following directions are not available yet.";
 
   return (
-    <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/42 p-3">
+    <div
+      className={classNames(
+        "mt-4 rounded-2xl border p-3",
+        panelTone === "road"
+          ? "border-emerald-300/20 bg-emerald-300/10"
+          : panelTone === "loading"
+            ? "border-cyan-300/20 bg-cyan-300/10"
+            : "border-amber-300/25 bg-amber-300/10"
+      )}
+    >
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[0.6rem] uppercase tracking-[0.22em] text-cyan-200/75">Driving steps</p>
+        <div className="min-w-0">
+          <p className="text-[0.6rem] uppercase tracking-[0.22em] text-cyan-200/75">
+            {hasRoadSteps ? "Road-following steps" : "Route fallback"}
+          </p>
           <h4 className="mt-1 text-sm font-semibold text-slate-100">
             {selectedRouteLeg.leg.fromName} to {selectedRouteLeg.leg.toName}
           </h4>
+          <p className="mt-1 text-xs leading-5 text-slate-400">{statusText}</p>
         </div>
         <button
           type="button"
@@ -707,40 +758,67 @@ function RouteDirectionsPanel({
       </div>
 
       {routeStatus.isLoading && !selectedRouteDetail && (
-        <p className="mt-3 text-xs text-slate-400">Syncing road steps...</p>
+        <p className="mt-3 text-xs text-slate-300">Syncing road geometry and maneuvers...</p>
       )}
 
       {hasRoadSteps && (
         <ol className="mt-3 grid gap-2">
-          {steps.slice(0, 6).map((step, index) => (
-            <li
-              key={`${step.instruction}-${index}`}
-              className="grid grid-cols-[1.55rem_minmax(0,1fr)_auto] items-start gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-300 text-[0.68rem] font-black text-slate-950">
-                {index + 1}
-              </span>
-              <span className="min-w-0">
-                <span className="block text-xs font-semibold leading-5 text-slate-100">{step.instruction}</span>
-                {!!step.roadName && (
-                  <span className="block truncate text-[0.68rem] text-slate-500">{step.roadName}</span>
-                )}
-              </span>
-              <span className="text-right text-[0.68rem] font-semibold text-slate-400">
-                {formatMiles(step.distanceKm)}
-              </span>
-            </li>
-          ))}
+          {visibleSteps.map((step, index) => {
+            const StepIcon = getManeuverIcon(step.maneuverType, step.modifier);
+
+            return (
+              <li
+                key={`${step.id}-${index}`}
+                className="grid grid-cols-[1.8rem_minmax(0,1fr)_auto] items-start gap-2 rounded-xl border border-white/10 bg-slate-950/42 px-2.5 py-2"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-300 text-slate-950">
+                  <StepIcon className="h-3.5 w-3.5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold leading-5 text-slate-100">{step.instruction}</span>
+                  <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.68rem] text-slate-500">
+                    <span>{step.direction}</span>
+                    {!!step.roadName && <span className="max-w-full truncate">{step.roadName}</span>}
+                    {!!step.ref && step.ref !== step.roadName && <span>{step.ref}</span>}
+                  </span>
+                </span>
+                <span className="text-right text-[0.68rem] font-semibold text-slate-400">
+                  <span className="block">{formatMiles(step.distanceKm)}</span>
+                  {!!step.durationMinutes && (
+                    <span className="block text-slate-500">{formatDriveTime(step.durationMinutes)}</span>
+                  )}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       )}
 
-      {!hasRoadSteps && !routeStatus.isLoading && (
-        <p className="mt-3 text-xs leading-5 text-slate-400">
-          Road maneuvers are unavailable for this leg, so the app is showing the route preview and external map handoff.
+      {hiddenStepCount > 0 && (
+        <p className="mt-3 text-xs text-slate-400">
+          {hiddenStepCount} more maneuver{hiddenStepCount === 1 ? "" : "s"} available in the road route. Open Maps for full turn-by-turn guidance.
         </p>
+      )}
+
+      {!hasRoadSteps && !routeStatus.isLoading && (
+        <div className="mt-3 flex gap-2 rounded-xl border border-amber-300/20 bg-slate-950/42 px-3 py-2 text-xs leading-5 text-amber-100">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            Showing an estimated preview line for this leg. Use the Maps handoff for live traffic, complete turn-by-turn directions, and provider-specific rerouting.
+          </p>
+        </div>
       )}
     </div>
   );
+}
+
+function getManeuverIcon(maneuverType: string, modifier: string): LucideIcon {
+  if (maneuverType === "arrive") return MapPin;
+  if (maneuverType === "depart") return Navigation;
+  if (maneuverType === "roundabout" || maneuverType === "rotary") return Route;
+  if (maneuverType === "merge" || maneuverType === "fork") return Route;
+  if (modifier.includes("left") || modifier.includes("right")) return Navigation;
+  return Compass;
 }
 
 function RouteHud({

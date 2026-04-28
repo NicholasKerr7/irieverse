@@ -153,7 +153,9 @@ The map uses `api/road-route.js` to request real driving geometry for each route
 https://router.project-osrm.org/route/v1/driving/{lon,lat};{lon,lat}?overview=full&geometries=geojson
 ```
 
-That gives IrieVerse road-following GeoJSON lines and maneuver previews while keeping the browser code provider-neutral. For production scale, set `ROUTING_API_BASE_URL` to your own OSRM-compatible service or a paid routing provider proxy. If road routing fails, the map falls back to the local preview route instead of breaking.
+That gives IrieVerse road-following GeoJSON lines plus normalized maneuver previews: instruction text, road names/refs, direction labels, distance, duration, roundabout exits, and destination/ref hints when OSRM returns them. The map uses green status indicators for road-following legs, amber indicators for estimated fallback legs, and per-leg fallback messaging when routing is still syncing or the provider fails.
+
+For production scale, set `ROUTING_API_BASE_URL` to your own OSRM-compatible service or a paid routing provider proxy. If road routing fails, the map falls back to the local preview route instead of breaking and keeps the external Google Maps handoff available for full turn-by-turn navigation and traffic.
 
 ## Integration Status
 
