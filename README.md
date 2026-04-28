@@ -68,5 +68,12 @@ Desktop map:
 
 ![Desktop map](public/screenshots/desktop-map.png)
 
+## Marketing kit
+- Strategy: `docs/marketing-strategy.md`
+- Static press kit page: `public/press-kit.html`
+- Production press kit URL after deploy: `https://irieverse.vercel.app/press-kit.html`
+
+The marketing kit uses the QA-generated screenshots above, so launch visuals stay aligned with the current production app.
+
 ## Tech stack
 React 18, Vite, TypeScript, Tailwind CSS, MapLibre via `react-map-gl`, Supabase (optional for collab).
