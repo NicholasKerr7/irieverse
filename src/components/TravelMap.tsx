@@ -4,20 +4,13 @@ import type { Destination, RouteLeg } from "../types/travel";
 import type { ThemeMode } from "../hooks/useTravelOS";
 import { MapPin } from "lucide-react";
 import { classNames } from "../utils/classNames";
+import { formatMiles } from "../utils/format";
+import { getRouteColor, type MapPinCategory } from "../utils/mapRoutes";
 
 const MAP_STYLES: Record<ThemeMode, string> = {
   dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
   light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
 };
-
-export type MapPinCategory =
-  | "beaches"
-  | "food"
-  | "music"
-  | "culture"
-  | "nightlife"
-  | "adventure"
-  | "default";
 
 const CATEGORY_COLORS: Record<MapPinCategory, string> = {
   beaches: "#22d3ee",
@@ -28,8 +21,6 @@ const CATEGORY_COLORS: Record<MapPinCategory, string> = {
   adventure: "#84cc16",
   default: "#38bdf8",
 };
-
-const ROUTE_COLORS = ["#fb5573", "#f59e0b", "#d946ef", "#22c55e", "#8b5cf6", "#38bdf8"];
 
 interface TravelMapProps {
   destinations: Destination[];
@@ -561,8 +552,8 @@ function createRouteSegment(request: RouteRequest, index: number, roadRoute?: Ro
     id: request.id,
     from: request.from,
     to: request.to,
-    color: ROUTE_COLORS[index % ROUTE_COLORS.length],
-    label: `Day ${day} · ${formatMiles(distanceKm)}`,
+    color: getRouteColor(index),
+    label: `Day ${day} · ${formatMiles(distanceKm, "route")}`,
     midpoint: {
       longitude: midpoint[0],
       latitude: midpoint[1],
@@ -622,11 +613,6 @@ function buildDirectRouteCoordinates(from: Destination, to: Destination): Array<
     [from.longitude, from.latitude],
     [to.longitude, to.latitude],
   ];
-}
-
-function formatMiles(distanceKm: number): string {
-  if (!distanceKm) return "route";
-  return `${Math.max(1, Math.round(distanceKm * 0.621371))} mi`;
 }
 
 function getDestinationBounds(destinations: Destination[]): [[number, number], [number, number]] {

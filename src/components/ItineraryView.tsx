@@ -1,6 +1,7 @@
 import { AlertTriangle, CalendarDays, Clock3, Gauge, MapPin, Music2, PartyPopper, Route, Utensils, WalletCards } from "lucide-react";
 import { ItineraryPlan } from "../types/travel";
 import { classNames } from "../utils/classNames";
+import { formatDriveTime } from "../utils/format";
 import { glassCard, glassControlMuted } from "../utils/glass";
 import { capitalise } from "../utils/text";
 
@@ -168,15 +169,6 @@ function RouteMetric({
       <p className="mt-1 text-xs leading-5 text-slate-500">{helper}</p>
     </article>
   );
-}
-
-function formatDriveTime(minutes: number): string {
-  if (!minutes) return "0 min";
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  if (!hours) return `${remainder} min`;
-  if (!remainder) return `${hours} hr`;
-  return `${hours} hr ${remainder} min`;
 }
 
 function getPacingLabel(totalDriveMinutes: number, days: number): string {

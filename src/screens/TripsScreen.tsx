@@ -34,6 +34,7 @@ import { DESTINATIONS, EXPERIENCES, VIBE_OPTIONS } from "../data/content";
 import { formatLocalTime, type TravelOS } from "../hooks/useTravelOS";
 import type { Experience, ImportedIdea, Vibe } from "../types/travel";
 import { classNames } from "../utils/classNames";
+import { formatDriveTime } from "../utils/format";
 import { glassCard, glassControlMuted, glassPanel, glassPanelStrong } from "../utils/glass";
 
 type TripsScreenProps = {
@@ -1022,15 +1023,6 @@ function VibeButton({ active, label, onClick }: { active: boolean; label: string
       {label}
     </button>
   );
-}
-
-function formatDriveTime(minutes: number): string {
-  if (!minutes) return "0 min";
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  if (!hours) return `${remainder} min`;
-  if (!remainder) return `${hours} hr`;
-  return `${hours} hr ${remainder} min`;
 }
 
 function formatIntegrationReason(reason?: string): string {

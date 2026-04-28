@@ -17,6 +17,7 @@ import type { TravelOS } from "../hooks/useTravelOS";
 import type { Destination, Experience, ImportedIdea, ImportedIdeaCategory } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassControl, glassControlMuted, glassField, glassPanel } from "../utils/glass";
+import { isStringRecord, readJsonFromStorage, writeJsonToStorage } from "../utils/storage";
 
 type SavedScreenProps = {
   app: TravelOS;
@@ -63,22 +64,14 @@ const DEFAULT_IMPORT_FORM = {
 
 export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   const [activeCollection, setActiveCollection] = useState<CollectionId>("all");
-  const [collectionAssignments, setCollectionAssignments] = useState<Record<string, CollectionId>>({});
+  const [collectionAssignments, setCollectionAssignments] = useState<Record<string, CollectionId>>(() =>
+    sanitizeCollectionAssignments(readJsonFromStorage(STORAGE_KEY_COLLECTIONS, {}, isStringRecord))
+  );
   const [statusMessage, setStatusMessage] = useState("");
   const [importForm, setImportForm] = useState(DEFAULT_IMPORT_FORM);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY_COLLECTIONS);
-    if (!stored) return;
-    try {
-      setCollectionAssignments(JSON.parse(stored));
-    } catch {
-      setCollectionAssignments({});
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_COLLECTIONS, JSON.stringify(collectionAssignments));
+    writeJsonToStorage(STORAGE_KEY_COLLECTIONS, collectionAssignments);
   }, [collectionAssignments]);
 
   useEffect(() => {
@@ -628,6 +621,17 @@ function getImportCollection(idea: ImportedIdea): CollectionId {
 function normalizeCollectionId(collectionId: string): CollectionId | null {
   const match = COLLECTIONS.find((collection) => collection.id === collectionId && collection.id !== "all");
   return match?.id ?? null;
+}
+
+function sanitizeCollectionAssignments(assignments: Record<string, string>): Record<string, CollectionId> {
+  const sanitized: Record<string, CollectionId> = {};
+  Object.entries(assignments).forEach(([key, value]) => {
+    const collection = normalizeCollectionId(value);
+    if (collection) {
+      sanitized[key] = collection;
+    }
+  });
+  return sanitized;
 }
 
 function categoryToCollection(category: ImportedIdeaCategory): CollectionId {
