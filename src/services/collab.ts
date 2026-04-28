@@ -170,10 +170,16 @@ function toCollaborationError(
     .join(" ")
     .toLowerCase();
 
-  if (supabaseError.code === "42P01" || searchableMessage.includes("relation \"public.trips\" does not exist")) {
+  if (
+    supabaseError.code === "42P01" ||
+    supabaseError.code === "PGRST205" ||
+    searchableMessage.includes("relation \"public.trips\" does not exist") ||
+    (searchableMessage.includes("public.trips") && searchableMessage.includes("schema cache")) ||
+    (searchableMessage.includes("could not find the table") && searchableMessage.includes("trips"))
+  ) {
     return new CollaborationError(
       "schema-missing",
-      "Supabase trips table is missing. Apply supabase/schema.sql or run supabase db push.",
+      "Supabase trips table is missing from the API schema. Apply supabase/schema.sql in the Supabase SQL editor or run supabase db push, then retry sharing.",
       error
     );
   }

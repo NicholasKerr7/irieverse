@@ -4,16 +4,16 @@
 
 Date: 2026-04-28
 
-Result: Passed.
+Result: Passed live table probe.
 
-- `supabase migration list` shows both trip-sharing migrations applied remotely.
+- Linked project: `divgxhxckrthasurbdqz` (`irieverse`).
 - `supabase db lint --linked` reports no schema errors.
-- `supabase db push --dry-run` reports the remote database is up to date.
-- Live app share probe created a `trips` row, read it back through the anon REST API, marked it as production QA data, deleted it through the QA-only policy, and verified the row was gone.
+- Live Supabase REST probe created a `trips` row, read it back through the anon API, updated it, deleted it through the QA-only policy, and verified the row was gone.
+- `supabase migration list` and `supabase db push --dry-run` need the current remote Postgres password; the linked CLI login currently returns password authentication failure for `cli_login_postgres`.
 
 ## Full QA run
 
-Date: 2026-04-27
+Date: 2026-04-28
 
 Target: https://irieverse.vercel.app
 

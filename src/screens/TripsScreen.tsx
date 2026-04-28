@@ -982,6 +982,8 @@ function RouteStat({
 }
 
 function SharePanel({ app }: { app: TravelOS }) {
+  const setupNotice = getShareSetupNotice(app);
+
   return (
     <div className={classNames("rounded-3xl p-4", glassPanel)}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1010,11 +1012,6 @@ function SharePanel({ app }: { app: TravelOS }) {
         </button>
       </div>
 
-      {!app.collaborationReady && (
-        <p className="mt-3 text-xs text-slate-400">
-          Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable live sharing.
-        </p>
-      )}
       {app.collaborationReady && (
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <input
@@ -1034,9 +1031,65 @@ function SharePanel({ app }: { app: TravelOS }) {
           </button>
         </div>
       )}
+      {setupNotice && <ShareSetupNotice {...setupNotice} />}
       {app.tripStatusMessage && <p className="mt-2 text-xs text-slate-400">{app.tripStatusMessage}</p>}
     </div>
   );
+}
+
+function ShareSetupNotice({
+  title,
+  body,
+  tone,
+}: {
+  title: string;
+  body: string;
+  tone: "error" | "fallback";
+}) {
+  return (
+    <div
+      className={classNames(
+        "mt-3 rounded-2xl border px-3 py-3 text-xs leading-5",
+        tone === "error"
+          ? "border-red-400/40 bg-red-400/10 text-red-100"
+          : "border-slate-700 bg-slate-950/70 text-slate-300"
+      )}
+    >
+      <p className="flex items-center gap-2 font-semibold">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        {title}
+      </p>
+      <p className={classNames("mt-1", tone === "error" ? "text-red-100/80" : "text-slate-400")}>{body}</p>
+    </div>
+  );
+}
+
+function getShareSetupNotice(app: TravelOS): { title: string; body: string; tone: "error" | "fallback" } | null {
+  if (!app.collaborationReady) {
+    return {
+      title: "Supabase sharing not configured",
+      body: "Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then redeploy before creating live share links.",
+      tone: "fallback",
+    };
+  }
+
+  if (app.collaborationErrorCode === "schema-missing") {
+    return {
+      title: "Supabase trips table missing",
+      body: "Run supabase/schema.sql in the Supabase SQL editor, or relink the CLI and run supabase db push. Expected table: public.trips.",
+      tone: "error",
+    };
+  }
+
+  if (app.collaborationErrorCode === "permission-denied") {
+    return {
+      title: "Supabase policy blocked sharing",
+      body: "The table exists, but anonymous insert/read/update policies are not active. Re-run the trip sharing schema.",
+      tone: "error",
+    };
+  }
+
+  return null;
 }
 
 function TripMetric({ label, value }: { label: string; value: string }) {

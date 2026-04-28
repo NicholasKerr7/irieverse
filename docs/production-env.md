@@ -78,6 +78,8 @@ supabase db push
 
 For manual setup, run `supabase/schema.sql` in the Supabase SQL editor. Keep it mirrored with the migration if the table shape changes.
 
+If the app reports `Supabase trips table missing`, the public REST API cannot see `public.trips` yet. Run `supabase/schema.sql`, wait for the schema cache to refresh, then retry Share. If `supabase db push` fails with a remote Postgres password error, re-run `supabase link --project-ref your-project-ref --password your-current-db-password` before pushing migrations.
+
 ## Booking API Contract
 
 This repo includes a Vercel serverless booking endpoint at `api/bookings.js`. It proxies Amadeus Hotels so Amadeus secrets never ship to the browser. When `VITE_BOOKING_API_URL` is set, IrieVerse calls:
