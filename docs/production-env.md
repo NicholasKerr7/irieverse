@@ -8,14 +8,15 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | --- | --- | --- |
 | `VITE_SUPABASE_URL` | Optional | Enables shared trip links with Supabase. |
 | `VITE_SUPABASE_ANON_KEY` | Optional | Public anon key for the Supabase project. |
-| `VITE_AVIATIONSTACK_API_KEY` | Optional | Enables live flight snapshots through AviationStack. |
+| `AVIATIONSTACK_API_KEY` | Optional | Server-only AviationStack key used by `api/flights.js`. |
+| `VITE_FLIGHTS_API_URL` | Optional | Browser-visible flight proxy URL. Defaults to `/api/flights`. |
 | `VITE_BOOKING_API_URL` | Optional | Enables live booking recommendations from the server booking endpoint. |
 | `AMADEUS_CLIENT_ID` | Optional | Server-only Amadeus API key used by `api/bookings.js`. |
 | `AMADEUS_CLIENT_SECRET` | Optional | Server-only Amadeus API secret used by `api/bookings.js`. |
 | `AMADEUS_BASE_URL` | Optional | Amadeus base URL. Defaults to `https://test.api.amadeus.com`; use `https://api.amadeus.com` for production credentials. |
 | `ROUTING_API_BASE_URL` | Optional | Server-only OSRM-compatible routing base URL used by `api/road-route.js`. Defaults to `https://router.project-osrm.org`. |
 
-Only variables prefixed with `VITE_` are exposed to the browser. Keep Amadeus credentials server-only.
+Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack and Amadeus credentials server-only.
 
 ## Local Setup
 
@@ -40,7 +41,8 @@ For Vercel:
 ```bash
 vercel env add VITE_SUPABASE_URL production
 vercel env add VITE_SUPABASE_ANON_KEY production
-vercel env add VITE_AVIATIONSTACK_API_KEY production
+vercel env add AVIATIONSTACK_API_KEY production
+vercel env add VITE_FLIGHTS_API_URL production
 vercel env add VITE_BOOKING_API_URL production
 vercel env add AMADEUS_CLIENT_ID production
 vercel env add AMADEUS_CLIENT_SECRET production
@@ -135,7 +137,13 @@ The endpoint uses Amadeus OAuth client credentials, then looks up hotels by Jama
 
 ## Flight API
 
-When `VITE_AVIATIONSTACK_API_KEY` is set, IrieVerse calls AviationStack for scheduled flights using the selected origin and destination airport codes. If the variable is missing, the app uses `public/data/flights-sample.json`.
+The browser calls `api/flights.js`, which proxies AviationStack with the server-only `AVIATIONSTACK_API_KEY`. For the Vercel app, `VITE_FLIGHTS_API_URL` can be omitted because it defaults to `/api/flights`.
+
+```text
+GET /api/flights?origin={airportCode}&destination={airportCode}
+```
+
+If `AVIATIONSTACK_API_KEY` is missing or AviationStack fails, the browser falls back to `public/data/flights-sample.json`. Do not use `VITE_AVIATIONSTACK_API_KEY` in production; it exposes the provider key to the client bundle.
 
 ## Road Routing
 
@@ -155,7 +163,7 @@ Trips includes a compact integration status panel for launch QA:
 | --- | --- | --- |
 | Supabase sharing | `Live` when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set. | `Setup needed` and sharing stays disabled. |
 | Bookings | `Live Amadeus` or `Live endpoint` when the configured booking source returns live data. | `API fallback` or `Local fallback` with curated Jamaica stays. |
-| Flights | `Live provider` when `VITE_AVIATIONSTACK_API_KEY` is set. | `Sample flights` from `public/data/flights-sample.json`. |
+| Flights | `Live provider` when `/api/flights` returns AviationStack data. | `Proxy fallback` or `Sample flights` from `public/data/flights-sample.json`. |
 | Road routes | `Live proxy` through `api/road-route.js`. | The map falls back to preview route lines if the proxy fails. |
 | Events | Not connected to a provider yet. | `Local feed` from `public/data/events.json`. |
 

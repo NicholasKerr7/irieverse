@@ -13,7 +13,11 @@ import {
   saveTripState,
   serializeTripState,
 } from "../services/collab";
-import { fetchFlightOptions, hasLiveFlightProvider } from "../services/flights";
+import {
+  fetchFlightOptions,
+  getInitialFlightSourceMeta,
+  type FlightSourceMeta,
+} from "../services/flights";
 import type {
   BookingOption,
   Destination,
@@ -129,6 +133,7 @@ export function useTravelOS() {
   const [liveFacts, setLiveFacts] = useState<QuickFact[] | null>(null);
   const [isFetchingFacts, setIsFetchingFacts] = useState(false);
   const [flightOptions, setFlightOptions] = useState<FlightOption[]>([]);
+  const [flightSourceMeta, setFlightSourceMeta] = useState<FlightSourceMeta>(getInitialFlightSourceMeta);
   const [isFetchingFlights, setIsFetchingFlights] = useState(false);
   const [flightsError, setFlightsError] = useState<string | null>(null);
   const [mapViewState, setMapViewState] = useState({
@@ -149,7 +154,6 @@ export function useTravelOS() {
   const [bookingSourceMeta, setBookingSourceMeta] = useState<BookingSourceMeta>(getInitialBookingSourceMeta);
 
   const collaborationReady = hasCollaborationBackend();
-  const liveFlightProviderConfigured = hasLiveFlightProvider();
   const destination = useMemo(
     () => DESTINATIONS.find((item) => item.id === plannerBaseId) ?? DESTINATIONS[0],
     [plannerBaseId]
@@ -297,14 +301,21 @@ export function useTravelOS() {
       setIsFetchingFlights(true);
       setFlightsError(null);
       try {
-        const flights = await fetchFlightOptions(originAirport.code, destination.airportCode);
+        const { options, meta } = await fetchFlightOptions(originAirport.code, destination.airportCode);
         if (!cancelled) {
-          setFlightOptions(flights);
+          setFlightOptions(options);
+          setFlightSourceMeta(meta);
         }
       } catch (error) {
         if (!cancelled) {
           setFlightsError("Flights unavailable right now");
           setFlightOptions([]);
+          setFlightSourceMeta({
+            source: "local",
+            reason: "flight-data-unavailable",
+            endpointConfigured: true,
+            providerConfigured: false,
+          });
         }
       } finally {
         if (!cancelled) {
@@ -821,7 +832,8 @@ export function useTravelOS() {
     flightOptions,
     isFetchingFlights,
     flightsError,
-    liveFlightProviderConfigured,
+    liveFlightProviderConfigured: flightSourceMeta.source === "aviationstack",
+    flightSourceMeta,
     mapViewState,
     handleMapMove,
     tripId,

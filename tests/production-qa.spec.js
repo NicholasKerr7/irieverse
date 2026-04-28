@@ -21,6 +21,7 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
   fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
   await verifyProductionAssets(request);
+  await verifyFlightApi(request);
   await verifyRoadRouteApi(request);
 
   await openTab(page, "");
@@ -336,4 +337,15 @@ async function verifyRoadRouteApi(request) {
   expect(payload.data?.source).toBe("osrm");
   expect(payload.data?.coordinates?.length).toBeGreaterThan(100);
   expect(payload.data?.distanceKm).toBeGreaterThan(1);
+}
+
+async function verifyFlightApi(request) {
+  const response = await request.get(
+    `${BASE_URL}/api/flights?origin=JFK&destination=MBJ`
+  );
+  expect(response.ok()).toBe(true);
+  const payload = await response.json();
+  expect(Array.isArray(payload.data)).toBe(true);
+  expect(["aviationstack", "fallback"]).toContain(payload.meta?.source);
+  expect(typeof payload.meta?.providerConfigured).toBe("boolean");
 }

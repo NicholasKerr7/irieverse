@@ -655,21 +655,39 @@ function IntegrationBadge({ label, tone }: { label: string; tone: IntegrationTon
 }
 
 function getFlightSourceStatus(app: TravelOS): { status: string; tone: IntegrationTone; body: string } {
+  const meta = app.flightSourceMeta;
+
   if (app.flightsError) {
     return {
       status: "Flight issue",
       tone: "error",
-      body: app.liveFlightProviderConfigured
+      body: meta.providerConfigured
         ? "The live flight provider is connected, but the latest lookup failed."
         : "Fallback flight snapshots are unavailable right now.",
     };
   }
 
-  if (app.liveFlightProviderConfigured) {
+  if (meta.source === "aviationstack") {
     return {
       status: "Live provider",
       tone: "live",
-      body: "Scheduled flights come from the configured AviationStack provider.",
+      body: "Scheduled flights come through the server AviationStack proxy.",
+    };
+  }
+
+  if (meta.endpointConfigured && meta.providerConfigured) {
+    return {
+      status: "Provider fallback",
+      tone: "fallback",
+      body: `${formatIntegrationReason(meta.reason)} Showing bundled snapshots until live flights return.`,
+    };
+  }
+
+  if (meta.endpointConfigured) {
+    return {
+      status: "Proxy fallback",
+      tone: "fallback",
+      body: `${formatIntegrationReason(meta.reason)} Add AVIATIONSTACK_API_KEY server-side to enable live flights.`,
     };
   }
 
@@ -1034,6 +1052,12 @@ function formatIntegrationReason(reason?: string): string {
     "custom-endpoint": "The booking endpoint did not include source metadata.",
     "endpoint-configured": "The booking endpoint is configured.",
     "local-sample-data": "Local sample data is active.",
+    "pending-flight-proxy": "The flight proxy is waiting for its first lookup.",
+    "missing-aviationstack-key": "AviationStack is not connected server-side.",
+    "aviationstack-request-failed": "The AviationStack request failed.",
+    "flight-proxy-request-failed": "The flight proxy request failed.",
+    "missing-flight-metadata": "The flight endpoint did not include source metadata.",
+    "flight-data-unavailable": "Flight data is unavailable.",
   };
 
   return reason ? labels[reason] ?? `${reason.replace(/-/g, " ")}.` : "Live booking data is not available yet.";
