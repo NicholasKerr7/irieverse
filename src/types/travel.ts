@@ -24,6 +24,14 @@ export type ImportedIdeaCategory =
   | "nightlife"
   | "other";
 
+export type ImportedIdeaSourcePlatform =
+  | "google-maps"
+  | "tiktok"
+  | "instagram"
+  | "youtube"
+  | "article"
+  | "manual";
+
 export interface Destination {
   id: string;
   name: string;
@@ -84,6 +92,9 @@ export interface ImportedIdea {
   collectionId: string;
   createdAt: string;
   linkedDestinationId?: string;
+  sourcePlatform?: ImportedIdeaSourcePlatform;
+  sourceLabel?: string;
+  extractedPlaceName?: string;
 }
 
 export interface WeatherPlanDay {

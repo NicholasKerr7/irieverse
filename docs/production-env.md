@@ -188,5 +188,5 @@ Then test:
 - Map route lines follow roads or gracefully fall back when the routing service is unavailable.
 - `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, and `apple-touch-icon.png` return `200`.
 - Manifest shortcuts, screenshots, and the PWA share target are present.
-- `?tab=saved&shared_url=...&shared_title=...&shared_text=...` opens Saved with the import form prefilled, then removes the share params from the URL.
+- `?tab=saved&shared_url=...&shared_title=...&shared_text=...` opens Saved with the import form prefilled and auto-categorized, then removes the share params from the URL.
 - App still works with any optional variable removed.

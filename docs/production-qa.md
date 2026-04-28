@@ -31,7 +31,7 @@ Coverage:
 - PWA assets: `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `sw.js`
 - Mobile screens: Home, Explore places, Explore experiences, Map, Saved import, Trips
 - Desktop screens: Home hero navigation, Map
-- User flows: save destination, import saved idea, add saved idea to trip, export ICS, share-link availability
+- User flows: save destination, auto-parse/import saved idea, add saved idea to trip, export ICS, share-link availability
 - Supabase sharing: when a share link is created, the test verifies the row is readable, marks it as production QA data, deletes it through the QA-only delete policy, and verifies the row is gone
 - Flight proxy: `/api/flights` returns either AviationStack data or an explicit fallback meta state
 - Map routing: `/api/road-route` returns OSRM road geometry, distance, duration, and maneuver steps

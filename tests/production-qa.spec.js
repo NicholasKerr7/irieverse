@@ -52,6 +52,8 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
   await openSharedIdea(page);
   await expect(page.getByText("Your Jamaica boards.")).toBeVisible();
   await expect(page.getByText("Shared idea ready to save")).toBeVisible();
+  await expect(page.getByText("Google Maps").first()).toBeVisible();
+  await expect(page.getByText("Food").first()).toBeVisible();
   await expect(page.locator('input[type="url"]')).toHaveValue("https://maps.google.com/?q=Blue+Mountain+Coffee+Jamaica");
   await expect(page.locator('input[type="text"]')).toHaveValue("QA Blue Mountain coffee stop");
   await expect(page.locator("textarea")).toHaveValue("Production QA import idea attached to a Jamaica board.");

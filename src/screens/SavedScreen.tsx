@@ -8,15 +8,23 @@ import {
   MoveRight,
   Plus,
   Share2,
+  Sparkles,
   StickyNote,
   Trash2,
 } from "lucide-react";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
-import type { Destination, Experience, ImportedIdea, ImportedIdeaCategory } from "../types/travel";
+import type {
+  Destination,
+  Experience,
+  ImportedIdea,
+  ImportedIdeaCategory,
+  ImportedIdeaSourcePlatform,
+} from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassControl, glassControlMuted, glassField, glassPanel } from "../utils/glass";
+import { analyzeImportLink, type ImportLinkSuggestion } from "../utils/importIntelligence";
 import { isStringRecord, readJsonFromStorage, writeJsonToStorage } from "../utils/storage";
 
 type SavedScreenProps = {
@@ -53,13 +61,28 @@ const IMPORT_CATEGORIES: Array<{ id: ImportedIdeaCategory; label: string }> = [
   { id: "nightlife", label: "Nightlife" },
 ];
 
-const DEFAULT_IMPORT_FORM = {
+type ImportFormState = {
+  title: string;
+  url: string;
+  note: string;
+  category: ImportedIdeaCategory;
+  collectionId: CollectionId;
+  linkedDestinationId: string;
+  sourcePlatform: ImportedIdeaSourcePlatform;
+  sourceLabel: string;
+  extractedPlaceName: string;
+};
+
+const DEFAULT_IMPORT_FORM: ImportFormState = {
   title: "",
   url: "",
   note: "",
-  category: "food" as ImportedIdeaCategory,
-  collectionId: "food" as CollectionId,
+  category: "food",
+  collectionId: "food",
   linkedDestinationId: "",
+  sourcePlatform: "manual",
+  sourceLabel: "",
+  extractedPlaceName: "",
 };
 
 export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
@@ -69,6 +92,16 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   );
   const [statusMessage, setStatusMessage] = useState("");
   const [importForm, setImportForm] = useState(DEFAULT_IMPORT_FORM);
+  const [importAutoTitle, setImportAutoTitle] = useState("");
+  const [importAutoDestinationId, setImportAutoDestinationId] = useState("");
+  const [importCategoryEdited, setImportCategoryEdited] = useState(false);
+  const [importCollectionEdited, setImportCollectionEdited] = useState(false);
+  const [importLocationEdited, setImportLocationEdited] = useState(false);
+
+  const importSuggestion = useMemo(
+    () => analyzeImportLink(importForm),
+    [importForm]
+  );
 
   useEffect(() => {
     writeJsonToStorage(STORAGE_KEY_COLLECTIONS, collectionAssignments);
@@ -78,16 +111,25 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     const sharedIdea = getSharedIdeaFromUrl();
     if (!sharedIdea) return;
 
-    const category = inferImportedCategory(sharedIdea);
+    const suggestion = analyzeImportLink(sharedIdea);
     setImportForm((prev) => ({
       ...prev,
-      title: sharedIdea.title || prev.title,
+      title: suggestion.title || sharedIdea.title || prev.title,
       url: sharedIdea.url || prev.url,
       note: sharedIdea.note || prev.note,
-      category,
-      collectionId: categoryToCollection(category),
+      category: suggestion.category,
+      collectionId: categoryToCollection(suggestion.category),
+      linkedDestinationId: suggestion.linkedDestinationId || prev.linkedDestinationId,
+      sourcePlatform: suggestion.sourcePlatform,
+      sourceLabel: suggestion.sourceLabel,
+      extractedPlaceName: suggestion.extractedPlaceName,
     }));
-    setActiveCollection(categoryToCollection(category));
+    setImportAutoTitle(suggestion.title);
+    setImportAutoDestinationId(suggestion.linkedDestinationId);
+    setImportCategoryEdited(false);
+    setImportCollectionEdited(false);
+    setImportLocationEdited(false);
+    setActiveCollection(categoryToCollection(suggestion.category));
     setStatusMessage("Shared idea ready to save");
     removeShareTargetParams();
   }, []);
@@ -192,12 +234,74 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     }
   };
 
+  const getSuggestedImportFields = (prev: ImportFormState, suggestion: ImportLinkSuggestion) => {
+    const category = importCategoryEdited ? prev.category : suggestion.category;
+    const shouldUseSuggestedLocation =
+      !importLocationEdited && (!prev.linkedDestinationId || prev.linkedDestinationId === importAutoDestinationId);
+
+    return {
+      category,
+      collectionId: importCollectionEdited ? prev.collectionId : categoryToCollection(category),
+      linkedDestinationId: shouldUseSuggestedLocation ? suggestion.linkedDestinationId : prev.linkedDestinationId,
+      sourcePlatform: suggestion.sourcePlatform,
+      sourceLabel: suggestion.sourceLabel,
+      extractedPlaceName: suggestion.extractedPlaceName,
+    };
+  };
+
+  const handleImportUrlChange = (url: string) => {
+    const suggestion = analyzeImportLink({ url, note: importForm.note });
+
+    setImportForm((prev) => {
+      const shouldUseSuggestedTitle = !prev.title.trim() || prev.title === importAutoTitle;
+      return {
+        ...prev,
+        url,
+        title: shouldUseSuggestedTitle ? suggestion.title : prev.title,
+        ...getSuggestedImportFields(prev, suggestion),
+      };
+    });
+    setImportAutoTitle(suggestion.title);
+    setImportAutoDestinationId(suggestion.linkedDestinationId);
+  };
+
+  const handleImportTitleChange = (title: string) => {
+    const suggestion = analyzeImportLink({ url: importForm.url, title, note: importForm.note });
+
+    setImportForm((prev) => {
+      return {
+        ...prev,
+        title,
+        ...getSuggestedImportFields(prev, suggestion),
+      };
+    });
+    if (!importLocationEdited) {
+      setImportAutoDestinationId(suggestion.linkedDestinationId);
+    }
+  };
+
+  const handleImportNoteChange = (note: string) => {
+    const suggestion = analyzeImportLink({ url: importForm.url, title: importForm.title, note });
+
+    setImportForm((prev) => {
+      return {
+        ...prev,
+        note,
+        ...getSuggestedImportFields(prev, suggestion),
+      };
+    });
+    if (!importLocationEdited) {
+      setImportAutoDestinationId(suggestion.linkedDestinationId);
+    }
+  };
+
   const handleImportSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const title = importForm.title.trim();
     const url = importForm.url.trim();
     const note = importForm.note.trim();
-    const fallbackTitle = inferTitleFromUrl(url) || note.slice(0, 56);
+    const suggestion = analyzeImportLink({ url, title, note });
+    const fallbackTitle = suggestion.title || note.slice(0, 56);
 
     if (!title && !url && !note) {
       setStatusMessage("Add a link, title, or note before saving.");
@@ -211,20 +315,46 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       category: importForm.category,
       collectionId: importForm.collectionId,
       linkedDestinationId: importForm.linkedDestinationId || undefined,
+      sourcePlatform: suggestion.sourcePlatform,
+      sourceLabel: suggestion.sourceLabel,
+      extractedPlaceName: suggestion.extractedPlaceName || importForm.extractedPlaceName || undefined,
     });
     setImportForm({
       ...DEFAULT_IMPORT_FORM,
       category: importForm.category,
       collectionId: categoryToCollection(importForm.category),
     });
+    setImportAutoTitle("");
+    setImportAutoDestinationId("");
+    setImportCategoryEdited(false);
+    setImportCollectionEdited(false);
+    setImportLocationEdited(false);
     setStatusMessage("Imported idea saved");
   };
 
   const handleCategoryChange = (category: ImportedIdeaCategory) => {
+    setImportCategoryEdited(true);
+    setImportCollectionEdited(false);
     setImportForm((prev) => ({
       ...prev,
       category,
       collectionId: categoryToCollection(category),
+    }));
+  };
+
+  const handleImportCollectionChange = (collectionId: CollectionId) => {
+    setImportCollectionEdited(true);
+    setImportForm((prev) => ({
+      ...prev,
+      collectionId,
+    }));
+  };
+
+  const handleImportLocationChange = (linkedDestinationId: string) => {
+    setImportLocationEdited(true);
+    setImportForm((prev) => ({
+      ...prev,
+      linkedDestinationId,
     }));
   };
 
@@ -277,7 +407,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
               <input
                 type="url"
                 value={importForm.url}
-                onChange={(event) => setImportForm((prev) => ({ ...prev, url: event.target.value }))}
+                onChange={(event) => handleImportUrlChange(event.target.value)}
                 placeholder="https://maps.google.com/... or social link"
                 className="min-w-0 flex-1 bg-transparent text-slate-100 placeholder:text-slate-600 focus:outline-none"
               />
@@ -289,19 +419,23 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
             <input
               type="text"
               value={importForm.title}
-              onChange={(event) => setImportForm((prev) => ({ ...prev, title: event.target.value }))}
+              onChange={(event) => handleImportTitleChange(event.target.value)}
               placeholder="Jerk stop in Port Antonio"
               className={classNames("rounded-2xl px-3 py-2 text-slate-100 placeholder:text-slate-600 focus:outline-none", glassField)}
             />
           </label>
         </div>
 
+        {importForm.url && importSuggestion.sourcePlatform !== "manual" && (
+          <ImportIntelligenceSummary suggestion={importSuggestion} />
+        )}
+
         <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_0.8fr_0.8fr]">
           <label className="flex flex-col gap-2 text-sm text-slate-300">
             <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Note</span>
             <textarea
               value={importForm.note}
-              onChange={(event) => setImportForm((prev) => ({ ...prev, note: event.target.value }))}
+              onChange={(event) => handleImportNoteChange(event.target.value)}
               placeholder="Why this belongs in the trip"
               rows={3}
               className={classNames("resize-none rounded-2xl px-3 py-2 text-slate-100 placeholder:text-slate-600 focus:outline-none", glassField)}
@@ -312,7 +446,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
             <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Collection</span>
             <select
               value={importForm.collectionId}
-              onChange={(event) => setImportForm((prev) => ({ ...prev, collectionId: event.target.value as CollectionId }))}
+              onChange={(event) => handleImportCollectionChange(event.target.value as CollectionId)}
               className={classNames("rounded-2xl px-3 py-2 text-slate-100 focus:outline-none", glassField)}
             >
               {COLLECTIONS.filter((collection) => collection.id !== "all").map((collection) => (
@@ -327,7 +461,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
             <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Map location</span>
             <select
               value={importForm.linkedDestinationId}
-              onChange={(event) => setImportForm((prev) => ({ ...prev, linkedDestinationId: event.target.value }))}
+              onChange={(event) => handleImportLocationChange(event.target.value)}
               className={classNames("rounded-2xl px-3 py-2 text-slate-100 focus:outline-none", glassField)}
             >
               <option value="">Attach later</option>
@@ -442,6 +576,41 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   );
 }
 
+function ImportIntelligenceSummary({ suggestion }: { suggestion: ImportLinkSuggestion }) {
+  const linkedDestination = suggestion.linkedDestinationId
+    ? DESTINATIONS.find((destination) => destination.id === suggestion.linkedDestinationId)
+    : null;
+
+  return (
+    <div className={classNames("mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-3", glassControlMuted)}>
+      <div className="flex flex-col gap-2 text-xs text-slate-300 sm:flex-row sm:items-center sm:justify-between">
+        <span className="inline-flex items-center gap-2 font-semibold text-cyan-100">
+          <Sparkles className="h-3.5 w-3.5" />
+          {suggestion.sourceLabel}
+        </span>
+        <span className="text-slate-500">
+          {suggestion.confidence === "high" ? "High confidence" : suggestion.confidence === "medium" ? "Medium confidence" : "Low confidence"}
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {suggestion.extractedPlaceName && (
+          <span className="rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1 text-[0.68rem] text-slate-200">
+            {suggestion.extractedPlaceName}
+          </span>
+        )}
+        <span className="rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1 text-[0.68rem] text-slate-200">
+          {formatImportedCategory(suggestion.category)}
+        </span>
+        {linkedDestination && (
+          <span className="rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1 text-[0.68rem] text-slate-200">
+            {linkedDestination.name}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function SavedCard({
   savedItem,
   onAddToTrip,
@@ -469,7 +638,10 @@ function SavedCard({
       ? savedItem.item.region
       : savedItem.kind === "experience"
         ? `${savedItem.item.region} · ${savedItem.item.location}`
-        : `${formatImportedCategory(savedItem.item.category)} · ${linkedDestination?.name ?? "Attach map later"}`;
+        : [
+            savedItem.item.sourceLabel || formatImportedCategory(savedItem.item.category),
+            savedItem.item.extractedPlaceName || linkedDestination?.name || "Attach map later",
+          ].join(" · ");
   const image =
     savedItem.kind === "place"
       ? savedItem.item.heroImage
@@ -481,7 +653,7 @@ function SavedCard({
       ? savedItem.item.headline
       : savedItem.kind === "experience"
         ? savedItem.item.description
-        : savedItem.item.note || savedItem.item.url || "Manual Jamaica idea";
+        : savedItem.item.note || savedItem.item.extractedPlaceName || savedItem.item.url || "Manual Jamaica idea";
 
   return (
     <article className={classNames("overflow-hidden rounded-3xl", glassCard)}>
@@ -646,16 +818,6 @@ function formatImportedCategory(category: ImportedIdeaCategory): string {
   return IMPORT_CATEGORIES.find((item) => item.id === category)?.label ?? "Idea";
 }
 
-function inferTitleFromUrl(url: string): string {
-  if (!url) return "";
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, "");
-    return `${host} Jamaica idea`;
-  } catch {
-    return "";
-  }
-}
-
 function getSharedIdeaFromUrl(): { title: string; url: string; note: string } | null {
   if (typeof window === "undefined") return null;
 
@@ -668,7 +830,7 @@ function getSharedIdeaFromUrl(): { title: string; url: string; note: string } | 
   if (!title && !text && !inferredUrl) return null;
 
   return {
-    title: normalizeSharedText(title) || inferTitleFromUrl(inferredUrl),
+    title: normalizeSharedText(title) || analyzeImportLink({ url: inferredUrl, note: text }).title,
     url: inferredUrl,
     note: normalizeSharedText(removeUrlFromText(text, inferredUrl)),
   };
@@ -693,17 +855,6 @@ function findFirstUrl(text: string): string {
 
 function removeUrlFromText(text: string, url: string): string {
   return url ? text.replace(url, "") : text;
-}
-
-function inferImportedCategory(sharedIdea: { title: string; url: string; note: string }): ImportedIdeaCategory {
-  const text = `${sharedIdea.title} ${sharedIdea.url} ${sharedIdea.note}`.toLowerCase();
-  if (/restaurant|jerk|food|cookshop|coffee|bar|cafe|dining|eat/.test(text)) return "food";
-  if (/beach|cove|sand|sea|snorkel|swim|waterfall|lagoon/.test(text)) return "beach";
-  if (/hotel|resort|villa|stay|airbnb|booking|expedia/.test(text)) return "hotel";
-  if (/music|dancehall|reggae|sound|festival|party|club|nightlife/.test(text)) return "music";
-  if (/museum|culture|history|heritage|gallery|art|maroon/.test(text)) return "culture";
-  if (/hidden|secret|local|gem|maps\.google|google\.com\/maps/.test(text)) return "hidden-gem";
-  return "hidden-gem";
 }
 
 function removeShareTargetParams() {

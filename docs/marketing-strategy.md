@@ -13,7 +13,7 @@ IrieVerse is far enough along to market as a focused product, not just a concept
 - It is Jamaica-specific instead of a generic travel planner.
 - It combines discovery, saved ideas, route planning, budget planning, and itinerary export.
 - The map is not decorative; it supports real road-route planning.
-- The Saved flow supports pasted travel ideas and PWA share-target imports.
+- The Saved flow supports pasted travel ideas, PWA share-target imports, and automatic link parsing for source, place, and category.
 - The app works with fallback data, so demos do not depend on every live API being configured.
 
 ## Audience
@@ -23,7 +23,7 @@ IrieVerse is far enough along to market as a focused product, not just a concept
 | First-time Jamaica travelers | They want confidence choosing regions, activities, and routes. | Plan Jamaica by vibe, route, and budget. |
 | Couples and friend groups | They need a shared plan that feels exciting and practical. | Save ideas, build trips, export calendar plans, share trips. |
 | Diaspora travelers | They may know the island culturally but still need modern planning tools. | Jamaica-first discovery with culture, food, nightlife, and route awareness. |
-| Travel creators | They save ideas from social platforms and need a place to organize them. | Paste links into Saved and add them to a trip. |
+| Travel creators | They save ideas from social platforms and need a place to organize them. | Paste links into Saved, auto-categorize them, and add them to a trip. |
 | Boutique travel planners | They need a quick visual way to explain routes and day plans. | Map routes, daily plans, budget, events, bookings, and shareable links. |
 
 ## Feature Pillars
@@ -48,7 +48,7 @@ Screenshots:
 
 ### 3. Save Ideas From Anywhere
 
-Use the Saved import screenshot to explain the first version of the Roamy-style import flow: paste a link, add notes, select category, save to a collection, and later add it to a trip.
+Use the Saved import screenshot to explain the first version of the Roamy-style import flow: paste a Google Maps, TikTok, Instagram, YouTube, or article link; let IrieVerse infer the source, title, place, category, and Jamaica region; save to a collection; and later add it to a trip.
 
 Screenshot:
 

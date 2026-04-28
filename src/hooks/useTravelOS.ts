@@ -948,7 +948,10 @@ function isImportedIdea(value: unknown): value is ImportedIdea {
     typeof idea.category === "string" &&
     typeof idea.collectionId === "string" &&
     typeof idea.createdAt === "string" &&
-    (idea.linkedDestinationId === undefined || typeof idea.linkedDestinationId === "string")
+    (idea.linkedDestinationId === undefined || typeof idea.linkedDestinationId === "string") &&
+    (idea.sourcePlatform === undefined || typeof idea.sourcePlatform === "string") &&
+    (idea.sourceLabel === undefined || typeof idea.sourceLabel === "string") &&
+    (idea.extractedPlaceName === undefined || typeof idea.extractedPlaceName === "string")
   );
 }
 

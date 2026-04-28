@@ -4,7 +4,7 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 ## Features
 - Destination + experience explorer with vibe filters and search
 - Interactive map powered by MapLibre with road-following route overlays
-- Saved boards for places, experiences, pasted links, and manual Jamaica ideas
+- Saved boards with automatic Google Maps, TikTok, Instagram, YouTube, and article link parsing
 - PWA share target for sending external travel links into the Saved import flow
 - Region-aware trip planner with editable route order, route pacing, drive estimates, budget, dates, and ICS export
 - Trip integration status panel for Supabase sharing, booking source, flight source, road routes, and events
@@ -44,7 +44,7 @@ See `docs/production-env.md` for production platform setup, booking API response
 - The map driving overlay uses the serverless route at `/api/road-route` for road geometry and maneuver previews.
 - The Trips screen labels live integrations and fallbacks so production QA can verify what is connected.
 - PWA shortcuts open app tabs directly with `?tab=explore`, `?tab=map`, and `?tab=trips`.
-- Installed PWA share actions open `?tab=saved` with shared title/text/url prefilled for import.
+- Installed PWA share actions open `?tab=saved` with shared title/text/url prefilled and categorized for import.
 - Plain static hosting: run `npm run build` and serve the `dist` folder (e.g., `npx serve dist`).
 
 ## Launch checks
