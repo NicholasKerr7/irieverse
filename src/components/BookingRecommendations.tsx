@@ -160,10 +160,10 @@ function formatBookingReason(reason?: string): string {
     "no-amadeus-offers": "No live hotel matches came back for this combination.",
     "amadeus-request-failed": "Live hotel lookup failed.",
     "request-failed": "Stay lookup failed.",
-    "custom-endpoint": "Stay data is available, but source details are limited.",
+    "custom-endpoint": "Stay details are limited right now.",
     "endpoint-configured": "Stay data is connected.",
     "local-sample-data": "Curated examples are active.",
   };
 
-  return reason ? labels[reason] ?? `${reason.replace(/-/g, " ")}.` : "Live stay data is not available yet.";
+  return reason ? labels[reason] ?? "Stay details are limited right now." : "Live stay data is not available yet.";
 }

@@ -65,7 +65,7 @@ export function HeroSection({
           </div>
           <div className="flex flex-col">
             <span className="text-[0.7rem] uppercase tracking-[0.24em] text-cyan-200">IrieVerse</span>
-            <span className="text-xs text-slate-300/80">Jamaica Travel OS</span>
+            <span className="text-xs text-slate-300/80">Jamaica trip planner</span>
           </div>
         </div>
 
@@ -95,7 +95,7 @@ export function HeroSection({
           </p>
 
           <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-normal text-slate-100 sm:text-5xl lg:text-6xl">
-            IrieVerse Travel OS
+            Plan Jamaica with IrieVerse
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
             Plan around Jamaica's real regions, road times, weather shifts, food stops,

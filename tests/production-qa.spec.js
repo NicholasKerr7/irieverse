@@ -26,7 +26,7 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
 
   await openTab(page, "");
   await expect(page).toHaveTitle(/IrieVerse/);
-  await expect(page.getByText("IrieVerse Travel OS").first()).toBeVisible();
+  await expect(page.getByText("Plan Jamaica with IrieVerse").first()).toBeVisible();
   await expect(page.getByTestId("mobile-bottom-nav")).toBeVisible();
   await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
   await screenshot(page, "mobile-home.png");

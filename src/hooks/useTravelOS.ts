@@ -673,7 +673,7 @@ export function useTravelOS() {
 
   const handleShareTrip = async () => {
     if (!collaborationReady) {
-      setTripStatusMessage("Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable live sharing.");
+      setTripStatusMessage("Share links are not connected yet. Calendar export still works.");
       setCollaborationErrorCode("not-configured");
       return;
     }
@@ -802,7 +802,7 @@ export function useTravelOS() {
       setIsSyncingTrip(true);
       saveTripState(tripId, payload)
         .then(() => {
-          setTripStatusMessage("Trip synced");
+          setTripStatusMessage("Trip updated");
           setCollaborationErrorCode(null);
         })
         .catch((error) => {

@@ -645,7 +645,7 @@ function RouteDayChips({
                   "h-2 w-2 rounded-full",
                   isSyncing ? "animate-pulse bg-cyan-300" : isFallback ? "bg-amber-300" : "bg-emerald-300"
                 )}
-                title={isSyncing ? "Road route syncing" : isFallback ? "Estimated preview" : "Road-following route"}
+                title={isSyncing ? "Road route loading" : isFallback ? "Estimated route" : "Road-aware route"}
               />
             </button>
           );
@@ -724,8 +724,8 @@ function RouteDirectionsPanel({
       ? "road"
       : "fallback";
   const statusText = hasRoadSteps
-    ? "Road-following OSRM route with maneuver previews."
-    : selectedRouteDetail?.fallbackMessage ?? "Road-following directions are not available yet.";
+    ? "Road-aware route with turn previews."
+    : selectedRouteDetail?.fallbackMessage ?? "Road-aware directions are not available yet.";
 
   return (
     <div
@@ -741,7 +741,7 @@ function RouteDirectionsPanel({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[0.6rem] uppercase tracking-[0.22em] text-cyan-200/75">
-            {hasRoadSteps ? "Road-following steps" : "Route fallback"}
+            {hasRoadSteps ? "Road-aware steps" : "Estimated route"}
           </p>
           <h4 className="mt-1 text-sm font-semibold text-slate-100">
             {selectedRouteLeg.leg.fromName} to {selectedRouteLeg.leg.toName}
@@ -758,7 +758,7 @@ function RouteDirectionsPanel({
       </div>
 
       {routeStatus.isLoading && !selectedRouteDetail && (
-        <p className="mt-3 text-xs text-slate-300">Syncing road geometry and maneuvers...</p>
+        <p className="mt-3 text-xs text-slate-300">Finding the best road shape...</p>
       )}
 
       {hasRoadSteps && (
@@ -796,7 +796,7 @@ function RouteDirectionsPanel({
 
       {hiddenStepCount > 0 && (
         <p className="mt-3 text-xs text-slate-400">
-          {hiddenStepCount} more maneuver{hiddenStepCount === 1 ? "" : "s"} available in the road route. Open Maps for full turn-by-turn guidance.
+          {hiddenStepCount} more turn preview{hiddenStepCount === 1 ? "" : "s"} available for this route. Open Maps for full navigation.
         </p>
       )}
 
@@ -804,7 +804,7 @@ function RouteDirectionsPanel({
         <div className="mt-3 flex gap-2 rounded-xl border border-amber-300/20 bg-slate-950/42 px-3 py-2 text-xs leading-5 text-amber-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
-            Showing an estimated preview line for this leg. Use the Maps handoff for live traffic, complete turn-by-turn directions, and provider-specific rerouting.
+            Showing an estimated route for this leg. Open in Maps for live traffic and full turn-by-turn directions.
           </p>
         </div>
       )}

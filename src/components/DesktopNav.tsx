@@ -30,7 +30,7 @@ export function DesktopNav({ activeTab, onChange, theme, onToggleTheme }: Deskto
           </span>
           <span>
             <span className="block text-sm font-semibold tracking-[0.22em] text-cyan-100">IRIEVERSE</span>
-            <span className="block text-xs text-slate-400">Jamaica Travel OS</span>
+            <span className="block text-xs text-slate-400">Jamaica trip planner</span>
           </span>
         </button>
 

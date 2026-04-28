@@ -4,13 +4,13 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  BedDouble,
   CalendarDays,
   Check,
   CheckCircle2,
   CloudOff,
   CloudSun,
   Clock3,
-  Database,
   Download,
   Heart,
   MapPinned,
@@ -550,7 +550,7 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
       body: sharingStatus.body,
     },
     {
-      icon: Database,
+      icon: BedDouble,
       title: "Stays",
       status: bookingStatus.status,
       tone: bookingStatus.tone,
@@ -590,8 +590,8 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
       <div className="flex items-center gap-3">
         <CheckCircle2 className="h-5 w-5 text-cyan-300" />
         <div>
-          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Planning confidence</p>
-          <h2 className="text-lg font-semibold">What is ready for this trip</h2>
+          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Trip readiness</p>
+          <h2 className="text-lg font-semibold">What your plan can use today</h2>
         </div>
       </div>
 
@@ -619,15 +619,15 @@ function getSharingIntegrationStatus(app: TravelOS): { status: string; tone: Int
     return {
       status: "Setup needed",
       tone: "error",
-      body: "The share table is not ready yet. Run the Supabase schema, then retry sharing.",
+      body: "Share links need one more setup step. Calendar export still works.",
     };
   }
 
   if (app.collaborationErrorCode === "permission-denied") {
     return {
-      status: "Permission issue",
+      status: "Sharing blocked",
       tone: "error",
-      body: "Share links are blocked by database access rules. Re-run the sharing schema.",
+      body: "Share links are blocked right now. Calendar export still works while this is fixed.",
     };
   }
 
@@ -635,7 +635,7 @@ function getSharingIntegrationStatus(app: TravelOS): { status: string; tone: Int
     return {
       status: "Needs check",
       tone: "error",
-      body: "Cloud sharing is connected, but the last share sync did not complete.",
+      body: "Share links are connected, but the latest update did not finish.",
     };
   }
 
@@ -650,7 +650,7 @@ function getSharingIntegrationStatus(app: TravelOS): { status: string; tone: Int
   return {
     status: "Ready",
     tone: "live",
-    body: "Share links can create, reload, and sync trip plans.",
+    body: "Share links can be created and reopened.",
   };
 }
 
@@ -1085,23 +1085,23 @@ function getShareSetupNotice(app: TravelOS): { title: string; body: string; tone
   if (!app.collaborationReady) {
     return {
       title: "Cloud sharing not connected",
-      body: "Calendar export still works. Add the Supabase public URL and anon key before creating live share links.",
+      body: "Calendar export still works. Share links will appear once cloud sharing is connected.",
       tone: "fallback",
     };
   }
 
   if (app.collaborationErrorCode === "schema-missing") {
     return {
-      title: "Supabase trips table missing",
-      body: "Run supabase/schema.sql in the Supabase SQL editor, or relink the CLI and run supabase db push. Expected table: public.trips.",
+      title: "Share setup incomplete",
+      body: "Share links need one more setup step. Calendar export still works while this is fixed.",
       tone: "error",
     };
   }
 
   if (app.collaborationErrorCode === "permission-denied") {
     return {
-      title: "Supabase policy blocked sharing",
-      body: "The table exists, but anonymous insert/read/update policies are not active. Re-run the trip sharing schema.",
+      title: "Share links blocked",
+      body: "Cloud sharing is connected, but share links are blocked right now. Calendar export still works.",
       tone: "error",
     };
   }
@@ -1166,18 +1166,18 @@ function formatIntegrationReason(reason?: string): string {
     "no-amadeus-offers": "No live hotel matches came back for this combination.",
     "amadeus-request-failed": "Live hotel lookup failed.",
     "request-failed": "The latest lookup failed.",
-    "custom-endpoint": "Stay data is available, but source details are limited.",
+    "custom-endpoint": "Stay details are limited right now.",
     "endpoint-configured": "Stay data is connected.",
     "local-sample-data": "Curated examples are active.",
     "pending-flight-proxy": "Flight lookup is getting ready.",
     "missing-aviationstack-key": "Live flight schedules are not connected yet.",
     "aviationstack-request-failed": "Live flight lookup failed.",
     "flight-proxy-request-failed": "Flight lookup failed.",
-    "missing-flight-metadata": "Flight data is available, but source details are limited.",
+    "missing-flight-metadata": "Flight details are limited right now.",
     "flight-data-unavailable": "Flight data is unavailable.",
   };
 
-  return reason ? labels[reason] ?? `${reason.replace(/-/g, " ")}.` : "Live travel data is not available yet.";
+  return reason ? labels[reason] ?? "Travel details are limited right now." : "Live travel data is not available yet.";
 }
 
 function getCompletedStepIndex(app: TravelOS) {

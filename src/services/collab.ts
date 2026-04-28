@@ -60,7 +60,7 @@ export function getCollaborationErrorCode(error: unknown): CollaborationErrorCod
 
 export function getCollaborationErrorMessage(error: unknown): string {
   if (error instanceof CollaborationError) return error.message;
-  return "Supabase sharing is unavailable right now.";
+  return "Share links are unavailable right now. Calendar export still works.";
 }
 
 export async function saveTripState(
@@ -70,7 +70,7 @@ export async function saveTripState(
   if (!supabase) {
     throw new CollaborationError(
       "not-configured",
-      "Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable live sharing."
+      "Share links are not connected yet. Calendar export still works."
     );
   }
 
@@ -90,7 +90,7 @@ export async function saveTripState(
     throw toCollaborationError(
       error,
       "empty-response",
-      "Supabase accepted the share request but did not return a trip id."
+      "The share link was not created. Try again in a moment."
     );
   }
 
@@ -101,7 +101,7 @@ export async function fetchTripState(tripId: string): Promise<TripPayload> {
   if (!supabase) {
     throw new CollaborationError(
       "not-configured",
-      "Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to load shared trips."
+      "Shared trips are not connected yet."
     );
   }
   const { data, error } = await supabase
@@ -179,7 +179,7 @@ function toCollaborationError(
   ) {
     return new CollaborationError(
       "schema-missing",
-      "Supabase trips table is missing from the API schema. Apply supabase/schema.sql in the Supabase SQL editor or run supabase db push, then retry sharing.",
+      "Share links need one more setup step. Calendar export still works.",
       error
     );
   }
@@ -191,7 +191,7 @@ function toCollaborationError(
   ) {
     return new CollaborationError(
       "permission-denied",
-      "Supabase trips table exists, but RLS policies are blocking sharing. Re-run the trip sharing migrations.",
+      "Share links are blocked right now. Calendar export still works.",
       error
     );
   }
