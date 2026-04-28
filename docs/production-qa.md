@@ -7,9 +7,10 @@ Date: 2026-04-28
 Result: Passed live table probe.
 
 - Linked project: `divgxhxckrthasurbdqz` (`irieverse`).
-- `supabase db lint --linked` reports no schema errors.
+- `supabase migration list` confirms local and remote migration history match:
+  `20260427120000` and `20260427195500`.
 - Live Supabase REST probe created a `trips` row, read it back through the anon API, updated it, deleted it through the QA-only policy, and verified the row was gone.
-- `supabase migration list` and `supabase db push --dry-run` need the current remote Postgres password; the linked CLI login currently returns password authentication failure for `cli_login_postgres`.
+- `supabase db lint --linked` and `supabase db push --dry-run` still need a valid direct Postgres CLI login; the linked CLI login currently returns password authentication failure for `cli_login_postgres`.
 
 ## Full QA run
 
