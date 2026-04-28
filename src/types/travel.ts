@@ -86,6 +86,18 @@ export interface ImportedIdea {
   linkedDestinationId?: string;
 }
 
+export interface WeatherPlanDay {
+  date: string;
+  condition: string;
+  summary: string;
+  maxTempC: number;
+  minTempC: number;
+  precipitationProbability: number;
+  precipitationMm: number;
+  weatherCode: number;
+  planningSignal: "clear" | "cloudy" | "rain" | "storm" | "hot";
+}
+
 export interface PlannerDay {
   day: number;
   destinationId: string;
@@ -100,6 +112,8 @@ export interface PlannerDay {
   driveMinutesFromPrevious: number;
   transferSeverity: "easy" | "moderate" | "long";
   energyLevel: "soft" | "balanced" | "high";
+  weather?: WeatherPlanDay;
+  weatherNote?: string;
   experience?: Experience;
 }
 

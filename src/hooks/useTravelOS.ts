@@ -29,6 +29,7 @@ import type {
   OriginAirport,
   QuickFact,
   Vibe,
+  WeatherPlanDay,
 } from "../types/travel";
 import { formatDriveTime, formatLocalTimeForAirport } from "../utils/format";
 import {
@@ -131,6 +132,7 @@ export function useTravelOS() {
   const [originAirportId, setOriginAirportId] = useState(() => getInitialOriginAirportId());
   const [hasUserPreferredOrigin, setHasUserPreferredOrigin] = useState(() => Boolean(getStoredOriginAirportId()));
   const [liveFacts, setLiveFacts] = useState<QuickFact[] | null>(null);
+  const [weatherPlan, setWeatherPlan] = useState<WeatherPlanDay[]>([]);
   const [isFetchingFacts, setIsFetchingFacts] = useState(false);
   const [flightOptions, setFlightOptions] = useState<FlightOption[]>([]);
   const [flightSourceMeta, setFlightSourceMeta] = useState<FlightSourceMeta>(getInitialFlightSourceMeta);
@@ -230,11 +232,14 @@ export function useTravelOS() {
 
     async function loadFacts() {
       setIsFetchingFacts(true);
+      setWeatherPlan([]);
       try {
         const params = new URLSearchParams({
           latitude: destination.latitude.toString(),
           longitude: destination.longitude.toString(),
           current_weather: "true",
+          daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum",
+          forecast_days: "16",
           timezone: "auto",
         });
 
@@ -246,6 +251,7 @@ export function useTravelOS() {
         }
         const data = await response.json();
         if (cancelled) return;
+        const weatherPlanDays = parseWeatherPlanDays(data);
 
         const weather = data.current_weather;
         const weatherFact: QuickFact | null = weather
@@ -284,9 +290,11 @@ export function useTravelOS() {
         ];
 
         setLiveFacts(facts);
+        setWeatherPlan(weatherPlanDays);
       } catch (error) {
         if (!cancelled) {
           setLiveFacts(null);
+          setWeatherPlan([]);
         }
       } finally {
         if (!cancelled) {
@@ -457,8 +465,20 @@ export function useTravelOS() {
       plannerVibe,
       plannerBudget,
       plannerDays,
+      plannerStartDate,
+      weatherPlan,
     });
-  }, [destination, importedIdeas, manualRouteDestinationIds, plannerBudget, plannerDays, plannerVibe, savedPlaces]);
+  }, [
+    destination,
+    importedIdeas,
+    manualRouteDestinationIds,
+    plannerBudget,
+    plannerDays,
+    plannerStartDate,
+    plannerVibe,
+    savedPlaces,
+    weatherPlan,
+  ]);
 
   const defaultFlightFact: QuickFact = {
     label: `From ${originAirport.shortLabel ?? originAirport.code}`,
@@ -918,6 +938,103 @@ function isImportedIdea(value: unknown): value is ImportedIdea {
   );
 }
 
+type OpenMeteoDailyForecast = {
+  time?: unknown;
+  weather_code?: unknown;
+  weathercode?: unknown;
+  temperature_2m_max?: unknown;
+  temperature_2m_min?: unknown;
+  precipitation_probability_max?: unknown;
+  precipitation_sum?: unknown;
+};
+
+function parseWeatherPlanDays(payload: unknown): WeatherPlanDay[] {
+  if (typeof payload !== "object" || payload === null) return [];
+
+  const daily = (payload as { daily?: OpenMeteoDailyForecast }).daily;
+  if (!daily) return [];
+
+  const dates = readStringArray(daily.time);
+  const weatherCodes = readNumberArray(daily.weather_code ?? daily.weathercode);
+  const maxTemps = readNumberArray(daily.temperature_2m_max);
+  const minTemps = readNumberArray(daily.temperature_2m_min);
+  const precipitationProbabilities = readNumberArray(daily.precipitation_probability_max);
+  const precipitationTotals = readNumberArray(daily.precipitation_sum);
+
+  return dates.map((date, index) => {
+    const weatherCode = getNumberAt(weatherCodes, index, 3);
+    const maxTempC = getNumberAt(maxTemps, index, 0);
+    const minTempC = getNumberAt(minTemps, index, 0);
+    const precipitationProbability = getNumberAt(precipitationProbabilities, index, 0);
+    const precipitationMm = getNumberAt(precipitationTotals, index, 0);
+    const condition = describeWeatherCode(weatherCode);
+
+    return {
+      date,
+      condition,
+      summary: formatWeatherSummary(condition, maxTempC, precipitationProbability),
+      maxTempC,
+      minTempC,
+      precipitationProbability,
+      precipitationMm,
+      weatherCode,
+      planningSignal: getWeatherPlanningSignal(
+        weatherCode,
+        maxTempC,
+        precipitationProbability,
+        precipitationMm
+      ),
+    };
+  });
+}
+
+function readStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function readNumberArray(value: unknown): number[] {
+  return Array.isArray(value) ? value.map((item) => Number(item)) : [];
+}
+
+function getNumberAt(values: number[], index: number, fallback: number): number {
+  const value = values[index];
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function describeWeatherCode(code: number): string {
+  if (code === 0) return "Clear";
+  if (code >= 1 && code <= 3) return "Partly cloudy";
+  if (code === 45 || code === 48) return "Fog";
+  if (code >= 51 && code <= 57) return "Drizzle";
+  if (code >= 61 && code <= 67) return "Rain";
+  if (code >= 71 && code <= 77) return "Showers";
+  if (code >= 80 && code <= 82) return "Showers";
+  if (code >= 95) return "Thunderstorms";
+  return "Mixed skies";
+}
+
+function getWeatherPlanningSignal(
+  code: number,
+  maxTempC: number,
+  precipitationProbability: number,
+  precipitationMm: number
+): WeatherPlanDay["planningSignal"] {
+  if (code >= 95) return "storm";
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return "rain";
+  if (precipitationProbability >= 60 || precipitationMm >= 8) return "rain";
+  if (maxTempC >= 32) return "hot";
+  if (code !== 0) return "cloudy";
+  return "clear";
+}
+
+function formatWeatherSummary(condition: string, maxTempC: number, precipitationProbability: number): string {
+  const temperature = Number.isFinite(maxTempC) ? `${Math.round(maxTempC)}°C high` : "Forecast";
+  const rainChance = Number.isFinite(precipitationProbability)
+    ? `${Math.round(precipitationProbability)}% rain`
+    : "rain unknown";
+  return `${condition} · ${temperature} · ${rainChance}`;
+}
+
 function createImportedIdeaId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -976,6 +1093,8 @@ function buildItineraryICS(itinerary: ItineraryPlan, startDateISO: string, origi
     const description = [
       day.routeNote,
       day.driveMinutesFromPrevious ? `Transfer: ${day.distanceFromPreviousKm} km · ${formatDriveTime(day.driveMinutesFromPrevious)}` : null,
+      day.weather ? `Weather: ${day.weather.summary}` : null,
+      day.weatherNote ? `Weather planning: ${day.weatherNote}` : null,
       day.highlight,
       day.experience ? `Experience: ${day.experience.title}` : null,
       day.experience ? day.experience.description : null,

@@ -1,8 +1,9 @@
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
-import type { Destination, Experience, ImportedIdea, ItineraryPlan, Vibe } from "../types/travel";
+import type { Destination, Experience, ImportedIdea, ItineraryPlan, Vibe, WeatherPlanDay } from "../types/travel";
 import { formatDriveTime } from "./format";
 
 const EARTH_RADIUS_KM = 6371;
+const OUTDOOR_EXPERIENCE_PATTERN = /beach|boat|cliff|cove|cruise|falls|outdoor|river|snorkelling|swim|water/i;
 
 type BuildItineraryArgs = {
   destination: Destination;
@@ -12,7 +13,11 @@ type BuildItineraryArgs = {
   plannerVibe: Vibe;
   plannerBudget: number;
   plannerDays: number;
+  plannerStartDate?: string;
+  weatherPlan?: WeatherPlanDay[];
 };
+
+type EnergyLevel = "soft" | "balanced" | "high";
 
 export function buildItineraryPlan({
   destination,
@@ -22,6 +27,8 @@ export function buildItineraryPlan({
   plannerVibe,
   plannerBudget,
   plannerDays,
+  plannerStartDate,
+  weatherPlan = [],
 }: BuildItineraryArgs): ItineraryPlan {
   const safeDays = clampPlannerDays(plannerDays);
   const preferredDestinationIds = new Set<string>([
@@ -61,10 +68,23 @@ export function buildItineraryPlan({
     const transferSeverity = getTransferSeverity(driveMinutesFromPrevious);
     const destinationVibe = chooseDayVibe(tripDestination, plannerVibe, index);
     const energyLevel = chooseEnergyLevel(index, destinationVibe);
+    const weather = getWeatherForPlannerDay(weatherPlan, plannerStartDate, index);
+    const weatherAdjustedEnergyLevel = adjustEnergyForWeather(
+      energyLevel,
+      weather,
+      driveMinutesFromPrevious,
+      destinationVibe
+    );
     const highlight =
       tripDestination.highlights[index % tripDestination.highlights.length] ??
       tripDestination.highlights[0];
-    const matchedExperiences = rankExperiencesForDay(expPool, tripDestination, destinationVibe, energyLevel);
+    const matchedExperiences = rankExperiencesForDay(
+      expPool,
+      tripDestination,
+      destinationVibe,
+      weatherAdjustedEnergyLevel,
+      weather
+    );
     const experience = matchedExperiences[0] ?? expPool[index % expPool.length];
 
     return {
@@ -80,7 +100,9 @@ export function buildItineraryPlan({
       distanceFromPreviousKm,
       driveMinutesFromPrevious,
       transferSeverity,
-      energyLevel,
+      energyLevel: weatherAdjustedEnergyLevel,
+      weather,
+      weatherNote: buildWeatherNote(weather, energyLevel !== weatherAdjustedEnergyLevel),
       experience,
     };
   });
@@ -246,7 +268,7 @@ function chooseDayVibe(destination: Destination, plannerVibe: Vibe | "mixed", da
   return destination.vibes[dayIndex % destination.vibes.length] ?? destination.vibes[0] ?? "chill";
 }
 
-function chooseEnergyLevel(dayIndex: number, destinationVibe: string): "soft" | "balanced" | "high" {
+function chooseEnergyLevel(dayIndex: number, destinationVibe: string): EnergyLevel {
   if (dayIndex === 0 || dayIndex % 3 === 2) return "soft";
   if (destinationVibe === "nightlife" || destinationVibe === "adventure") return "high";
   return "balanced";
@@ -256,7 +278,8 @@ function rankExperiencesForDay(
   experiences: Experience[],
   destination: Destination,
   dayVibe: string,
-  energyLevel: "soft" | "balanced" | "high"
+  energyLevel: EnergyLevel,
+  weather?: WeatherPlanDay
 ): Experience[] {
   return experiences
     .map((experience) => ({
@@ -267,10 +290,92 @@ function rankExperiencesForDay(
         (experience.vibes.includes(dayVibe) ? 18 : 0) +
         (energyLevel === "high" && experience.energy === "high" ? 16 : 0) +
         (energyLevel === "soft" && experience.energy === "high" ? -28 : 0) +
+        getWeatherExperienceScore(experience, weather) +
         experience.rating,
     }))
     .sort((a, b) => b.score - a.score)
     .map((item) => item.experience);
+}
+
+function getWeatherForPlannerDay(
+  weatherPlan: WeatherPlanDay[],
+  plannerStartDate: string | undefined,
+  dayIndex: number
+): WeatherPlanDay | undefined {
+  if (!weatherPlan.length || !plannerStartDate) return undefined;
+
+  const plannedDate = addCalendarDaysToISODate(plannerStartDate, dayIndex);
+  if (!plannedDate) return undefined;
+
+  return weatherPlan.find((weather) => weather.date === plannedDate);
+}
+
+function addCalendarDaysToISODate(startDateISO: string, dayIndex: number): string | undefined {
+  const startDate = new Date(`${startDateISO}T00:00:00`);
+  if (Number.isNaN(startDate.getTime())) return undefined;
+  const plannedDate = new Date(startDate);
+  plannedDate.setDate(startDate.getDate() + dayIndex);
+  return plannedDate.toISOString().slice(0, 10);
+}
+
+function adjustEnergyForWeather(
+  energyLevel: EnergyLevel,
+  weather: WeatherPlanDay | undefined,
+  driveMinutesFromPrevious: number,
+  dayVibe: string
+): EnergyLevel {
+  if (!weather) return energyLevel;
+  if (weather.planningSignal === "storm") return "soft";
+  if (weather.planningSignal === "rain" && driveMinutesFromPrevious >= 110) return "soft";
+  if (weather.planningSignal === "rain" && energyLevel === "high") return "balanced";
+  if (weather.planningSignal === "hot" && (energyLevel === "high" || dayVibe === "adventure")) return "balanced";
+  return energyLevel;
+}
+
+function buildWeatherNote(weather: WeatherPlanDay | undefined, adjustedEnergy: boolean): string | undefined {
+  if (!weather) return undefined;
+
+  const adjustment = adjustedEnergy ? " Pacing softened automatically." : "";
+  if (weather.planningSignal === "storm") {
+    return `Storm risk: favor covered stops, avoid exposed water plans, and keep backup transport time.${adjustment}`;
+  }
+  if (weather.planningSignal === "rain") {
+    return `Rain likely: prioritize food, music, and covered culture stops before exposed outdoor plans.${adjustment}`;
+  }
+  if (weather.planningSignal === "hot") {
+    return `Hot day: keep high-energy plans shorter and leave room for shade, water, or an evening slot.${adjustment}`;
+  }
+  if (weather.planningSignal === "cloudy") {
+    return "Mixed skies: outdoor plans can stay flexible with a nearby covered backup.";
+  }
+  return "Clear forecast: outdoor highlights can stay on the main plan.";
+}
+
+function getWeatherExperienceScore(experience: Experience, weather: WeatherPlanDay | undefined): number {
+  if (!weather) return 0;
+
+  const isCoveredFriendly =
+    experience.type === "food" ||
+    experience.type === "music" ||
+    experience.vibes.some((vibe) => ["culture", "food", "heritage", "nightlife"].includes(vibe));
+  const isOutdoorHeavy =
+    experience.vibes.some((vibe) => ["adventure", "nature", "romantic"].includes(vibe)) ||
+    OUTDOOR_EXPERIENCE_PATTERN.test(`${experience.title} ${experience.description} ${experience.whatToExpect.join(" ")}`);
+  const isEveningFriendly = /evening|golden hour|late|night|sunset/i.test(experience.bestTime);
+
+  if (weather.planningSignal === "storm") {
+    return (isCoveredFriendly ? 28 : 0) + (isOutdoorHeavy ? -42 : 0) + (experience.energy === "high" ? -18 : 0);
+  }
+  if (weather.planningSignal === "rain") {
+    return (isCoveredFriendly ? 22 : 0) + (isOutdoorHeavy ? -28 : 0);
+  }
+  if (weather.planningSignal === "hot") {
+    return (isEveningFriendly ? 14 : 0) + (experience.energy === "high" ? -18 : 0) + (isOutdoorHeavy ? -12 : 0);
+  }
+  if (weather.planningSignal === "clear") {
+    return isOutdoorHeavy ? 12 : 0;
+  }
+  return isCoveredFriendly ? 4 : 0;
 }
 
 function buildRouteNote(

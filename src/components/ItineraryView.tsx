@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarDays, Clock3, Gauge, MapPin, Music2, PartyPopper, Route, Utensils, WalletCards } from "lucide-react";
+import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, MapPin, Music2, PartyPopper, Route, Utensils, WalletCards } from "lucide-react";
 import { ItineraryPlan } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { formatDriveTime } from "../utils/format";
@@ -22,7 +22,7 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
               {days}-day {plannerVibe === "mixed" ? "mixed-vibe" : plannerVibe} trip based in {base.name}
             </h3>
             <p className="mt-1 text-sm leading-6 text-slate-400">
-              Region-aware route with daily highlights, matched experiences, drive estimates, and suggested spend.
+              Region-aware route with weather-aware pacing, matched experiences, drive estimates, and suggested spend.
             </p>
           </div>
           <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-right">
@@ -115,12 +115,24 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
               <span className="rounded-full border border-violet-300/20 bg-violet-300/10 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.14em] text-violet-100">
                 {day.energyLevel}
               </span>
+              {day.weather && (
+                <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-sky-300/20 bg-sky-300/10 px-2.5 py-1 text-[0.68rem] text-sky-100">
+                  <CloudSun className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{day.weather.summary}</span>
+                </span>
+              )}
             </div>
 
             <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               {day.routeNote}
               {day.distanceFromPreviousKm ? ` · ${day.distanceFromPreviousKm} km from previous stop` : ""}
             </p>
+            {day.weatherNote && (
+              <p className="mt-3 flex gap-2 rounded-2xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs leading-5 text-sky-100">
+                <CloudSun className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{day.weatherNote}</span>
+              </p>
+            )}
             <p className="mt-4 text-sm leading-6 text-slate-300">{day.highlight}.</p>
 
             {day.experience && (

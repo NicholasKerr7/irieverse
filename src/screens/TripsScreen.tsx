@@ -494,9 +494,9 @@ function FlightSnapshot({ app }: { app: TravelOS }) {
         </p>
       )}
       <div className="mt-3 space-y-2">
-        {app.flightOptions.slice(0, 3).map((flight) => (
+        {app.flightOptions.slice(0, 3).map((flight, index) => (
           <div
-            key={`${flight.flightNumber}-${flight.departureTimeUTC}`}
+            key={`${flight.flightNumber}-${flight.departureTimeUTC}-${index}`}
             className={classNames("flex flex-col gap-1 rounded-2xl px-4 py-3", glassCard)}
           >
             <div className="flex items-center justify-between gap-2">
