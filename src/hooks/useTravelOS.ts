@@ -7,8 +7,11 @@ import {
   type BookingSourceMeta,
 } from "../services/bookings";
 import {
+  type CollaborationErrorCode,
   type TripPayload,
   fetchTripState,
+  getCollaborationErrorCode,
+  getCollaborationErrorMessage,
   hasCollaborationBackend,
   saveTripState,
   serializeTripState,
@@ -147,6 +150,7 @@ export function useTravelOS() {
   const [tripShareUrl, setTripShareUrl] = useState("");
   const [isSyncingTrip, setIsSyncingTrip] = useState(false);
   const [tripStatusMessage, setTripStatusMessage] = useState<string | null>(null);
+  const [collaborationErrorCode, setCollaborationErrorCode] = useState<CollaborationErrorCode | null>(null);
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [eventsError, setEventsError] = useState<string | null>(null);
@@ -537,11 +541,13 @@ export function useTravelOS() {
         setTripId(sharedTripId);
         setTripShareUrl(buildShareUrl(sharedTripId));
         setTripStatusMessage("Shared trip loaded");
+        setCollaborationErrorCode(null);
       })
       .catch((error) => {
         console.error(error);
         if (!cancelled) {
-          setTripStatusMessage("Unable to load shared trip");
+          setTripStatusMessage(getCollaborationErrorMessage(error));
+          setCollaborationErrorCode(getCollaborationErrorCode(error));
         }
       })
       .finally(() => {
@@ -667,7 +673,8 @@ export function useTravelOS() {
 
   const handleShareTrip = async () => {
     if (!collaborationReady) {
-      setTripStatusMessage("Enable Supabase to share trips.");
+      setTripStatusMessage("Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable live sharing.");
+      setCollaborationErrorCode("not-configured");
       return;
     }
     setIsSyncingTrip(true);
@@ -691,9 +698,11 @@ export function useTravelOS() {
       setTripShareUrl(shareUrl);
       updateUrlWithTrip(shareUrl);
       setTripStatusMessage("Share link updated");
+      setCollaborationErrorCode(null);
     } catch (error) {
       console.error(error);
-      setTripStatusMessage("Unable to share trip right now");
+      setTripStatusMessage(getCollaborationErrorMessage(error));
+      setCollaborationErrorCode(getCollaborationErrorCode(error));
     } finally {
       setIsSyncingTrip(false);
     }
@@ -792,10 +801,14 @@ export function useTravelOS() {
     const handler = setTimeout(() => {
       setIsSyncingTrip(true);
       saveTripState(tripId, payload)
-        .then(() => setTripStatusMessage("Trip synced"))
+        .then(() => {
+          setTripStatusMessage("Trip synced");
+          setCollaborationErrorCode(null);
+        })
         .catch((error) => {
           console.error(error);
-          setTripStatusMessage("Sync failed");
+          setTripStatusMessage(getCollaborationErrorMessage(error));
+          setCollaborationErrorCode(getCollaborationErrorCode(error));
         })
         .finally(() => setIsSyncingTrip(false));
     }, 1500);
@@ -860,6 +873,7 @@ export function useTravelOS() {
     tripShareUrl,
     isSyncingTrip,
     tripStatusMessage,
+    collaborationErrorCode,
     collaborationReady,
     liveEvents,
     isLoadingEvents,

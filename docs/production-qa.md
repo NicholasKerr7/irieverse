@@ -1,5 +1,18 @@
 # Production QA
 
+## Supabase sharing check
+
+Date: 2026-04-28
+
+Result: Passed.
+
+- `supabase migration list` shows both trip-sharing migrations applied remotely.
+- `supabase db lint --linked` reports no schema errors.
+- `supabase db push --dry-run` reports the remote database is up to date.
+- Live app share probe created a `trips` row, read it back through the anon REST API, marked it as production QA data, deleted it through the QA-only policy, and verified the row was gone.
+
+## Full QA run
+
 Date: 2026-04-27
 
 Target: https://irieverse.vercel.app

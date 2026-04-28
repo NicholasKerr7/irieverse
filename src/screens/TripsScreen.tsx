@@ -521,17 +521,16 @@ function FlightSnapshot({ app }: { app: TravelOS }) {
 }
 
 function IntegrationStatusPanel({ app }: { app: TravelOS }) {
+  const sharingStatus = getSharingIntegrationStatus(app);
   const bookingStatus = getBookingIntegrationStatus(app);
   const flightStatus = getFlightSourceStatus(app);
   const integrationCards = [
     {
       icon: Share2,
       title: "Trip sharing",
-      status: app.collaborationReady ? "Live" : "Setup needed",
-      tone: app.collaborationReady ? "live" : "fallback",
-      body: app.collaborationReady
-        ? "Supabase links can create, reload, and sync shared trip plans."
-        : "Sharing stays local until the Supabase public URL and anon key are connected.",
+      status: sharingStatus.status,
+      tone: sharingStatus.tone,
+      body: sharingStatus.body,
     },
     {
       icon: Database,
@@ -589,6 +588,54 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
 }
 
 type IntegrationTone = "live" | "fallback" | "error";
+
+function getSharingIntegrationStatus(app: TravelOS): { status: string; tone: IntegrationTone; body: string } {
+  if (!app.collaborationReady) {
+    return {
+      status: "Setup needed",
+      tone: "fallback",
+      body: "Sharing stays local until the Supabase public URL and anon key are connected.",
+    };
+  }
+
+  if (app.collaborationErrorCode === "schema-missing") {
+    return {
+      status: "Schema needed",
+      tone: "error",
+      body: "Apply supabase/schema.sql or run supabase db push, then retry sharing.",
+    };
+  }
+
+  if (app.collaborationErrorCode === "permission-denied") {
+    return {
+      status: "Policy blocked",
+      tone: "error",
+      body: "The trips table exists, but RLS policies are blocking anonymous share reads or writes.",
+    };
+  }
+
+  if (app.collaborationErrorCode === "request-failed" || app.collaborationErrorCode === "empty-response") {
+    return {
+      status: "Needs check",
+      tone: "error",
+      body: "Supabase is configured, but the last share sync did not complete.",
+    };
+  }
+
+  if (app.collaborationErrorCode === "not-found") {
+    return {
+      status: "Trip missing",
+      tone: "fallback",
+      body: "The requested share id was not found, but new Supabase share links can still be created.",
+    };
+  }
+
+  return {
+    status: "Live",
+    tone: "live",
+    body: "Supabase links can create, reload, and sync shared trip plans.",
+  };
+}
 
 function IntegrationStatusCard({
   icon: Icon,
