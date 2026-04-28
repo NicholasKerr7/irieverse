@@ -49,8 +49,8 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
           </p>
           <h2 className="mt-1 text-lg font-semibold">Plan Jamaica from {app.destination.name}</h2>
           <p className="mt-1 text-sm leading-6 text-slate-400">
-            Search, save, map, and build the trip from dedicated app tabs. Your current planner base,
-            budget, saved places, flights, and events stay connected across the shell.
+            Search the island, save ideas, preview the route, and turn everything into a practical trip plan.
+            Your base, budget, saved places, flights, and events stay connected as you move.
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <HomeAction

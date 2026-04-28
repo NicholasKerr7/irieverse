@@ -7,9 +7,9 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 - Saved boards with automatic Google Maps, TikTok, Instagram, YouTube, and article link parsing
 - PWA share target for sending external travel links into the Saved import flow
 - Region-aware trip planner with editable route order, route pacing, drive estimates, budget, dates, and ICS export
-- Trip integration status panel for Supabase sharing, booking source, flight source, road routes, and events
-- Flight snapshot (live via AviationStack, sample data fallback)
-- Live events feed and booking recommendations (sample data fallback)
+- Trip planning confidence panel for share links, stays, flights, road routes, and events
+- Flight snapshot with live schedules or saved examples
+- Island calendar and stay recommendations with live data or curated examples
 - Optional Supabase-backed trip sharing
 - Production QA deletes its own Supabase test share rows after verification
 - PWA manifest, install icons, app shortcuts, and same-origin offline cache for fallback data/assets
@@ -42,7 +42,7 @@ See `docs/production-env.md` for production platform setup, booking API response
 - The booking integration uses the Vercel serverless route at `/api/bookings`.
 - The flight integration uses the Vercel serverless route at `/api/flights` so AviationStack secrets stay server-only.
 - The map driving overlay uses the serverless route at `/api/road-route` for road geometry and maneuver previews.
-- The Trips screen labels live integrations and fallbacks so production QA can verify what is connected.
+- The Trips screen shows planning confidence so production QA can verify what is live, estimated, or curated.
 - PWA shortcuts open app tabs directly with `?tab=explore`, `?tab=map`, and `?tab=trips`.
 - Installed PWA share actions open `?tab=saved` with shared title/text/url prefilled and categorized for import.
 - Plain static hosting: run `npm run build` and serve the `dist` folder (e.g., `npx serve dist`).

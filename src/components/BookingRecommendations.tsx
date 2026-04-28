@@ -125,45 +125,45 @@ function getBookingSourceStatus(meta: BookingSourceMeta): {
 } {
   if (meta.source === "amadeus") {
     return {
-      label: "Live Amadeus",
+      label: "Live stays",
       tone: "live",
-      body: "Pulled from the Amadeus hotel feed through the server booking proxy.",
+      body: "Current hotel options are available for this route and date window.",
     };
   }
 
   if (meta.source === "api") {
     return {
-      label: "Live endpoint",
+      label: "Live stays",
       tone: "live",
-      body: "Pulled from the configured booking endpoint.",
+      body: "Current stay options are available for this trip.",
     };
   }
 
   if (meta.endpointConfigured) {
     return {
-      label: "API fallback",
+      label: "Curated picks",
       tone: meta.reason === "request-failed" ? "error" : "fallback",
-      body: `${formatBookingReason(meta.reason)} Showing curated local options until live offers return.`,
+      body: `${formatBookingReason(meta.reason)} Showing curated Jamaica stay ideas for now.`,
     };
   }
 
   return {
-    label: "Local fallback",
+    label: "Curated picks",
     tone: meta.reason === "request-failed" ? "error" : "fallback",
-    body: "Using bundled Jamaica stays because no booking endpoint is configured.",
+    body: "Showing curated Jamaica stay ideas until live booking partners are connected.",
   };
 }
 
 function formatBookingReason(reason?: string): string {
   const labels: Record<string, string> = {
-    "missing-amadeus-credentials": "Amadeus credentials are not set.",
-    "no-amadeus-offers": "Amadeus returned no matching offers.",
-    "amadeus-request-failed": "The Amadeus request failed.",
-    "request-failed": "The booking request failed.",
-    "custom-endpoint": "The booking endpoint did not include source metadata.",
-    "endpoint-configured": "The booking endpoint is configured.",
-    "local-sample-data": "Local sample data is active.",
+    "missing-amadeus-credentials": "Live hotel pricing is not connected yet.",
+    "no-amadeus-offers": "No live hotel matches came back for this combination.",
+    "amadeus-request-failed": "Live hotel lookup failed.",
+    "request-failed": "Stay lookup failed.",
+    "custom-endpoint": "Stay data is available, but source details are limited.",
+    "endpoint-configured": "Stay data is connected.",
+    "local-sample-data": "Curated examples are active.",
   };
 
-  return reason ? labels[reason] ?? `${reason.replace(/-/g, " ")}.` : "Live booking data is not available yet.";
+  return reason ? labels[reason] ?? `${reason.replace(/-/g, " ")}.` : "Live stay data is not available yet.";
 }

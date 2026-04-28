@@ -117,11 +117,10 @@ or:
 
 The endpoint returns fallback booking data when Amadeus credentials are missing, Amadeus has no matching offers, or the provider request fails. If `VITE_BOOKING_API_URL` is missing entirely, the browser uses `public/data/bookings.json`.
 
-The Trips screen shows the current booking source:
+The Trips screen shows the current stay source:
 
-- `Live Amadeus` when the Vercel endpoint returns Amadeus offers.
-- `API fallback` when the endpoint is configured but returns curated fallback data.
-- `Local fallback` when `VITE_BOOKING_API_URL` is not configured.
+- `Live stays` when the Vercel endpoint returns Amadeus offers or another live stay feed.
+- `Curated picks` when the endpoint is missing or live offers are unavailable.
 
 ## Amadeus Setup
 
@@ -161,17 +160,17 @@ For production scale, set `ROUTING_API_BASE_URL` to your own OSRM-compatible ser
 
 ## Integration Status
 
-Trips includes a compact integration status panel for launch QA:
+Trips includes a compact planning confidence panel for launch QA:
 
-| Integration | Live state | Fallback state |
+| Planning area | Live state | Curated/estimated state |
 | --- | --- | --- |
-| Supabase sharing | `Live` when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set. | `Setup needed` and sharing stays disabled. |
-| Bookings | `Live Amadeus` or `Live endpoint` when the configured booking source returns live data. | `API fallback` or `Local fallback` with curated Jamaica stays. |
-| Flights | `Live provider` when `/api/flights` returns AviationStack data. | `Proxy fallback` or `Sample flights` from `public/data/flights-sample.json`. |
-| Road routes | `Live proxy` through `api/road-route.js`. | The map falls back to preview route lines if the proxy fails. |
-| Events | Not connected to a provider yet. | `Local feed` from `public/data/events.json`. |
+| Share links | `Ready` when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set and the trips table is reachable. | `Setup needed` and export still works. |
+| Stays | `Live stays` when the configured booking source returns live data. | `Curated picks` with Jamaica stay ideas. |
+| Flights | `Live schedule` when `/api/flights` returns AviationStack data. | `Saved examples` from `public/data/flights-sample.json`. |
+| Road planning | `Road-aware` through `api/road-route.js`. | The map keeps preview route lines if the proxy fails. |
+| Island events | Live provider if one is added later. | `Curated calendar` from `public/data/events.json`. |
 
-Use this panel after each deploy to confirm the app is honest about which integrations are live and which ones are still running on fallback data.
+Use this panel after each deploy to confirm the app is honest about which trip services are live, estimated, or curated.
 
 ## Verification
 

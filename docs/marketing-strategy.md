@@ -14,7 +14,7 @@ IrieVerse is far enough along to market as a focused product, not just a concept
 - It combines discovery, saved ideas, route planning, budget planning, and itinerary export.
 - The map is not decorative; it supports real road-route planning.
 - The Saved flow supports pasted travel ideas, PWA share-target imports, and automatic link parsing for source, place, and category.
-- The app works with fallback data, so demos do not depend on every live API being configured.
+- The app stays usable with curated travel examples, so demos do not depend on every live provider being configured.
 
 ## Audience
 
@@ -95,7 +95,7 @@ Screenshots:
 - Build daily plans with drive estimates and route pacing.
 - Review budget, flights, events, and booking recommendations.
 - Export calendar files and share trips when Supabase is configured.
-- Use fallback data when live integrations are not configured.
+- Use curated examples when live providers are not configured.
 
 ## Screenshot Story
 
@@ -206,7 +206,7 @@ The app now supports:
 - region-aware trip planning
 - budget, flights, events, and booking recommendation panels
 - ICS export and optional Supabase sharing
-- fallback data when live APIs are not configured
+- curated examples when live providers are not configured
 
 It is still early, but it is now a real product surface that can be tested.
 ```

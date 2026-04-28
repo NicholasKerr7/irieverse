@@ -14,7 +14,6 @@ import {
   Heart,
   MapPinned,
   Plane,
-  RadioTower,
   Plus,
   Route,
   RotateCcw,
@@ -401,7 +400,7 @@ function WizardPanel({
 
       {activeStep === "share" && (
         <div className="space-y-3">
-          <WizardTitle title="Export or share" body="Keep calendar export available and enable Supabase sharing when configured." />
+          <WizardTitle title="Export or share" body="Export the calendar anytime. Share links turn on when cloud sharing is connected." />
           <button
             type="button"
             onClick={app.handleExportItinerary}
@@ -490,7 +489,7 @@ function FlightSnapshot({ app }: { app: TravelOS }) {
       {app.flightsError && <p className="mt-2 text-xs text-rose-300">{app.flightsError}</p>}
       {!app.flightsError && !app.flightOptions.length && !app.isFetchingFlights && (
         <p className="mt-2 text-xs text-slate-400">
-          No live flights from {app.originAirport.code} within the snapshot window.
+          No flights from {app.originAirport.code} within the current snapshot window.
         </p>
       )}
       <div className="mt-3 space-y-2">
@@ -527,38 +526,38 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
   const integrationCards = [
     {
       icon: Share2,
-      title: "Trip sharing",
+      title: "Share links",
       status: sharingStatus.status,
       tone: sharingStatus.tone,
       body: sharingStatus.body,
     },
     {
       icon: Database,
-      title: "Bookings",
+      title: "Stays",
       status: bookingStatus.status,
       tone: bookingStatus.tone,
       body: bookingStatus.body,
     },
     {
       icon: Plane,
-      title: "Flights",
+      title: "Flight options",
       status: flightStatus.status,
       tone: flightStatus.tone,
       body: flightStatus.body,
     },
     {
       icon: Route,
-      title: "Road routes",
-      status: "Live proxy",
+      title: "Road planning",
+      status: "Road-aware",
       tone: "live",
-      body: "Map route geometry uses the OSRM road-routing proxy, with local preview lines if routing fails.",
+      body: "Routes follow roads when available and keep a preview line ready when a road lookup cannot finish.",
     },
     {
       icon: CalendarDays,
-      title: "Events",
-      status: "Local feed",
+      title: "Island events",
+      status: "Curated calendar",
       tone: "fallback",
-      body: "Events use the bundled Jamaica calendar until a live events provider is added.",
+      body: "Regional events are shown from the curated Jamaica calendar.",
     },
   ] satisfies Array<{
     icon: ComponentType<LucideProps>;
@@ -571,10 +570,10 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
   return (
     <section className={classNames("rounded-3xl p-4", glassPanel)}>
       <div className="flex items-center gap-3">
-        <RadioTower className="h-5 w-5 text-cyan-300" />
+        <CheckCircle2 className="h-5 w-5 text-cyan-300" />
         <div>
-          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Integration status</p>
-          <h2 className="text-lg font-semibold">Live and fallback coverage</h2>
+          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Planning confidence</p>
+          <h2 className="text-lg font-semibold">What is ready for this trip</h2>
         </div>
       </div>
 
@@ -594,23 +593,23 @@ function getSharingIntegrationStatus(app: TravelOS): { status: string; tone: Int
     return {
       status: "Setup needed",
       tone: "fallback",
-      body: "Sharing stays local until the Supabase public URL and anon key are connected.",
+      body: "Export still works. Share links turn on once cloud sharing is connected.",
     };
   }
 
   if (app.collaborationErrorCode === "schema-missing") {
     return {
-      status: "Schema needed",
+      status: "Setup needed",
       tone: "error",
-      body: "Apply supabase/schema.sql or run supabase db push, then retry sharing.",
+      body: "The share table is not ready yet. Run the Supabase schema, then retry sharing.",
     };
   }
 
   if (app.collaborationErrorCode === "permission-denied") {
     return {
-      status: "Policy blocked",
+      status: "Permission issue",
       tone: "error",
-      body: "The trips table exists, but RLS policies are blocking anonymous share reads or writes.",
+      body: "Share links are blocked by database access rules. Re-run the sharing schema.",
     };
   }
 
@@ -618,22 +617,22 @@ function getSharingIntegrationStatus(app: TravelOS): { status: string; tone: Int
     return {
       status: "Needs check",
       tone: "error",
-      body: "Supabase is configured, but the last share sync did not complete.",
+      body: "Cloud sharing is connected, but the last share sync did not complete.",
     };
   }
 
   if (app.collaborationErrorCode === "not-found") {
     return {
-      status: "Trip missing",
+      status: "Link missing",
       tone: "fallback",
-      body: "The requested share id was not found, but new Supabase share links can still be created.",
+      body: "That shared trip was not found, but you can still create a new share link.",
     };
   }
 
   return {
-    status: "Live",
+    status: "Ready",
     tone: "live",
-    body: "Supabase links can create, reload, and sync shared trip plans.",
+    body: "Share links can create, reload, and sync trip plans.",
   };
 }
 
@@ -709,39 +708,39 @@ function getFlightSourceStatus(app: TravelOS): { status: string; tone: Integrati
       status: "Flight issue",
       tone: "error",
       body: meta.providerConfigured
-        ? "The live flight provider is connected, but the latest lookup failed."
-        : "Fallback flight snapshots are unavailable right now.",
+        ? "Flight lookup is connected, but the latest search failed."
+        : "Flight snapshots are unavailable right now.",
     };
   }
 
   if (meta.source === "aviationstack") {
     return {
-      status: "Live provider",
+      status: "Live schedule",
       tone: "live",
-      body: "Scheduled flights come through the server AviationStack proxy.",
+      body: "Flight snapshots are current for this origin and Jamaica airport.",
     };
   }
 
   if (meta.endpointConfigured && meta.providerConfigured) {
     return {
-      status: "Provider fallback",
+      status: "Saved examples",
       tone: "fallback",
-      body: `${formatIntegrationReason(meta.reason)} Showing bundled snapshots until live flights return.`,
+      body: `${formatIntegrationReason(meta.reason)} Showing saved flight examples for now.`,
     };
   }
 
   if (meta.endpointConfigured) {
     return {
-      status: "Proxy fallback",
+      status: "Saved examples",
       tone: "fallback",
-      body: `${formatIntegrationReason(meta.reason)} Add AVIATIONSTACK_API_KEY server-side to enable live flights.`,
+      body: `${formatIntegrationReason(meta.reason)} Showing saved flight examples for now.`,
     };
   }
 
   return {
-    status: "Sample flights",
+    status: "Saved examples",
     tone: "fallback",
-    body: "Using bundled flight snapshots until the live flight provider is connected.",
+    body: "Showing saved flight examples until live schedules are connected.",
   };
 }
 
@@ -752,38 +751,38 @@ function getBookingIntegrationStatus(app: TravelOS): { status: string; tone: Int
     return {
       status: "Booking issue",
       tone: "error",
-      body: "The booking request failed, so the stay cards are temporarily empty.",
+      body: "Stay lookup failed, so the stay cards are temporarily empty.",
     };
   }
 
   if (meta.source === "amadeus") {
     return {
-      status: "Live Amadeus",
+      status: "Live stays",
       tone: "live",
-      body: "Booking cards are coming through the Amadeus hotel proxy.",
+      body: "Current hotel options are available for this route and date window.",
     };
   }
 
   if (meta.source === "api") {
     return {
-      status: "Live endpoint",
+      status: "Live stays",
       tone: "live",
-      body: "Booking cards are coming from the configured server endpoint.",
+      body: "Current stay options are available for this trip.",
     };
   }
 
   if (meta.endpointConfigured) {
     return {
-      status: "API fallback",
+      status: "Curated picks",
       tone: "fallback",
-      body: `${formatIntegrationReason(meta.reason)} Showing curated local stays until live offers return.`,
+      body: `${formatIntegrationReason(meta.reason)} Showing curated Jamaica stay ideas for now.`,
     };
   }
 
   return {
-    status: "Local fallback",
+    status: "Curated picks",
     tone: "fallback",
-    body: "Booking cards use bundled Jamaica stays until the booking endpoint is connected.",
+    body: "Showing curated Jamaica stay ideas until live booking partners are connected.",
   };
 }
 
@@ -1067,8 +1066,8 @@ function ShareSetupNotice({
 function getShareSetupNotice(app: TravelOS): { title: string; body: string; tone: "error" | "fallback" } | null {
   if (!app.collaborationReady) {
     return {
-      title: "Supabase sharing not configured",
-      body: "Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then redeploy before creating live share links.",
+      title: "Cloud sharing not connected",
+      body: "Calendar export still works. Add the Supabase public URL and anon key before creating live share links.",
       tone: "fallback",
     };
   }
@@ -1145,22 +1144,22 @@ function VibeButton({ active, label, onClick }: { active: boolean; label: string
 
 function formatIntegrationReason(reason?: string): string {
   const labels: Record<string, string> = {
-    "missing-amadeus-credentials": "Amadeus credentials are not connected.",
-    "no-amadeus-offers": "Amadeus returned no matching offers.",
-    "amadeus-request-failed": "The Amadeus request failed.",
-    "request-failed": "The booking request failed.",
-    "custom-endpoint": "The booking endpoint did not include source metadata.",
-    "endpoint-configured": "The booking endpoint is configured.",
-    "local-sample-data": "Local sample data is active.",
-    "pending-flight-proxy": "The flight proxy is waiting for its first lookup.",
-    "missing-aviationstack-key": "AviationStack is not connected server-side.",
-    "aviationstack-request-failed": "The AviationStack request failed.",
-    "flight-proxy-request-failed": "The flight proxy request failed.",
-    "missing-flight-metadata": "The flight endpoint did not include source metadata.",
+    "missing-amadeus-credentials": "Live hotel pricing is not connected yet.",
+    "no-amadeus-offers": "No live hotel matches came back for this combination.",
+    "amadeus-request-failed": "Live hotel lookup failed.",
+    "request-failed": "The latest lookup failed.",
+    "custom-endpoint": "Stay data is available, but source details are limited.",
+    "endpoint-configured": "Stay data is connected.",
+    "local-sample-data": "Curated examples are active.",
+    "pending-flight-proxy": "Flight lookup is getting ready.",
+    "missing-aviationstack-key": "Live flight schedules are not connected yet.",
+    "aviationstack-request-failed": "Live flight lookup failed.",
+    "flight-proxy-request-failed": "Flight lookup failed.",
+    "missing-flight-metadata": "Flight data is available, but source details are limited.",
     "flight-data-unavailable": "Flight data is unavailable.",
   };
 
-  return reason ? labels[reason] ?? `${reason.replace(/-/g, " ")}.` : "Live booking data is not available yet.";
+  return reason ? labels[reason] ?? `${reason.replace(/-/g, " ")}.` : "Live travel data is not available yet.";
 }
 
 function getCompletedStepIndex(app: TravelOS) {

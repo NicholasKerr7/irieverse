@@ -23,10 +23,10 @@ export const LiveEventsFeed = memo(function LiveEventsFeed({
     <section className={classNames("max-w-6xl mx-auto rounded-3xl p-4 sm:p-6 space-y-4", glassPanel)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Live events</p>
+          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Island calendar</p>
           <h2 className="text-lg sm:text-xl font-semibold">What&apos;s on near {selectedRegion}</h2>
           <p className="text-xs sm:text-[0.8rem] text-slate-400">
-            Pulling markets, music sessions, and pop-ups that match your vibe.
+            Markets, music sessions, and pop-ups that match the region you are planning around.
           </p>
         </div>
         <button
@@ -44,7 +44,7 @@ export const LiveEventsFeed = memo(function LiveEventsFeed({
 
       {!error && !events.length && (
         <p className="text-xs text-slate-400">
-          {isLoading ? "Syncing fresh events…" : "No live events for this region right now."}
+          {isLoading ? "Checking the island calendar…" : "No events for this region right now."}
         </p>
       )}
 
