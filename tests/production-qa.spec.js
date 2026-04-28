@@ -110,6 +110,27 @@ test("production desktop map screenshot", async ({ browser }) => {
   await page.close();
 });
 
+test("production desktop home uses hero navigation", async ({ browser }) => {
+  const page = await browser.newPage({
+    colorScheme: "dark",
+    viewport: { width: 1440, height: 1000 },
+  });
+  const issues = collectPageIssues(page);
+
+  await page.goto(BASE_URL, { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+  await expect(page.getByTestId("hero-desktop-nav")).toBeVisible();
+  await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
+  await expect(page.getByTestId("mobile-bottom-nav")).toBeHidden();
+
+  await page.getByTestId("hero-desktop-nav").getByRole("button", { name: "Map" }).click();
+  await expect(page).toHaveURL(/tab=map/);
+  await expect(page.getByTestId("desktop-header-nav")).toBeVisible();
+
+  expect(issues).toEqual([]);
+  await page.close();
+});
+
 async function openTab(page, tab) {
   const url = tab ? `${BASE_URL}/?tab=${tab}` : BASE_URL;
   await page.goto(url, { waitUntil: "domcontentloaded" });
@@ -134,6 +155,14 @@ async function openSharedIdea(page) {
 async function expectVisibleNavigation(page) {
   const viewport = page.viewportSize();
   if (viewport && viewport.width >= 768) {
+    const tab = new URL(page.url()).searchParams.get("tab");
+    if (!tab) {
+      await expect(page.getByTestId("hero-desktop-nav")).toBeVisible();
+      await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
+      await expect(page.getByTestId("mobile-bottom-nav")).toBeHidden();
+      return;
+    }
+
     await expect(page.getByTestId("desktop-header-nav")).toBeVisible();
     await expect(page.getByTestId("mobile-bottom-nav")).toBeHidden();
     return;

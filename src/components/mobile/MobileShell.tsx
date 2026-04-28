@@ -57,12 +57,14 @@ export function MobileShell() {
 
   return (
     <div className="app-shell min-h-dvh [padding-top:env(safe-area-inset-top)]">
-      <DesktopNav
-        activeTab={activeTab}
-        onChange={setActiveTab}
-        theme={travelOS.theme}
-        onToggleTheme={travelOS.toggleTheme}
-      />
+      {activeTab !== "home" && (
+        <DesktopNav
+          activeTab={activeTab}
+          onChange={setActiveTab}
+          theme={travelOS.theme}
+          onToggleTheme={travelOS.toggleTheme}
+        />
+      )}
       {activeTab !== "home" && (
         <div className="fixed right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 md:hidden">
           <ThemeToggleButton

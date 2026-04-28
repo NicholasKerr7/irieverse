@@ -1,6 +1,8 @@
 import {
   ArrowRight,
   CalendarDays,
+  Compass,
+  Heart,
   MapPinned,
   Search,
   Sparkles,
@@ -65,16 +67,14 @@ export function HeroSection({
           </div>
         </div>
 
-        <div className="hidden items-center gap-6 text-xs uppercase tracking-[0.2em] md:flex">
-          <button type="button" onClick={() => onNavigate("explore")} className="text-slate-200/80 hover:text-slate-100">
-            Explore
-          </button>
-          <button type="button" onClick={() => onNavigate("map")} className="text-slate-200/80 hover:text-slate-100">
-            Map
-          </button>
-          <button type="button" onClick={() => onNavigate("planner")} className="text-slate-200/80 hover:text-slate-100">
-            Trips
-          </button>
+        <div
+          className="hidden items-center gap-1 rounded-full border border-white/15 bg-slate-950/48 p-1 shadow-2xl shadow-slate-950/25 backdrop-blur-2xl md:flex"
+          data-testid="hero-desktop-nav"
+        >
+          <HeroNavButton icon={Compass} label="Explore" onClick={() => onNavigate("explore")} />
+          <HeroNavButton icon={MapPinned} label="Map" onClick={() => onNavigate("map")} />
+          <HeroNavButton icon={Heart} label="Saved" onClick={() => onNavigate("saved")} />
+          <HeroNavButton icon={CalendarDays} label="Trips" onClick={() => onNavigate("planner")} />
         </div>
 
         <ThemeToggleButton
@@ -187,5 +187,26 @@ export function HeroSection({
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-px bg-gradient-to-r from-transparent via-cyan-300/50 to-transparent" />
     </header>
+  );
+}
+
+function HeroNavButton({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: typeof Compass;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-cyan-100"
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </button>
   );
 }

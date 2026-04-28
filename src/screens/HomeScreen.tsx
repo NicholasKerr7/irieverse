@@ -23,6 +23,10 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
     }
     if (target === "map") {
       onNavigate("map");
+      return;
+    }
+    if (target === "saved") {
+      onNavigate("saved");
     }
   };
 
