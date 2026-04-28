@@ -4,6 +4,7 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 ## Features
 - Destination + experience explorer with vibe filters and search
 - Interactive map powered by MapLibre with road-following route overlays
+- Jamaica-specific road pacing, weather cues, and local food/music/beach/culture content
 - Saved boards with automatic Google Maps, TikTok, Instagram, YouTube, and article link parsing
 - PWA share target for sending external travel links into the Saved import flow
 - Region-aware trip planner with editable route order, route pacing, drive estimates, budget, dates, and ICS export

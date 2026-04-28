@@ -11,6 +11,7 @@ IrieVerse is far enough along to market as a focused product, not just a concept
 **What makes it different:**
 
 - It is Jamaica-specific instead of a generic travel planner.
+- It keeps Jamaica's road time, weather shifts, and local food/music/beach/culture context at the center of planning.
 - It combines discovery, saved ideas, route planning, budget planning, and itinerary export.
 - The map is not decorative; it supports real road-route planning.
 - The Saved flow supports pasted travel ideas, PWA share-target imports, and automatic link parsing for source, place, and category.

@@ -8,6 +8,7 @@ import {
   Check,
   CheckCircle2,
   CloudOff,
+  CloudSun,
   Clock3,
   Database,
   Download,
@@ -18,7 +19,6 @@ import {
   Route,
   RotateCcw,
   Share2,
-  Sparkles,
   Users,
   Wand2,
   WalletCards,
@@ -64,6 +64,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
     [app.savedExperiences]
   );
   const importedIdeas = app.importedIdeas;
+  const weatherReadyDays = app.itinerary.daysPlan.filter((day) => day.weather || day.weatherNote).length;
   const estimatedTotal =
     (app.perDayBudget.lodging + app.perDayBudget.dining + app.perDayBudget.experiences) * app.plannerDays +
     app.transportBudget;
@@ -79,7 +80,8 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
               <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/90">Trips</p>
               <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Build your Jamaica plan.</h1>
               <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
-                Step through the essentials, then review itinerary, budget, flights, events, bookings, export, and sharing.
+                Shape the trip around island road time, weather signals, saved local ideas,
+                and region-by-region pacing.
               </p>
             </div>
           </div>
@@ -162,10 +164,26 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
               </div>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <MiniCard
+                icon={Route}
+                title="Road pacing"
+                body={`${formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)} across ${app.itinerary.routeSummary.regionCount} regions.`}
+              />
+              <MiniCard
+                icon={CloudSun}
+                title="Weather cues"
+                body={
+                  weatherReadyDays
+                    ? `${weatherReadyDays} days checked for rain, heat, and outdoor timing.`
+                    : "Daily plan adapts when weather is available."
+                }
+              />
+              <MiniCard
+                icon={Users}
+                title="Local ideas"
+                body={`${savedDestinations.length + savedExperiences.length + importedIdeas.length} saved places, experiences, and imports.`}
+              />
               <MiniCard icon={WalletCards} title="Budget" body={`$${estimatedTotal.toLocaleString()} trip estimate.`} />
-              <MiniCard icon={Plane} title="Flights" body={`${app.originAirport.code} to ${app.destination.airportCode}.`} />
-              <MiniCard icon={Users} title="Saved" body={`${savedDestinations.length + savedExperiences.length + importedIdeas.length} ideas ready.`} />
-              <MiniCard icon={Sparkles} title="Vibe" body={app.plannerVibe === "mixed" ? "Mixed island flow." : `${app.plannerVibe} focused.`} />
             </div>
           </section>
 

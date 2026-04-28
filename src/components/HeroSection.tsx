@@ -1,9 +1,12 @@
 import {
   ArrowRight,
   CalendarDays,
+  CloudSun,
   Compass,
   Heart,
   MapPinned,
+  Music2,
+  Route,
   Search,
   Sparkles,
 } from "lucide-react";
@@ -89,15 +92,22 @@ export function HeroSection({
         <div className="flex min-h-[48vh] flex-col justify-center">
           <p className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-cyan-300/25 bg-slate-950/55 px-3 py-2 text-[0.68rem] uppercase tracking-[0.24em] text-cyan-200 backdrop-blur">
             <Sparkles className="h-3.5 w-3.5" />
-            Jamaica first travel planning
+            Jamaica route + weather intelligence
           </p>
 
           <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-normal text-slate-100 sm:text-5xl lg:text-6xl">
             IrieVerse Travel OS
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
-            Plan Jamaica by vibe, route, budget, flights, and real island experiences.
+            Plan around Jamaica's real regions, road times, weather shifts, food stops,
+            music nights, beaches, and saved ideas from anywhere.
           </p>
+
+          <div className="mt-5 flex max-w-2xl flex-wrap gap-2">
+            <HeroSignal icon={Route} label="Road-aware routes" />
+            <HeroSignal icon={CloudSun} label="Weather-shaped days" />
+            <HeroSignal icon={Music2} label="Local culture, food, beaches" />
+          </div>
 
           <div className="mt-7 flex flex-wrap gap-3">
             <button
@@ -122,7 +132,7 @@ export function HeroSection({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-200">Search Jamaica</p>
-                <h2 className="mt-1 text-xl font-semibold text-slate-100">Find the right island flow</h2>
+                <h2 className="mt-1 text-xl font-semibold text-slate-100">Find the right region, route, and vibe</h2>
               </div>
               <Search className="h-5 w-5 text-cyan-200" />
             </div>
@@ -208,5 +218,20 @@ function HeroNavButton({
       <Icon className="h-4 w-4" />
       {label}
     </button>
+  );
+}
+
+function HeroSignal({
+  icon: Icon,
+  label,
+}: {
+  icon: typeof Route;
+  label: string;
+}) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/55 px-3 py-2 text-xs font-semibold text-slate-100 backdrop-blur">
+      <Icon className="h-3.5 w-3.5 text-cyan-200" />
+      {label}
+    </span>
   );
 }

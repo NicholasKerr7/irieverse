@@ -1,4 +1,4 @@
-import { CalendarDays, Compass, Heart, MapPinned } from "lucide-react";
+import { CloudSun, Compass, Heart, Route } from "lucide-react";
 import { HeroSection } from "../components/HeroSection";
 import { PageFooter } from "../components/PageFooter";
 import type { MobileTabId } from "../components/mobile/BottomNav";
@@ -49,33 +49,33 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
           </p>
           <h2 className="mt-1 text-lg font-semibold">Plan Jamaica from {app.destination.name}</h2>
           <p className="mt-1 text-sm leading-6 text-slate-400">
-            Search the island, save ideas, preview the route, and turn everything into a practical trip plan.
-            Your base, budget, saved places, flights, and events stay connected as you move.
+            Keep the island-specific work in view: road pacing between regions, weather-aware days,
+            and local food, music, beach, and culture ideas tied to your saved plan.
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <HomeAction
-              icon={Compass}
-              label="Explore places"
-              body={`${app.filteredDestinations.length} matching places`}
-              onClick={() => onNavigate("explore")}
-            />
-            <HomeAction
-              icon={MapPinned}
-              label="Open map"
-              body="Pins, regions, and route starts"
+              icon={Route}
+              label="Road-aware routes"
+              body={`${app.itinerary.routeSummary.regionCount} regions · ${app.itinerary.routeSummary.totalDistanceKm} km`}
               onClick={() => onNavigate("map")}
             />
             <HomeAction
+              icon={CloudSun}
+              label="Weather-shaped days"
+              body={getWeatherCueLabel(app)}
+              onClick={() => onNavigate("trips")}
+            />
+            <HomeAction
               icon={Heart}
-              label="Saved"
-              body={`${app.savedPlaces.size + app.savedExperiences.size + app.importedIdeas.length} saved ideas`}
+              label="Local idea board"
+              body={`${app.savedPlaces.size + app.savedExperiences.size + app.importedIdeas.length} saved places and imports`}
               onClick={() => onNavigate("saved")}
             />
             <HomeAction
-              icon={CalendarDays}
-              label="Trip builder"
-              body={`${app.plannerDays} days · $${app.plannerBudget}/day`}
-              onClick={() => onNavigate("trips")}
+              icon={Compass}
+              label="Jamaica discovery"
+              body={`${app.filteredDestinations.length} matching regions`}
+              onClick={() => onNavigate("explore")}
             />
           </div>
         </section>
@@ -130,4 +130,11 @@ function HomeAction({
       <p className="mt-1 text-xs text-slate-500">{body}</p>
     </button>
   );
+}
+
+function getWeatherCueLabel(app: TravelOS): string {
+  const weatherReadyDayCount = app.itinerary.daysPlan.filter((day) => day.weather || day.weatherNote).length;
+  return weatherReadyDayCount
+    ? `${weatherReadyDayCount} days with weather cues`
+    : "Adapts when weather is available";
 }
