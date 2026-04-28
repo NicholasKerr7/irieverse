@@ -60,7 +60,7 @@ export function PlacesGrid({
                 <Heart className={classNames("h-4 w-4", isSaved ? "fill-rose-300 text-rose-300" : "")} />
                 {isSaved ? "Saved" : "Save"}
               </button>
-              <div className="absolute bottom-4 left-4 right-4">
+              <div className="media-overlay absolute bottom-4 left-4 right-4">
                 <p className="flex items-center gap-1 text-xs font-medium text-cyan-100">
                   <MapPin className="h-3.5 w-3.5" /> {destination.region}
                 </p>

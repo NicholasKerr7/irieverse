@@ -1,10 +1,14 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Map, { Layer, Marker, Source, type MapRef, type ViewStateChangeEvent } from "react-map-gl/maplibre";
 import type { Destination, RouteLeg } from "../types/travel";
+import type { ThemeMode } from "../hooks/useTravelOS";
 import { MapPin } from "lucide-react";
 import { classNames } from "../utils/classNames";
 
-const MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const MAP_STYLES: Record<ThemeMode, string> = {
+  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+  light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+};
 
 export type MapPinCategory =
   | "beaches"
@@ -48,6 +52,7 @@ interface TravelMapProps {
   onRouteStatusChange?: (status: RouteRenderStatus) => void;
   autoFitKey?: string;
   bottomInset?: "compact" | "expanded";
+  theme?: ThemeMode;
 }
 
 export type RouteRenderStatus = {
@@ -74,6 +79,7 @@ export const TravelMap = memo(function TravelMap({
   onRouteStatusChange,
   autoFitKey = "",
   bottomInset = "compact",
+  theme = "dark",
 }: TravelMapProps) {
   const mapRef = useRef<MapRef | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -273,7 +279,7 @@ export const TravelMap = memo(function TravelMap({
         reuseMaps
         scrollZoom={scrollZoom}
         dragRotate={false}
-        mapStyle={MAP_STYLE}
+        mapStyle={MAP_STYLES[theme]}
         style={{ width: "100%", height }}
         {...viewState}
         onMove={onMove}

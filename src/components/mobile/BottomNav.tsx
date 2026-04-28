@@ -28,7 +28,7 @@ type BottomNavProps = {
 export function BottomNav({ activeTab, onChange }: BottomNavProps) {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 select-none border-t border-white/10 bg-slate-950/78 px-2 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-1.5 backdrop-blur-2xl md:hidden"
+      className="app-bottom-nav fixed inset-x-0 bottom-0 z-50 select-none border-t px-2 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-1.5 backdrop-blur-2xl md:hidden"
       aria-label="Primary navigation"
       data-testid="mobile-bottom-nav"
     >

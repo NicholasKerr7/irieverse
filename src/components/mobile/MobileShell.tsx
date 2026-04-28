@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { DesktopNav } from "../DesktopNav";
+import { ThemeToggleButton } from "../ThemeToggleButton";
 import { useTravelOS } from "../../hooks/useTravelOS";
 import { ExploreScreen } from "../../screens/ExploreScreen";
 import { HomeScreen } from "../../screens/HomeScreen";
@@ -55,8 +56,23 @@ export function MobileShell() {
   }, [activeTab, travelOS]);
 
   return (
-    <div className="min-h-dvh bg-[linear-gradient(160deg,#020617_0%,#07111f_48%,#031a1d_100%)] text-slate-100 [padding-top:env(safe-area-inset-top)]">
-      <DesktopNav activeTab={activeTab} onChange={setActiveTab} />
+    <div className="app-shell min-h-dvh [padding-top:env(safe-area-inset-top)]">
+      <DesktopNav
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        theme={travelOS.theme}
+        onToggleTheme={travelOS.toggleTheme}
+      />
+      {activeTab !== "home" && (
+        <div className="fixed right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 md:hidden">
+          <ThemeToggleButton
+            theme={travelOS.theme}
+            onToggleTheme={travelOS.toggleTheme}
+            className="h-11 w-11 px-0"
+            testId="mobile-theme-toggle"
+          />
+        </div>
+      )}
       <div className="pb-[calc(env(safe-area-inset-bottom)+6.1rem)] md:pb-0">
         <Suspense fallback={<ScreenFallback />}>{screen}</Suspense>
       </div>
@@ -67,8 +83,8 @@ export function MobileShell() {
 
 function ScreenFallback() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-slate-950 px-4 text-center">
-      <div className="w-full max-w-sm rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-slate-950/40">
+    <div className="app-shell flex min-h-dvh items-center justify-center px-4 text-center">
+      <div className="glass-panel-strong w-full max-w-sm rounded-3xl border p-5">
         <div className="mx-auto h-10 w-10 animate-pulse rounded-2xl bg-cyan-300/25" />
         <p className="mt-4 text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300">Loading</p>
         <div className="mt-4 space-y-2">

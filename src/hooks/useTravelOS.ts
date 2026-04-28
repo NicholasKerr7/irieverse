@@ -91,7 +91,7 @@ export function useTravelOS() {
   const [savedPlaces, setSavedPlaces] = useState<Set<string>>(new Set());
   const [savedExperiences, setSavedExperiences] = useState<Set<string>>(new Set());
   const [importedIdeas, setImportedIdeas] = useState<ImportedIdea[]>([]);
-  const [theme, setTheme] = useState<ThemeMode>("dark");
+  const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
   const [plannerBaseId, setPlannerBaseId] = useState("mobay");
   const [plannerDays, setPlannerDays] = useState(5);
   const [plannerVibe, setPlannerVibe] = useState<Vibe>("mixed");
@@ -199,6 +199,10 @@ export function useTravelOS() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.classList.toggle("light", theme === "light");
+    document.documentElement.style.colorScheme = theme;
+    document
+      .querySelector('meta[name="theme-color"]:not([media])')
+      ?.setAttribute("content", theme === "dark" ? "#020617" : "#f8fafc");
     localStorage.setItem(STORAGE_KEY_THEME, theme);
   }, [theme]);
 
@@ -945,6 +949,19 @@ export function useTravelOS() {
 }
 
 export type TravelOS = ReturnType<typeof useTravelOS>;
+
+function getInitialTheme(): ThemeMode {
+  if (typeof window === "undefined") return "dark";
+
+  try {
+    const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
+    if (savedTheme === "dark" || savedTheme === "light") return savedTheme;
+  } catch {
+    return "dark";
+  }
+
+  return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
 
 function createImportedIdeaId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {

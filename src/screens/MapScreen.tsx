@@ -189,11 +189,12 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         onRouteStatusChange={setRouteStatus}
         autoFitKey={`${activeCategory}-${app.search}-${selectedDestination.id}-${sheetExpanded}-${routeSummary.stops.length}`}
         bottomInset={sheetExpanded ? "expanded" : "compact"}
+        theme={app.theme}
       />
 
-      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(2,6,23,0.92)_0%,rgba(2,6,23,0.34)_24%,rgba(2,6,23,0.08)_50%,rgba(2,6,23,0.78)_100%)]" />
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-1/3 bg-[linear-gradient(90deg,rgba(2,6,23,0.82),rgba(2,6,23,0))]" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-1/4 bg-[linear-gradient(270deg,rgba(2,6,23,0.66),rgba(2,6,23,0))]" />
+      <div className="map-screen-scrim pointer-events-none absolute inset-0 z-10" />
+      <div className="map-screen-left-fade pointer-events-none absolute inset-y-0 left-0 z-10 w-1/3" />
+      <div className="map-screen-right-fade pointer-events-none absolute inset-y-0 right-0 z-10 w-1/4" />
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 p-3 sm:p-5">
         <div className="pointer-events-auto mx-auto grid max-w-7xl gap-3 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -205,7 +206,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[0.62rem] uppercase tracking-[0.28em] text-cyan-200/80">IrieVerse Map</p>
-                  <h1 className="truncate text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                  <h1 className="truncate text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">
                     Jamaica route command
                   </h1>
                 </div>
@@ -283,7 +284,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/74 p-3 text-xs text-slate-300 shadow-2xl shadow-slate-950/50 backdrop-blur-2xl">
           <div className="flex items-center gap-2">
             <Layers3 className="h-4 w-4 text-cyan-200" />
-            <span className="font-semibold text-white">{activeCategoryLabel}</span>
+            <span className="font-semibold text-slate-100">{activeCategoryLabel}</span>
             <span className="text-slate-500">layer</span>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -327,7 +328,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                 className="absolute inset-0 h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
-              <div className="absolute bottom-3 left-3 right-3">
+              <div className="media-overlay absolute bottom-3 left-3 right-3">
                 <p className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-slate-950/70 px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.18em] text-cyan-100 backdrop-blur">
                   <Plane className="h-3 w-3" /> {selectedDestination.airportCode}
                 </p>
@@ -340,7 +341,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                   <p className="flex items-center gap-1 text-xs uppercase tracking-[0.22em] text-cyan-300">
                     <MapPin className="h-3 w-3" /> {selectedDestination.region}
                   </p>
-                  <h2 className="mt-1 truncate text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                  <h2 className="mt-1 truncate text-2xl font-semibold tracking-tight text-slate-100 sm:text-3xl">
                     {selectedDestination.name}
                   </h2>
                   <p className="mt-2 flex items-center gap-2 text-sm text-amber-200">
@@ -678,7 +679,7 @@ function RouteHud({
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div>
           <p className="text-[0.62rem] uppercase tracking-[0.28em] text-cyan-200/80">Island Route</p>
-          <h2 className="text-lg font-semibold text-white">{stops.length} stop flow</h2>
+          <h2 className="text-lg font-semibold text-slate-100">{stops.length} stop flow</h2>
         </div>
         <button
           type="button"
@@ -710,7 +711,7 @@ function RouteHud({
               />
             )}
             <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 bg-slate-950 text-xs font-black text-white"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 bg-[color:var(--app-text)] text-xs font-black text-[color:var(--app-bg)]"
               style={{ borderColor: getRouteColor(Math.max(0, index - 1)) }}
             >
               {stop.day}

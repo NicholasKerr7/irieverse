@@ -2,14 +2,28 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (() => {
+        try {
+          const savedTheme = localStorage.getItem("irieverse_theme");
+          const systemTheme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+          const theme = savedTheme === "light" || savedTheme === "dark" ? savedTheme : systemTheme;
+          document.documentElement.classList.remove("dark", "light");
+          document.documentElement.classList.add(theme);
+        } catch {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
     <title>IrieVerse · Jamaica Travel OS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta
       name="description"
       content="IrieVerse is a Jamaica-first travel OS for exploring places, mapping routes, saving ideas, and building shareable trips."
     />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#020617" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f8fafc" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#020617" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

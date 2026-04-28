@@ -62,7 +62,7 @@ export function ExperiencesGrid({ items, saved, onToggleSaved, onAddToTrip }: Ex
                 <Heart className={classNames("h-4 w-4", isSaved ? "fill-rose-300 text-rose-300" : "")} />
                 {isSaved ? "Saved" : "Save"}
               </button>
-              <div className="absolute bottom-4 left-4 right-4">
+              <div className="media-overlay absolute bottom-4 left-4 right-4">
                 <p className="inline-flex items-center gap-1 rounded-full border border-emerald-300/25 bg-slate-950/65 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-100 backdrop-blur">
                   {iconForType(experience.type)}
                   {capitalise(experience.type)}

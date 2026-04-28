@@ -1,17 +1,21 @@
 import { Plane, Sparkles } from "lucide-react";
 import type { MobileTabId } from "./mobile/BottomNav";
 import { NAV_TABS } from "./mobile/BottomNav";
+import { ThemeToggleButton } from "./ThemeToggleButton";
+import type { ThemeMode } from "../hooks/useTravelOS";
 import { classNames } from "../utils/classNames";
 
 type DesktopNavProps = {
   activeTab: MobileTabId;
   onChange: (tab: MobileTabId) => void;
+  theme: ThemeMode;
+  onToggleTheme: () => void;
 };
 
-export function DesktopNav({ activeTab, onChange }: DesktopNavProps) {
+export function DesktopNav({ activeTab, onChange, theme, onToggleTheme }: DesktopNavProps) {
   return (
     <header
-      className="sticky top-0 z-50 hidden border-b border-white/10 bg-slate-950/72 px-6 py-3 shadow-2xl shadow-slate-950/35 backdrop-blur-2xl md:block"
+      className="app-desktop-nav sticky top-0 z-50 hidden border-b px-6 py-3 backdrop-blur-2xl md:block"
       data-testid="desktop-header-nav"
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6">
@@ -58,14 +62,22 @@ export function DesktopNav({ activeTab, onChange }: DesktopNavProps) {
           })}
         </nav>
 
-        <button
-          type="button"
-          onClick={() => onChange("trips")}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-emerald-300/35 bg-emerald-300/10 px-4 text-sm font-bold text-emerald-100 transition hover:border-emerald-300/70 hover:bg-emerald-300/15"
-        >
-          <Plane className="h-4 w-4" />
-          Build Trip
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggleButton
+            theme={theme}
+            onToggleTheme={onToggleTheme}
+            showLabel
+            testId="desktop-theme-toggle"
+          />
+          <button
+            type="button"
+            onClick={() => onChange("trips")}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-emerald-300/35 bg-emerald-300/10 px-4 text-sm font-bold text-emerald-100 transition hover:border-emerald-300/70 hover:bg-emerald-300/15"
+          >
+            <Plane className="h-4 w-4" />
+            Build Trip
+          </button>
+        </div>
       </div>
     </header>
   );

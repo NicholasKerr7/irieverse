@@ -2,15 +2,13 @@ import {
   ArrowRight,
   CalendarDays,
   MapPinned,
-  MoonStar,
   Search,
   Sparkles,
-  SunMedium,
 } from "lucide-react";
 import { ChangeEvent, KeyboardEvent } from "react";
+import { ThemeToggleButton } from "./ThemeToggleButton";
 import { QuickFact } from "../types/travel";
-
-type ThemeMode = "dark" | "light";
+import type { ThemeMode } from "../hooks/useTravelOS";
 
 interface HeroSectionProps {
   search: string;
@@ -53,8 +51,8 @@ export function HeroSection({
         playsInline
         src={videoSrc}
       />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,13,22,0.35)_0%,rgba(8,13,22,0.74)_48%,#020617_100%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-slate-950 to-transparent" />
+      <div className="hero-video-scrim absolute inset-0" />
+      <div className="hero-bottom-fade absolute inset-x-0 bottom-0 h-40" />
 
       <nav className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-4 pt-4 sm:px-6 lg:px-10">
         <div className="flex items-center gap-3">
@@ -68,29 +66,23 @@ export function HeroSection({
         </div>
 
         <div className="hidden items-center gap-6 text-xs uppercase tracking-[0.2em] md:flex">
-          <button type="button" onClick={() => onNavigate("explore")} className="text-slate-200/80 hover:text-white">
+          <button type="button" onClick={() => onNavigate("explore")} className="text-slate-200/80 hover:text-slate-100">
             Explore
           </button>
-          <button type="button" onClick={() => onNavigate("map")} className="text-slate-200/80 hover:text-white">
+          <button type="button" onClick={() => onNavigate("map")} className="text-slate-200/80 hover:text-slate-100">
             Map
           </button>
-          <button type="button" onClick={() => onNavigate("planner")} className="text-slate-200/80 hover:text-white">
+          <button type="button" onClick={() => onNavigate("planner")} className="text-slate-200/80 hover:text-slate-100">
             Trips
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={onToggleTheme}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-700/80 bg-slate-950/70 text-cyan-200 shadow-lg shadow-slate-950/60 backdrop-blur"
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? (
-            <SunMedium className="h-4 w-4 text-amber-300" />
-          ) : (
-            <MoonStar className="h-4 w-4 text-cyan-300" />
-          )}
-        </button>
+        <ThemeToggleButton
+          theme={theme}
+          onToggleTheme={onToggleTheme}
+          className="h-10 w-10 px-0"
+          testId="hero-theme-toggle"
+        />
       </nav>
 
       <div className="relative z-10 mx-auto grid max-w-7xl gap-8 px-4 pb-16 pt-14 sm:px-6 md:pt-20 lg:grid-cols-[1.08fr_0.92fr] lg:px-10">
@@ -100,7 +92,7 @@ export function HeroSection({
             Jamaica first travel planning
           </p>
 
-          <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-normal text-white sm:text-5xl lg:text-6xl">
+          <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-normal text-slate-100 sm:text-5xl lg:text-6xl">
             IrieVerse Travel OS
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
@@ -130,7 +122,7 @@ export function HeroSection({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-200">Search Jamaica</p>
-                <h2 className="mt-1 text-xl font-semibold text-white">Find the right island flow</h2>
+                <h2 className="mt-1 text-xl font-semibold text-slate-100">Find the right island flow</h2>
               </div>
               <Search className="h-5 w-5 text-cyan-200" />
             </div>
