@@ -1,4 +1,4 @@
-import { CloudSun, Compass, Heart, Route } from "lucide-react";
+import { ArrowRight, Compass, Heart, Route } from "lucide-react";
 import { HeroSection } from "../components/HeroSection";
 import { PageFooter } from "../components/PageFooter";
 import type { MobileTabId } from "../components/mobile/BottomNav";
@@ -45,37 +45,37 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
       <main className="mx-auto grid max-w-6xl gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:px-10">
         <section className={classNames("rounded-3xl p-4", glassPanel)}>
           <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">
-            Continue
+            Start here
           </p>
-          <h2 className="mt-1 text-lg font-semibold">Plan Jamaica from {app.destination.name}</h2>
+          <h2 className="mt-1 text-lg font-semibold">Build a first Jamaica trip in 3 steps.</h2>
           <p className="mt-1 text-sm leading-6 text-slate-400">
-            Keep the island-specific work in view: road pacing between regions, weather-aware days,
-            and local food, music, beach, and culture ideas tied to your saved plan.
+            Pick the basics, save a few local ideas, then let road pacing and weather cues shape the days.
           </p>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <HomeAction
-              icon={Route}
-              label="Road-aware routes"
-              body={`${app.itinerary.routeSummary.regionCount} regions · ${app.itinerary.routeSummary.totalDistanceKm} km`}
-              onClick={() => onNavigate("map")}
-            />
-            <HomeAction
-              icon={CloudSun}
-              label="Weather-shaped days"
-              body={getWeatherCueLabel(app)}
+          <div className="mt-4 grid gap-2 lg:grid-cols-3">
+            <FirstTripStep
+              step="1"
+              icon={Compass}
+              title="Choose base + dates"
+              body={`${app.destination.name} is selected. Tune days, vibe, and budget when ready.`}
+              cta="Start trip"
               onClick={() => onNavigate("trips")}
+              primary
             />
-            <HomeAction
+            <FirstTripStep
+              step="2"
               icon={Heart}
-              label="Local idea board"
-              body={`${app.savedPlaces.size + app.savedExperiences.size + app.importedIdeas.length} saved places and imports`}
+              title="Save local ideas"
+              body={`${app.savedPlaces.size + app.savedExperiences.size + app.importedIdeas.length} saved so far. Add places or paste links.`}
+              cta="Open Saved"
               onClick={() => onNavigate("saved")}
             />
-            <HomeAction
-              icon={Compass}
-              label="Jamaica discovery"
-              body={`${app.filteredDestinations.length} matching regions`}
-              onClick={() => onNavigate("explore")}
+            <FirstTripStep
+              step="3"
+              icon={Route}
+              title="Preview route + weather"
+              body={`${app.itinerary.routeSummary.regionCount} regions · ${app.itinerary.routeSummary.totalDistanceKm} km · ${getWeatherCueLabel(app)}`}
+              cta="Open map"
+              onClick={() => onNavigate("map")}
             />
           </div>
         </section>
@@ -108,26 +108,43 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
   );
 }
 
-function HomeAction({
+function FirstTripStep({
   icon: Icon,
-  label,
+  step,
+  title,
   body,
+  cta,
   onClick,
+  primary = false,
 }: {
   icon: typeof Compass;
-  label: string;
+  step: string;
+  title: string;
   body: string;
+  cta: string;
   onClick: () => void;
+  primary?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={classNames("rounded-2xl p-4 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/60", glassCard)}
+      className={classNames(
+        "group flex min-h-40 flex-col rounded-2xl p-4 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/60",
+        primary ? "border-cyan-300/40 bg-cyan-300/10" : glassCard
+      )}
     >
-      <Icon className="h-5 w-5 text-cyan-300" />
-      <p className="mt-3 text-sm font-semibold text-slate-100">{label}</p>
-      <p className="mt-1 text-xs text-slate-500">{body}</p>
+      <span className="flex items-center justify-between gap-3">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-300 text-xs font-bold text-slate-950">
+          {step}
+        </span>
+        <Icon className="h-5 w-5 text-cyan-300" />
+      </span>
+      <span className="mt-4 block text-sm font-semibold text-slate-100">{title}</span>
+      <span className="mt-1 block flex-1 text-xs leading-5 text-slate-500">{body}</span>
+      <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-[0.16em] text-cyan-200">
+        {cta} <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+      </span>
     </button>
   );
 }

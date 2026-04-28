@@ -6,7 +6,6 @@ import {
   Heart,
   MapPinned,
   Music2,
-  Route,
   Search,
   Sparkles,
 } from "lucide-react";
@@ -104,9 +103,9 @@ export function HeroSection({
           </p>
 
           <div className="mt-5 flex max-w-2xl flex-wrap gap-2">
-            <HeroSignal icon={Route} label="Road-aware routes" />
-            <HeroSignal icon={CloudSun} label="Weather-shaped days" />
-            <HeroSignal icon={Music2} label="Local culture, food, beaches" />
+            <HeroSignal icon={Compass} label="1. Choose a base" />
+            <HeroSignal icon={Music2} label="2. Save local ideas" />
+            <HeroSignal icon={CloudSun} label="3. Route + weather" />
           </div>
 
           <div className="mt-7 flex flex-wrap gap-3">
@@ -115,14 +114,14 @@ export function HeroSection({
               onClick={() => onNavigate("planner")}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-slate-950 shadow-xl shadow-cyan-500/25 transition hover:bg-cyan-200"
             >
-              <CalendarDays className="h-4 w-4" /> Start planning
+              <CalendarDays className="h-4 w-4" /> Build first trip
             </button>
             <button
               type="button"
-              onClick={() => onNavigate("map")}
+              onClick={() => onNavigate("explore")}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-500/80 bg-slate-950/65 px-5 py-3 text-sm font-semibold text-slate-100 backdrop-blur transition hover:border-cyan-300/70 hover:text-cyan-100"
             >
-              <MapPinned className="h-4 w-4" /> Open map
+              <Compass className="h-4 w-4" /> Explore Jamaica
             </button>
           </div>
         </div>
@@ -225,7 +224,7 @@ function HeroSignal({
   icon: Icon,
   label,
 }: {
-  icon: typeof Route;
+  icon: typeof Compass;
   label: string;
 }) {
   return (
