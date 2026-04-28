@@ -21,7 +21,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { TravelMap, type RouteRenderStatus } from "../components/TravelMap";
+import { TravelMap, type RouteDetail, type RouteRenderStatus } from "../components/TravelMap";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
@@ -52,6 +52,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const [activeCategory, setActiveCategory] = useState<MapCategoryId>("all");
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [showRoutePreview, setShowRoutePreview] = useState(true);
+  const [focusedDestinationId, setFocusedDestinationId] = useState(app.plannerBaseId);
   const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(null);
   const [routeStatus, setRouteStatus] = useState<RouteRenderStatus>({
     isLoading: false,
@@ -59,6 +60,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     roadLegs: 0,
     fallbackLegs: 0,
   });
+  const [routeDetails, setRouteDetails] = useState<RouteDetail[]>([]);
 
   const visibleDestinations = useMemo(() => {
     const query = app.search.trim().toLowerCase();
@@ -86,12 +88,18 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
 
   useEffect(() => {
     if (!visibleDestinations.length) return;
-    if (visibleDestinations.some((destination) => destination.id === app.plannerBaseId)) return;
-    app.setPlannerBaseId(visibleDestinations[0].id);
-  }, [app.plannerBaseId, app.setPlannerBaseId, visibleDestinations]);
+    if (visibleDestinations.some((destination) => destination.id === focusedDestinationId)) return;
+    setFocusedDestinationId(visibleDestinations[0].id);
+  }, [focusedDestinationId, visibleDestinations]);
+
+  useEffect(() => {
+    if (DESTINATIONS.some((destination) => destination.id === app.plannerBaseId)) {
+      setFocusedDestinationId(app.plannerBaseId);
+    }
+  }, [app.plannerBaseId]);
 
   const selectedDestination =
-    DESTINATIONS.find((destination) => destination.id === app.plannerBaseId) ?? visibleDestinations[0] ?? DESTINATIONS[0];
+    DESTINATIONS.find((destination) => destination.id === focusedDestinationId) ?? visibleDestinations[0] ?? DESTINATIONS[0];
   const selectedCategory = getDestinationPinCategory(selectedDestination);
   const isSaved = app.savedPlaces.has(selectedDestination.id);
   const routeSummary = app.itinerary.routeSummary;
@@ -106,6 +114,9 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   );
   const selectedRouteLeg = selectedRouteLegId
     ? routeLegOptions.find((option) => option.id === selectedRouteLegId) ?? null
+    : null;
+  const selectedRouteDetail = selectedRouteLegId
+    ? routeDetails.find((detail) => detail.id === selectedRouteLegId) ?? null
     : null;
   const selectedRouteStop = routeSummary.stops.find((stop) => stop.destinationId === selectedDestination.id);
   const nextRouteStop = selectedRouteStop
@@ -135,7 +146,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   }, [routeLegOptions, selectedRouteLegId]);
 
   const handleSelectDestination = (destinationId: string) => {
-    app.setPlannerBaseId(destinationId);
+    setFocusedDestinationId(destinationId);
     const matchingLeg = routeLegOptions.find((option) => option.leg.toDestinationId === destinationId);
     setSelectedRouteLegId(matchingLeg?.id ?? null);
     setSheetExpanded(true);
@@ -149,7 +160,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     }
     const routeLeg = routeLegOptions.find((option) => option.id === routeLegId);
     if (routeLeg) {
-      app.setPlannerBaseId(routeLeg.leg.toDestinationId);
+      setFocusedDestinationId(routeLeg.leg.toDestinationId);
     }
     setSheetExpanded(true);
   };
@@ -189,6 +200,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         selectedRouteLegId={selectedRouteLegId}
         onSelectRouteLeg={(routeLegId) => handleSelectRouteLeg(routeLegId)}
         onRouteStatusChange={setRouteStatus}
+        onRouteDetailsChange={setRouteDetails}
         autoFitKey={`${activeCategory}-${app.search}-${selectedDestination.id}-${sheetExpanded}-${routeSummary.stops.length}`}
         bottomInset={sheetExpanded ? "expanded" : "compact"}
         theme={app.theme}
@@ -430,17 +442,24 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                       <div className="mt-4 grid grid-cols-3 gap-2">
                         <RoutePulseFact
                           label="Distance"
-                          value={selectedRouteLeg ? formatMiles(selectedRouteLeg.leg.distanceKm) : `${routeSummary.totalDistanceKm} km`}
+                          value={selectedRouteLeg ? formatMiles(selectedRouteDetail?.distanceKm ?? selectedRouteLeg.leg.distanceKm) : `${routeSummary.totalDistanceKm} km`}
                         />
                         <RoutePulseFact
                           label="Drive"
-                          value={selectedRouteLeg ? formatDriveTime(selectedRouteLeg.leg.driveMinutes) : formatDriveTime(routeSummary.totalDriveMinutes)}
+                          value={selectedRouteLeg ? formatDriveTime(selectedRouteDetail?.durationMinutes ?? selectedRouteLeg.leg.driveMinutes) : formatDriveTime(routeSummary.totalDriveMinutes)}
                         />
                         <RoutePulseFact
                           label="Source"
                           value={getRouteStatusLabel(routeStatus)}
                         />
                       </div>
+
+                      <RouteDirectionsPanel
+                        selectedRouteLeg={selectedRouteLeg}
+                        selectedRouteDetail={selectedRouteDetail}
+                        routeStatus={routeStatus}
+                        onOpenDrivingGuide={handleOpenDrivingGuide}
+                      />
 
                       <div className="mt-4 grid gap-2 sm:grid-cols-2">
                         {routeSummary.stops.slice(0, 4).map((stop) => (
@@ -649,6 +668,77 @@ function RoutePulseFact({ label, value }: { label: string; value: string }) {
     <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/54 px-3 py-2">
       <p className="text-[0.58rem] uppercase tracking-[0.15em] text-cyan-200/70">{label}</p>
       <p className="mt-1 truncate text-xs font-bold text-slate-100">{value}</p>
+    </div>
+  );
+}
+
+function RouteDirectionsPanel({
+  selectedRouteLeg,
+  selectedRouteDetail,
+  routeStatus,
+  onOpenDrivingGuide,
+}: {
+  selectedRouteLeg: RouteLegOption | null;
+  selectedRouteDetail: RouteDetail | null;
+  routeStatus: RouteRenderStatus;
+  onOpenDrivingGuide: () => void;
+}) {
+  if (!selectedRouteLeg) return null;
+
+  const steps = selectedRouteDetail?.steps ?? [];
+  const hasRoadSteps = selectedRouteDetail?.source === "road" && steps.length > 0;
+
+  return (
+    <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/42 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[0.6rem] uppercase tracking-[0.22em] text-cyan-200/75">Driving steps</p>
+          <h4 className="mt-1 text-sm font-semibold text-slate-100">
+            {selectedRouteLeg.leg.fromName} to {selectedRouteLeg.leg.toName}
+          </h4>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenDrivingGuide}
+          className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-cyan-300/40 px-3 py-2 text-[0.68rem] font-bold text-cyan-100"
+        >
+          Maps <ArrowUpRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {routeStatus.isLoading && !selectedRouteDetail && (
+        <p className="mt-3 text-xs text-slate-400">Syncing road steps...</p>
+      )}
+
+      {hasRoadSteps && (
+        <ol className="mt-3 grid gap-2">
+          {steps.slice(0, 6).map((step, index) => (
+            <li
+              key={`${step.instruction}-${index}`}
+              className="grid grid-cols-[1.55rem_minmax(0,1fr)_auto] items-start gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-cyan-300 text-[0.68rem] font-black text-slate-950">
+                {index + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold leading-5 text-slate-100">{step.instruction}</span>
+                {!!step.roadName && (
+                  <span className="block truncate text-[0.68rem] text-slate-500">{step.roadName}</span>
+                )}
+              </span>
+              <span className="text-right text-[0.68rem] font-semibold text-slate-400">
+                {formatMiles(step.distanceKm)}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {!hasRoadSteps && !routeStatus.isLoading && (
+        <p className="mt-3 text-xs leading-5 text-slate-400">
+          Road maneuvers are unavailable for this leg, so the app is showing the route preview and external map handoff.
+        </p>
+      )}
     </div>
   );
 }

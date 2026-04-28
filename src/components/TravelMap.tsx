@@ -41,6 +41,7 @@ interface TravelMapProps {
   selectedRouteLegId?: string | null;
   onSelectRouteLeg?: (routeLegId: string) => void;
   onRouteStatusChange?: (status: RouteRenderStatus) => void;
+  onRouteDetailsChange?: (details: RouteDetail[]) => void;
   autoFitKey?: string;
   bottomInset?: "compact" | "expanded";
   theme?: ThemeMode;
@@ -51,6 +52,26 @@ export type RouteRenderStatus = {
   totalLegs: number;
   roadLegs: number;
   fallbackLegs: number;
+};
+
+export type RouteStep = {
+  instruction: string;
+  distanceKm: number;
+  durationMinutes: number;
+  roadName: string;
+  maneuverType: string;
+  modifier: string;
+};
+
+export type RouteDetail = {
+  id: string;
+  day: number;
+  fromName: string;
+  toName: string;
+  distanceKm: number;
+  durationMinutes: number;
+  source: "road" | "fallback";
+  steps: RouteStep[];
 };
 
 export const TravelMap = memo(function TravelMap({
@@ -68,6 +89,7 @@ export const TravelMap = memo(function TravelMap({
   selectedRouteLegId = null,
   onSelectRouteLeg,
   onRouteStatusChange,
+  onRouteDetailsChange,
   autoFitKey = "",
   bottomInset = "compact",
   theme = "dark",
@@ -85,6 +107,10 @@ export const TravelMap = memo(function TravelMap({
   const routeSegments = useMemo(
     () => buildRouteSegments(routeRequests, roadRoutesById),
     [roadRoutesById, routeRequests]
+  );
+  const routeDetails = useMemo(
+    () => routeSegments.map(routeSegmentToDetail),
+    [routeSegments]
   );
   const selectedRouteSegment = selectedRouteLegId
     ? routeSegments.find((segment) => segment.id === selectedRouteLegId)
@@ -223,6 +249,10 @@ export const TravelMap = memo(function TravelMap({
       fallbackLegs: Math.max(0, routeSegments.length - roadLegs),
     });
   }, [isLoadingRoadRoutes, onRouteStatusChange, routeSegments]);
+
+  useEffect(() => {
+    onRouteDetailsChange?.(routeDetails);
+  }, [onRouteDetailsChange, routeDetails]);
 
   const fitMapToTargets = useCallback(() => {
     if (!mapReady || fitTargets.length < 2 || !mapRef.current) return;
@@ -474,6 +504,7 @@ export const TravelMap = memo(function TravelMap({
 
 type RouteSegment = {
   id: string;
+  day: number;
   from: Destination;
   to: Destination;
   color: string;
@@ -484,6 +515,9 @@ type RouteSegment = {
   };
   coordinates: Array<[number, number]>;
   source: "road" | "fallback";
+  distanceKm: number;
+  durationMinutes: number;
+  steps: RouteStep[];
 };
 
 type RouteRequest = {
@@ -491,12 +525,14 @@ type RouteRequest = {
   from: Destination;
   to: Destination;
   fallbackDistanceKm: number;
+  fallbackDurationMinutes: number;
 };
 
 type RoadRoute = {
   coordinates: Array<[number, number]>;
   distanceKm: number;
   durationMinutes: number;
+  steps: RouteStep[];
   source: string;
 };
 
@@ -514,6 +550,7 @@ function buildRouteRequests(routeDestinations: Destination[], routeLegs: RouteLe
           from,
           to,
           fallbackDistanceKm: leg.distanceKm,
+          fallbackDurationMinutes: leg.driveMinutes,
         };
       })
       .filter((request): request is RouteRequest => Boolean(request));
@@ -524,6 +561,7 @@ function buildRouteRequests(routeDestinations: Destination[], routeLegs: RouteLe
     from: routeDestinations[index],
     to: destination,
     fallbackDistanceKm: 0,
+    fallbackDurationMinutes: 0,
   }));
 }
 
@@ -547,9 +585,11 @@ function createRouteSegment(request: RouteRequest, index: number, roadRoute?: Ro
     (request.from.latitude + request.to.latitude) / 2,
   ];
   const distanceKm = roadRoute?.distanceKm || request.fallbackDistanceKm;
+  const durationMinutes = roadRoute?.durationMinutes || request.fallbackDurationMinutes;
 
   return {
     id: request.id,
+    day,
     from: request.from,
     to: request.to,
     color: getRouteColor(index),
@@ -560,6 +600,9 @@ function createRouteSegment(request: RouteRequest, index: number, roadRoute?: Ro
     },
     coordinates,
     source: roadRoute ? "road" : "fallback",
+    distanceKm,
+    durationMinutes,
+    steps: roadRoute?.steps ?? [],
   };
 }
 
@@ -585,8 +628,56 @@ async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promi
     coordinates,
     distanceKm: Number(data.distanceKm) || request.fallbackDistanceKm,
     durationMinutes: Number(data.durationMinutes) || 0,
+    steps: normalizeRouteSteps(data.steps),
     source: String(data.source ?? "road"),
   };
+}
+
+function routeSegmentToDetail(segment: RouteSegment): RouteDetail {
+  return {
+    id: segment.id,
+    day: segment.day,
+    fromName: segment.from.name,
+    toName: segment.to.name,
+    distanceKm: segment.distanceKm,
+    durationMinutes: segment.durationMinutes,
+    source: segment.source,
+    steps: segment.steps,
+  };
+}
+
+function normalizeRouteSteps(value: unknown): RouteStep[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map(normalizeRouteStep)
+    .filter((step): step is RouteStep => Boolean(step));
+}
+
+function normalizeRouteStep(value: unknown): RouteStep | null {
+  if (!isRecord(value)) return null;
+  const instruction = asString(value.instruction);
+  if (!instruction) return null;
+
+  return {
+    instruction,
+    distanceKm: asNumber(value.distanceKm) ?? 0,
+    durationMinutes: asNumber(value.durationMinutes) ?? 0,
+    roadName: asString(value.roadName) ?? "",
+    maneuverType: asString(value.maneuverType) ?? "continue",
+    modifier: asString(value.modifier) ?? "",
+  };
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
 
 function normalizeCoordinatePair(value: unknown): [number, number] | null {

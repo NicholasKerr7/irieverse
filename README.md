@@ -39,7 +39,7 @@ See `docs/production-env.md` for production platform setup, booking API response
 ## Deployment
 - Vercel: Import the repo, Framework = Vite, Build Command = `npm run build`, Output = `dist`, add env vars as needed.
 - The booking integration uses the Vercel serverless route at `/api/bookings`.
-- The map driving overlay uses the Vercel serverless route at `/api/road-route`.
+- The map driving overlay uses the serverless route at `/api/road-route` for road geometry and maneuver previews.
 - The Trips screen labels live integrations and fallbacks so production QA can verify what is connected.
 - PWA shortcuts open app tabs directly with `?tab=explore`, `?tab=map`, and `?tab=trips`.
 - Installed PWA share actions open `?tab=saved` with shared title/text/url prefilled for import.

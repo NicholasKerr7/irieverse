@@ -20,7 +20,7 @@ Coverage:
 - Desktop screens: Home hero navigation, Map
 - User flows: save destination, import saved idea, add saved idea to trip, export ICS, share-link availability
 - Supabase sharing: when a share link is created, the test verifies the row is readable, marks it as production QA data, deletes it through the QA-only delete policy, and verifies the row is gone
-- Map routing: `/api/road-route` returns OSRM road geometry with more than 100 coordinates
+- Map routing: `/api/road-route` returns OSRM road geometry, distance, duration, and maneuver steps
 - Runtime checks: no page errors or same-origin request failures during the tested flows
 
 Notes:
