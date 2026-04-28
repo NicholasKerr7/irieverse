@@ -56,6 +56,13 @@
       "label": "Interactive Jamaica map with road routes"
     },
     {
+      "src": "/screenshots/desktop-home.png",
+      "sizes": "2880x2000",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop IrieVerse home screen"
+    },
+    {
       "src": "/screenshots/desktop-map.png",
       "sizes": "2880x2000",
       "type": "image/png",

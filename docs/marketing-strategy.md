@@ -66,9 +66,11 @@ Screenshot:
 
 Use the Home screenshot as the opening visual for landing pages, social posts, pitch decks, and install prompts.
 
-Screenshot:
+Screenshots:
 
 ![Home](../public/screenshots/mobile-home.png)
+
+![Desktop home](../public/screenshots/desktop-home.png)
 
 ## Messaging Architecture
 
@@ -107,7 +109,8 @@ Use this order for website sections, pitch decks, and social carousels:
 | 4 | `mobile-map.png` | Preview road routes and selected stops before the trip. |
 | 5 | `mobile-saved-import.png` | Save ideas from links and organize them into boards. |
 | 6 | `mobile-trips.png` | Turn saved ideas into a practical itinerary. |
-| 7 | `desktop-map.png` | Show the product also works as a serious desktop planning tool. |
+| 7 | `desktop-home.png` | Show the improved desktop hero navigation and premium landing state. |
+| 8 | `desktop-map.png` | Show the product also works as a serious desktop planning tool. |
 
 ## Channel Strategy
 
@@ -248,6 +251,7 @@ Already available:
 - `public/screenshots/mobile-map.png`
 - `public/screenshots/mobile-saved-import.png`
 - `public/screenshots/mobile-trips.png`
+- `public/screenshots/desktop-home.png`
 - `public/screenshots/desktop-map.png`
 - `public/icon.svg`
 - `public/icon-192.png`

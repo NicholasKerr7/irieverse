@@ -122,6 +122,7 @@ test("production desktop home uses hero navigation", async ({ browser }) => {
   await expect(page.getByTestId("hero-desktop-nav")).toBeVisible();
   await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
   await expect(page.getByTestId("mobile-bottom-nav")).toBeHidden();
+  await screenshot(page, "desktop-home.png");
 
   await page.getByTestId("hero-desktop-nav").getByRole("button", { name: "Map" }).click();
   await expect(page).toHaveURL(/tab=map/);
@@ -320,6 +321,7 @@ async function verifyProductionAssets(request) {
     expect.arrayContaining([
       "/screenshots/mobile-home.png",
       "/screenshots/mobile-map.png",
+      "/screenshots/desktop-home.png",
       "/screenshots/desktop-map.png",
     ])
   );

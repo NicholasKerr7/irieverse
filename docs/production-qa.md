@@ -10,14 +10,14 @@ Command:
 npm run qa:production
 ```
 
-Result: 2 Playwright tests passed.
+Result: 3 Playwright tests passed.
 
 Coverage:
 
 - Live app routes: `/`, `/?tab=map`
 - PWA assets: `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `sw.js`
 - Mobile screens: Home, Explore places, Explore experiences, Map, Saved import, Trips
-- Desktop screen: Map
+- Desktop screens: Home hero navigation, Map
 - User flows: save destination, import saved idea, add saved idea to trip, export ICS, share-link availability
 - Supabase sharing: when a share link is created, the test verifies the row is readable, marks it as production QA data, deletes it through the QA-only delete policy, and verifies the row is gone
 - Map routing: `/api/road-route` returns OSRM road geometry with more than 100 coordinates
@@ -37,4 +37,5 @@ Screenshots:
 - `public/screenshots/mobile-map.png`
 - `public/screenshots/mobile-saved-import.png`
 - `public/screenshots/mobile-trips.png`
+- `public/screenshots/desktop-home.png`
 - `public/screenshots/desktop-map.png`
