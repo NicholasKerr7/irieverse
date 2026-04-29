@@ -20,10 +20,6 @@ export const DESTINATIONS: Destination[] = [
     ],
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Doctors-Cave-Beach.jpg?width=1200",
-    imageCredit: {
-      label: "Op. Deo / Public domain",
-      href: "https://commons.wikimedia.org/wiki/File:Doctors-Cave-Beach.jpg",
-    },
     latitude: 18.4762,
     longitude: -77.8939,
     airportCode: "MBJ",
@@ -52,10 +48,6 @@ export const DESTINATIONS: Destination[] = [
     ],
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Atlantic_ocean_negril_jamaica.jpg?width=1200",
-    imageCredit: {
-      label: "Karolyn / CC BY 3.0",
-      href: "https://commons.wikimedia.org/wiki/File:Atlantic_ocean_negril_jamaica.jpg",
-    },
     latitude: 18.2728,
     longitude: -78.3488,
     airportCode: "MBJ",
@@ -84,10 +76,6 @@ export const DESTINATIONS: Destination[] = [
     ],
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Ocho_R%C3%ADos-Jamaica03.JPG?width=1200",
-    imageCredit: {
-      label: "Poco a poco / CC BY 3.0",
-      href: "https://commons.wikimedia.org/wiki/File:Ocho_R%C3%ADos-Jamaica03.JPG",
-    },
     latitude: 18.4029,
     longitude: -76.974,
     airportCode: "KIN",
@@ -116,10 +104,6 @@ export const DESTINATIONS: Destination[] = [
     ],
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Kingston%2C_Jamaica.JPG?width=1200",
-    imageCredit: {
-      label: "NASA Astronauts / Public domain",
-      href: "https://commons.wikimedia.org/wiki/File:Kingston,_Jamaica.JPG",
-    },
     latitude: 17.9784,
     longitude: -76.7882,
     airportCode: "KIN",
@@ -148,10 +132,6 @@ export const DESTINATIONS: Destination[] = [
     ],
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Frenchman%27s_Cove_%2832306710322%29.jpg?width=1200",
-    imageCredit: {
-      label: "nigel burgher / CC BY 2.0",
-      href: "https://commons.wikimedia.org/wiki/File:Frenchman%27s_Cove_(32306710322).jpg",
-    },
     latitude: 18.1801,
     longitude: -76.457,
     airportCode: "KIN",
@@ -180,10 +160,6 @@ export const DESTINATIONS: Destination[] = [
     ],
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Treasure_Beach_Jamaica_2023.jpg?width=1200",
-    imageCredit: {
-      label: "Treasurebeachjamaica / CC BY-SA 4.0",
-      href: "https://commons.wikimedia.org/wiki/File:Treasure_Beach_Jamaica_2023.jpg",
-    },
     latitude: 17.8815,
     longitude: -77.7675,
     airportCode: "MBJ",
@@ -216,10 +192,6 @@ export const EXPERIENCES: Experience[] = [
     bestTime: "Lunch to sunset",
     imageUrl:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Boston_beach_Jamaica_-_panoramio.jpg?width=1200",
-    imageCredit: {
-      label: "Morten Idriss Nygaar / CC BY-SA 3.0",
-      href: "https://commons.wikimedia.org/wiki/File:Boston_beach_Jamaica_-_panoramio.jpg",
-    },
     approxCost: "$",
   },
   {
@@ -242,10 +214,6 @@ export const EXPERIENCES: Experience[] = [
     bestTime: "Late night, mainly weekends",
     imageUrl:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Street_dance_Kingston_Jamaica_passa_passa.jpg?width=1200",
-    imageCredit: {
-      label: "nickolette / CC BY-SA 2.5",
-      href: "https://commons.wikimedia.org/wiki/File:Street_dance_Kingston_Jamaica_passa_passa.jpg",
-    },
     approxCost: "$$",
   },
   {
@@ -268,10 +236,6 @@ export const EXPERIENCES: Experience[] = [
     bestTime: "Golden hour",
     imageUrl:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Negril_sunset.jpg?width=1200",
-    imageCredit: {
-      label: "Mwinog2777 / CC BY-SA 4.0",
-      href: "https://commons.wikimedia.org/wiki/File:Negril_sunset.jpg",
-    },
     approxCost: "$$$",
   },
   {
@@ -293,11 +257,7 @@ export const EXPERIENCES: Experience[] = [
     ],
     bestTime: "Evening into night",
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Accompong_Maroon_Festival_-_Jerk_Pork.jpg?width=1200",
-    imageCredit: {
-      label: "Audrey Dreygo Headley / CC BY-SA 4.0",
-      href: "https://commons.wikimedia.org/wiki/File:Accompong_Maroon_Festival_-_Jerk_Pork.jpg",
-    },
+      "https://images.unsplash.com/photo-1658833621083-01fd8a4acf19?auto=format&fit=crop&w=1200&q=80",
     approxCost: "$$",
   },
   {
@@ -320,10 +280,6 @@ export const EXPERIENCES: Experience[] = [
     bestTime: "Specific dates each year",
     imageUrl:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Accompong_Maroon_Festival_IMG_6766.jpg?width=1200",
-    imageCredit: {
-      label: "Audrey Dreygo Headley / CC BY-SA 4.0",
-      href: "https://commons.wikimedia.org/wiki/File:Accompong_Maroon_Festival_IMG_6766.jpg",
-    },
     approxCost: "$$",
   },
   {
@@ -346,10 +302,6 @@ export const EXPERIENCES: Experience[] = [
     bestTime: "Weekends and holidays",
     imageUrl:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Jamaica_Ocho_Rios_Dunn%27s_River_Falls_2.jpg?width=1200",
-    imageCredit: {
-      label: "Dr. Thomas Liptak / CC BY-SA 4.0",
-      href: "https://commons.wikimedia.org/wiki/File:Jamaica_Ocho_Rios_Dunn%27s_River_Falls_2.jpg",
-    },
     approxCost: "$$",
   },
 ];

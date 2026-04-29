@@ -9,7 +9,6 @@ import {
   X,
 } from "lucide-react";
 import { ExperiencesGrid } from "../components/ExperiencesGrid";
-import { ImageCreditBadge } from "../components/ImageCreditBadge";
 import { PlacesGrid } from "../components/PlacesGrid";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCE_TYPES, EXPERIENCES, VIBE_OPTIONS } from "../data/content";
@@ -59,7 +58,6 @@ export function ExploreScreen({ app, onNavigate }: ExploreScreenProps) {
               className="absolute inset-0 h-full w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/45 to-transparent" />
-            <ImageCreditBadge credit={app.destination.imageCredit} className="absolute left-5 top-5" />
             <div className="media-overlay absolute bottom-5 left-5 right-5 min-w-0">
               <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-slate-950/65 px-3 py-2 text-[0.65rem] uppercase tracking-[0.24em] text-cyan-100 backdrop-blur">
                 <Compass className="h-3.5 w-3.5" />

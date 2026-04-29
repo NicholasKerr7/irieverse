@@ -10,7 +10,6 @@ import {
   Utensils,
   WalletCards,
 } from "lucide-react";
-import { ImageCreditBadge } from "./ImageCreditBadge";
 import { Experience } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassControlMuted } from "../utils/glass";
@@ -49,7 +48,6 @@ export function ExperiencesGrid({ items, saved, onToggleSaved, onAddToTrip }: Ex
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent" />
-              <ImageCreditBadge credit={experience.imageCredit} className="absolute left-3 top-3" />
               <button
                 type="button"
                 onClick={() => onToggleSaved(experience.id)}

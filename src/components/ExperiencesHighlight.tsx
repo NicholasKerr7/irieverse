@@ -1,4 +1,3 @@
-import { ImageCreditBadge } from "./ImageCreditBadge";
 import { Experience } from "../types/travel";
 import { capitalise } from "../utils/text";
 
@@ -28,9 +27,8 @@ export function ExperiencesHighlight({ items }: ExperiencesHighlightProps) {
             key={experience.id}
             className="rounded-2xl border border-slate-700/80 bg-gradient-to-br from-slate-900/90 via-slate-950 to-slate-950/95 overflow-hidden flex flex-col"
           >
-            <div className="relative h-28 overflow-hidden">
+            <div className="h-28 overflow-hidden">
               <img src={experience.imageUrl} alt={experience.title} className="w-full h-full object-cover scale-[1.03]" />
-              <ImageCreditBadge credit={experience.imageCredit} className="absolute left-2 top-2" />
             </div>
             <div className="p-3 flex-1 flex flex-col gap-1">
               <div className="flex items-center justify-between gap-2">
