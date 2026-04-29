@@ -77,6 +77,7 @@ Desktop map:
 
 ## Marketing kit
 - Strategy: `docs/marketing-strategy.md`
+- Local mode plan: `docs/local-mode-plan.md`
 - Static press kit page: `public/press-kit.html`
 - Production press kit URL after deploy: `https://irieverse.vercel.app/press-kit.html`
 

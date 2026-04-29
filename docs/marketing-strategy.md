@@ -24,6 +24,7 @@ IrieVerse is far enough along to market as a focused product, not just a concept
 | First-time Jamaica travelers | They want confidence choosing regions, activities, and routes. | Plan Jamaica by vibe, route, and budget. |
 | Couples and friend groups | They need a shared plan that feels exciting and practical. | Save ideas, build trips, export calendar plans, share trips. |
 | Diaspora travelers | They may know the island culturally but still need modern planning tools. | Jamaica-first discovery with culture, food, nightlife, and route awareness. |
+| Jamaica locals | They want easier weekend, food, beach, river, nightlife, and hosting plans. | Local mode can turn saved ideas into realistic day trips and group plans. |
 | Travel creators | They save ideas from social platforms and need a place to organize them. | Paste links into Saved, auto-categorize them, and add them to a trip. |
 | Boutique travel planners | They need a quick visual way to explain routes and day plans. | Map routes, daily plans, budget, events, bookings, and shareable links. |
 
@@ -122,6 +123,8 @@ Use `public/press-kit.html` as a lightweight launch page for sharing product pos
 ```text
 https://irieverse.vercel.app/press-kit.html
 ```
+
+Future local-user expansion is captured in `docs/local-mode-plan.md`.
 
 ### Social Launch
 
