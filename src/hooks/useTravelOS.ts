@@ -21,7 +21,9 @@ import {
   fetchTripState,
   getCollaborationErrorCode,
   getCollaborationErrorMessage,
+  getStoredTripEditToken,
   hasCollaborationBackend,
+  rememberTripEditToken,
   saveTripState,
   serializeTripState,
 } from "../services/collab";
@@ -177,6 +179,7 @@ export function useTravelOS() {
     zoom: 8.2,
   });
   const [tripId, setTripId] = useState<string | null>(null);
+  const [tripEditToken, setTripEditToken] = useState<string | null>(null);
   const [tripShareUrl, setTripShareUrl] = useState("");
   const [isSyncingTrip, setIsSyncingTrip] = useState(false);
   const [tripStatusMessage, setTripStatusMessage] = useState<string | null>(null);
@@ -616,9 +619,15 @@ export function useTravelOS() {
       .then((payload) => {
         if (cancelled) return;
         applyTripPayload(payload);
+        const storedEditToken = getStoredTripEditToken(sharedTripId);
         setTripId(sharedTripId);
+        setTripEditToken(storedEditToken);
         setTripShareUrl(buildShareUrl(sharedTripId));
-        setTripStatusMessage("Shared trip loaded");
+        setTripStatusMessage(
+          storedEditToken
+            ? "Shared trip loaded. You can update this link."
+            : "Shared trip loaded as view-only. Share again to save your own copy."
+        );
         setCollaborationErrorCode(null);
       })
       .catch((error) => {
@@ -799,12 +808,16 @@ export function useTravelOS() {
         savedExperiences,
         importedIdeas,
       });
-      const id = await saveTripState(tripId, payload);
+      const targetTripId = tripEditToken ? tripId : null;
+      const result = await saveTripState(targetTripId, payload, tripEditToken);
+      rememberTripEditToken(result.id, result.editToken);
+      setTripEditToken(result.editToken);
+      const id = result.id;
       setTripId(id);
       const shareUrl = buildShareUrl(id);
       setTripShareUrl(shareUrl);
       updateUrlWithTrip(shareUrl);
-      setTripStatusMessage("Share link updated");
+      setTripStatusMessage(result.mode === "updated" ? "Share link updated" : "Share link created");
       setCollaborationErrorCode(null);
     } catch (error) {
       console.error(error);
@@ -940,7 +953,7 @@ export function useTravelOS() {
   };
 
   useEffect(() => {
-    if (!tripId || !collaborationReady) return;
+    if (!tripId || !tripEditToken || !collaborationReady) return;
     const payload = serializeTripState({
       planningMode,
       planningTemplateId,
@@ -960,7 +973,7 @@ export function useTravelOS() {
 
     const handler = setTimeout(() => {
       setIsSyncingTrip(true);
-      saveTripState(tripId, payload)
+      saveTripState(tripId, payload, tripEditToken)
         .then(() => {
           setTripStatusMessage("Trip updated");
           setCollaborationErrorCode(null);
@@ -976,6 +989,7 @@ export function useTravelOS() {
     return () => clearTimeout(handler);
   }, [
     tripId,
+    tripEditToken,
     collaborationReady,
     planningMode,
     planningTemplateId,
@@ -1042,6 +1056,7 @@ export function useTravelOS() {
     mapViewState,
     handleMapMove,
     tripId,
+    tripCanEdit: Boolean(tripId && tripEditToken),
     tripShareUrl,
     isSyncingTrip,
     tripStatusMessage,

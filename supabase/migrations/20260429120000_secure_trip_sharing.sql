@@ -1,31 +1,5 @@
-create extension if not exists "pgcrypto";
-
-create table if not exists public.trips (
-  id uuid primary key default gen_random_uuid(),
-  data jsonb not null,
-  edit_token_hash text,
-  updated_at timestamptz not null default now()
-);
-
 alter table public.trips
 add column if not exists edit_token_hash text;
-
-create or replace function public.set_trips_updated_at()
-returns trigger
-language plpgsql
-as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
-
-drop trigger if exists set_trips_updated_at on public.trips;
-
-create trigger set_trips_updated_at
-before update on public.trips
-for each row
-execute function public.set_trips_updated_at();
 
 alter table public.trips enable row level security;
 
@@ -145,10 +119,3 @@ grant execute on function public.create_trip_share(jsonb, text) to anon, authent
 grant execute on function public.read_trip_share(uuid) to anon, authenticated;
 grant execute on function public.update_trip_share(uuid, jsonb, text) to anon, authenticated;
 grant execute on function public.delete_trip_share(uuid, text) to anon, authenticated;
-
-create index if not exists trips_updated_at_idx
-on public.trips (updated_at);
-
-create index if not exists trips_qa_source_idx
-on public.trips ((data -> 'qa' ->> 'source'))
-where data ? 'qa';

@@ -11,8 +11,8 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 - Trip planning confidence panel for share links, stays, flights, road routes, and events
 - Flight snapshot with live schedules or saved examples
 - Island calendar and stay recommendations with live data or curated examples
-- Optional Supabase-backed trip sharing
-- Production QA deletes its own Supabase test share rows after verification
+- Optional Supabase-backed view-only trip sharing with local edit-token updates
+- Production QA deletes its own Supabase test share rows through the protected cleanup RPC
 - PWA manifest, install icons, app shortcuts, and same-origin offline cache for fallback data/assets
 
 ## Quick start

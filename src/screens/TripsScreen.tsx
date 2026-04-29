@@ -1006,7 +1006,7 @@ function WizardPanel({
 
       {activeStep === "share" && (
         <div className="space-y-3">
-          <WizardTitle title="Export or share" body="Export the calendar anytime. Share links turn on when cloud sharing is connected." />
+          <WizardTitle title="Export or share" body="Export the calendar anytime. Share links are view-only unless opened in the browser that created them." />
           <button
             type="button"
             onClick={app.handleExportItinerary}
@@ -1020,7 +1020,7 @@ function WizardPanel({
             disabled={!app.collaborationReady || app.isSyncingTrip}
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-cyan-300/60 px-4 py-3 text-sm font-bold text-cyan-100 disabled:opacity-50"
           >
-            <Share2 className="h-4 w-4" /> {app.tripId ? "Update share link" : "Share trip"}
+            <Share2 className="h-4 w-4" /> {app.tripCanEdit ? "Update share link" : app.tripId ? "Save editable copy" : "Create share link"}
           </button>
         </div>
       )}
@@ -1269,9 +1269,11 @@ function getSharingIntegrationStatus(app: TravelOS): { status: string; tone: Int
   }
 
   return {
-    status: "Ready",
+    status: app.tripId && !app.tripCanEdit ? "View-only" : "Ready",
     tone: "live",
-    body: "Share links can be created and reopened.",
+    body: app.tripId && !app.tripCanEdit
+      ? "This shared trip can be viewed here. Share again to save an editable copy."
+      : "Share links can be created and reopened. Only this browser can update links it created.",
   };
 }
 
@@ -1676,7 +1678,7 @@ function SharePanel({ app }: { app: TravelOS }) {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Export / Share</p>
-          <h3 className="text-base font-semibold">Calendar and crew link</h3>
+          <h3 className="text-base font-semibold">Calendar and view-only link</h3>
         </div>
         {app.isSyncingTrip && <span className="animate-pulse text-xs text-slate-400">Syncing trip...</span>}
       </div>
@@ -1695,7 +1697,7 @@ function SharePanel({ app }: { app: TravelOS }) {
           disabled={!app.collaborationReady || app.isSyncingTrip}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-cyan-400/60 bg-cyan-400/10 px-4 py-2 text-xs font-bold text-cyan-100 disabled:opacity-50"
         >
-          <Share2 className="h-4 w-4" /> Share
+          <Share2 className="h-4 w-4" /> {app.tripCanEdit ? "Update link" : app.tripId ? "Save copy" : "Create link"}
         </button>
       </div>
 
@@ -1705,7 +1707,7 @@ function SharePanel({ app }: { app: TravelOS }) {
             type="text"
             readOnly
             value={app.tripShareUrl}
-            placeholder="Create a share link to collaborate"
+            placeholder="Create a view-only share link"
             className="flex-1 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-300"
           />
           <button

@@ -68,11 +68,13 @@ Trip sharing expects a Supabase table named `trips` with this shape:
 ```text
 id uuid primary key
 data jsonb
+edit_token_hash text
 updated_at timestamptz
 ```
 
-The migration in `supabase/migrations/20260427120000_create_trips_sharing.sql` creates the MVP sharing table and public anon policies. The app stores planner settings, saved places, saved experiences, and imported ideas in the `data` JSON payload.
-The migration in `supabase/migrations/20260427195500_add_production_qa_trip_cleanup.sql` adds a QA-only delete policy and indexes so production QA share rows can be removed after automated verification.
+The migration in `supabase/migrations/20260427120000_create_trips_sharing.sql` creates the original sharing table.
+The migration in `supabase/migrations/20260429120000_secure_trip_sharing.sql` adds edit-token hashes and RPC functions for create/read/update/delete so public share links are view-only unless the browser has the local edit token.
+The app stores planner settings, saved places, saved experiences, imported ideas, and day-level experience picks in the `data` JSON payload.
 
 To apply it with the Supabase CLI:
 
@@ -83,7 +85,7 @@ supabase db push
 
 For manual setup, run `supabase/schema.sql` in the Supabase SQL editor. Keep it mirrored with the migration if the table shape changes.
 
-If the app reports `Supabase trips table missing`, the public REST API cannot see `public.trips` yet. Run `supabase/schema.sql`, wait for the schema cache to refresh, then retry Share. If `supabase db push` fails with a remote Postgres password error, re-run `supabase link --project-ref your-project-ref --password your-current-db-password` before pushing migrations.
+If the app reports share setup incomplete, run `supabase/schema.sql` or push all migrations, wait for the schema cache to refresh, then retry Share. If `supabase db push` fails with a remote Postgres password error, re-run `supabase link --project-ref your-project-ref --password your-current-db-password` before pushing migrations.
 
 ## Booking API Contract
 
@@ -185,7 +187,7 @@ Trips includes a compact planning confidence panel for launch QA:
 
 | Planning area | Live state | Curated/estimated state |
 | --- | --- | --- |
-| Share links | `Ready` when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set and the trips table is reachable. | `Setup needed` and export still works. |
+| Share links | `Ready` when `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and the trip-share RPC functions are reachable. | `Setup needed` and export still works. |
 | Stays | `Live stays` when the configured booking source returns live data. | `Curated picks` with Jamaica stay ideas. |
 | Flights | `Live schedule` when `/api/flights` returns AviationStack data. | `Saved examples` from `public/data/flights-sample.json`. |
 | Road planning | `Road-aware` through `api/road-route.js`. | The map keeps preview route lines if the proxy fails. |
@@ -203,8 +205,8 @@ npm run build
 
 Then test:
 
-- Share trip creates and reloads a `?trip=` URL.
-- `npm run qa:production` removes any Supabase share row it creates after marking it as production QA data.
+- Share trip creates and reloads a view-only `?trip=` URL; updates require the local edit token stored in the creating browser.
+- `npm run qa:production` removes any Supabase share row it creates through the edit-token-protected cleanup RPC.
 - Flights display live data or a clear empty/error state.
 - Booking cards display from the configured endpoint.
 - Map route lines follow roads or gracefully fall back when the routing service is unavailable.

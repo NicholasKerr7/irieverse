@@ -3,6 +3,8 @@ import type { DayExperienceOverrides, ImportedIdea, PlanningMode, PlanningTempla
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const EDIT_TOKEN_STORAGE_KEY = "irieverse_trip_edit_tokens";
+const EDIT_TOKEN_BYTE_LENGTH = 32;
 
 export type CollaborationErrorCode =
   | "not-configured"
@@ -42,10 +44,10 @@ export type TripPayload = {
   updatedAt: string;
 };
 
-type TripRecord = {
+export type SaveTripStateResult = {
   id: string;
-  data: TripPayload;
-  updated_at: string;
+  editToken: string;
+  mode: "created" | "updated";
 };
 
 let supabase: SupabaseClient | null = null;
@@ -69,8 +71,9 @@ export function getCollaborationErrorMessage(error: unknown): string {
 
 export async function saveTripState(
   tripId: string | null,
-  payload: TripPayload
-): Promise<string> {
+  payload: TripPayload,
+  editToken?: string | null
+): Promise<SaveTripStateResult> {
   if (!supabase) {
     throw new CollaborationError(
       "not-configured",
@@ -78,19 +81,33 @@ export async function saveTripState(
     );
   }
 
-  const baseInsert = { data: payload };
-  const mutation =
-    tripId != null
-      ? { ...baseInsert, id: tripId }
-      : baseInsert;
+  const activeEditToken = tripId && editToken ? editToken : createEditToken();
+  const editTokenHash = await hashEditToken(activeEditToken);
 
-  const { data, error } = await supabase
-    .from("trips")
-    .upsert(mutation, { onConflict: "id", ignoreDuplicates: false })
-    .select()
-    .single();
+  if (tripId && editToken) {
+    const { data, error } = await supabase.rpc("update_trip_share", {
+      p_trip_id: tripId,
+      p_trip_data: payload,
+      p_edit_token_hash: editTokenHash,
+    });
 
-  if (error || !data) {
+    if (error || !data) {
+      throw toCollaborationError(
+        error,
+        "empty-response",
+        "The share link was not updated. Try again in a moment."
+      );
+    }
+
+    return { id: tripId, editToken: activeEditToken, mode: "updated" };
+  }
+
+  const { data, error } = await supabase.rpc("create_trip_share", {
+    p_trip_data: payload,
+    p_edit_token_hash: editTokenHash,
+  });
+
+  if (error || !data || typeof data !== "string") {
     throw toCollaborationError(
       error,
       "empty-response",
@@ -98,7 +115,7 @@ export async function saveTripState(
     );
   }
 
-  return (data as TripRecord).id;
+  return { id: data, editToken: activeEditToken, mode: "created" };
 }
 
 export async function fetchTripState(tripId: string): Promise<TripPayload> {
@@ -108,16 +125,30 @@ export async function fetchTripState(tripId: string): Promise<TripPayload> {
       "Shared trips are not connected yet."
     );
   }
-  const { data, error } = await supabase
-    .from("trips")
-    .select("data, updated_at")
-    .eq("id", tripId)
-    .single();
+  const { data, error } = await supabase.rpc("read_trip_share", {
+    p_trip_id: tripId,
+  });
 
   if (error || !data) {
     throw toCollaborationError(error, "not-found", "Shared trip was not found.");
   }
-  return (data as TripRecord).data;
+  return data as TripPayload;
+}
+
+export function getStoredTripEditToken(tripId: string): string | null {
+  const tokens = readStoredEditTokens();
+  return tokens[tripId] ?? null;
+}
+
+export function rememberTripEditToken(tripId: string, editToken: string): void {
+  if (typeof window === "undefined") return;
+  const tokens = readStoredEditTokens();
+  tokens[tripId] = editToken;
+  try {
+    window.localStorage.setItem(EDIT_TOKEN_STORAGE_KEY, JSON.stringify(tokens));
+  } catch {
+    // Local storage can be unavailable in private browsing or restricted embeds.
+  }
 }
 
 export function serializeTripState(args: {
@@ -186,6 +217,9 @@ function toCollaborationError(
     supabaseError.code === "42P01" ||
     supabaseError.code === "PGRST205" ||
     searchableMessage.includes("relation \"public.trips\" does not exist") ||
+    supabaseError.code === "PGRST202" ||
+    (searchableMessage.includes("function") && searchableMessage.includes("trip_share")) ||
+    searchableMessage.includes("could not find the function") ||
     (searchableMessage.includes("public.trips") && searchableMessage.includes("schema cache")) ||
     (searchableMessage.includes("could not find the table") && searchableMessage.includes("trips"))
   ) {
@@ -213,6 +247,47 @@ function toCollaborationError(
   }
 
   return new CollaborationError(fallbackCode, fallbackMessage, error);
+}
+
+function createEditToken(): string {
+  if (!globalThis.crypto?.getRandomValues) {
+    throw new CollaborationError(
+      "request-failed",
+      "Share links are unavailable in this browser. Calendar export still works."
+    );
+  }
+  const bytes = new Uint8Array(EDIT_TOKEN_BYTE_LENGTH);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function hashEditToken(editToken: string): Promise<string> {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) {
+    throw new CollaborationError(
+      "request-failed",
+      "Share links are unavailable in this browser. Calendar export still works."
+    );
+  }
+  const digest = await subtle.digest("SHA-256", new TextEncoder().encode(editToken));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function readStoredEditTokens(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const stored = window.localStorage.getItem(EDIT_TOKEN_STORAGE_KEY);
+    if (!stored) return {};
+    const parsed: unknown = JSON.parse(stored);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, string] => (
+        typeof entry[0] === "string" && typeof entry[1] === "string"
+      ))
+    );
+  } catch {
+    return {};
+  }
 }
 
 function readSupabaseFailure(error: unknown): SupabaseFailure {

@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const { test, expect } = require("@playwright/test");
 
 const BASE_URL = process.env.IRIEVERSE_PRODUCTION_URL ?? "https://irieverse.vercel.app";
@@ -75,17 +76,21 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
   ]);
   expect(download.suggestedFilename()).toMatch(/irieverse.*\.ics$/i);
 
-  const shareButton = page.getByRole("button", { name: /^Share$/ }).last();
+  const shareButton = page.getByRole("button", { name: /^(Create link|Update link|Save copy)$/ }).last();
   if (await shareButton.isEnabled()) {
     await shareButton.click();
-    await expect(page.getByText(/Share link updated|Unable to share trip right now/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Share link (created|updated)|Share links need one more setup step|Share links are unavailable|Share links are blocked/)).toBeVisible({ timeout: 15000 });
     const shareUrl = await page
-      .locator('input[placeholder="Create a share link to collaborate"]')
+      .locator('input[placeholder="Create a view-only share link"]')
       .inputValue()
       .catch(() => "");
     const sharedTripId = extractSharedTripId(shareUrl);
     if (sharedTripId) {
-      await cleanupSharedTrip(request, supabaseRest.getCredentials(), sharedTripId, qaRunId);
+      const editToken = await page.evaluate((tripId) => {
+        const tokens = JSON.parse(window.localStorage.getItem("irieverse_trip_edit_tokens") || "{}");
+        return tokens[tripId] || "";
+      }, sharedTripId);
+      await cleanupSharedTrip(request, supabaseRest.getCredentials(), sharedTripId, editToken, qaRunId);
     }
   } else {
     await expect(page.getByText(/enable live sharing/i)).toBeVisible();
@@ -213,7 +218,7 @@ function trackSupabaseRest(page) {
 
   page.on("request", (request) => {
     const requestUrl = request.url();
-    if (!requestUrl.includes(".supabase.co/rest/v1/trips")) return;
+    if (!requestUrl.includes(".supabase.co/rest/v1/")) return;
 
     const headers = request.headers();
     if (!headers.apikey || !headers.authorization) return;
@@ -239,24 +244,27 @@ function extractSharedTripId(shareUrl) {
   }
 }
 
-async function cleanupSharedTrip(request, credentials, tripId, qaRunId) {
+async function cleanupSharedTrip(request, credentials, tripId, editToken, qaRunId) {
   expect(credentials, "Supabase REST request credentials should be captured").toBeTruthy();
+  expect(editToken, "local edit token should be stored for QA cleanup").toBeTruthy();
 
-  const tripFilter = `id=eq.${encodeURIComponent(tripId)}`;
-  const tripEndpoint = `${credentials.origin}/rest/v1/trips`;
+  const rpcEndpoint = `${credentials.origin}/rest/v1/rpc`;
   const headers = {
     apikey: credentials.apiKey,
     authorization: credentials.authorization,
     "content-type": "application/json",
   };
+  const editTokenHash = crypto.createHash("sha256").update(editToken).digest("hex");
 
-  const fetchResponse = await request.get(`${tripEndpoint}?${tripFilter}&select=data`, { headers });
+  const fetchResponse = await request.post(`${rpcEndpoint}/read_trip_share`, {
+    headers,
+    data: { p_trip_id: tripId },
+  });
   expect(fetchResponse.ok(), "shared QA trip should be readable before cleanup").toBe(true);
-  const rows = await fetchResponse.json();
-  expect(rows).toHaveLength(1);
+  const tripData = await fetchResponse.json();
 
   const markedData = {
-    ...(rows[0].data ?? {}),
+    ...(tripData ?? {}),
     qa: {
       source: "production-qa",
       runId: qaRunId,
@@ -264,28 +272,30 @@ async function cleanupSharedTrip(request, credentials, tripId, qaRunId) {
     },
   };
 
-  const markResponse = await request.patch(`${tripEndpoint}?${tripFilter}`, {
-    headers: {
-      ...headers,
-      prefer: "return=minimal",
-    },
+  const markResponse = await request.post(`${rpcEndpoint}/update_trip_share`, {
+    headers,
     data: {
-      data: markedData,
+      p_trip_id: tripId,
+      p_trip_data: markedData,
+      p_edit_token_hash: editTokenHash,
     },
   });
   expect(markResponse.ok(), "shared QA trip should be marked for cleanup").toBe(true);
 
-  const deleteResponse = await request.delete(`${tripEndpoint}?${tripFilter}`, {
-    headers: {
-      ...headers,
-      prefer: "return=minimal",
+  const deleteResponse = await request.post(`${rpcEndpoint}/delete_trip_share`, {
+    headers,
+    data: {
+      p_trip_id: tripId,
+      p_edit_token_hash: editTokenHash,
     },
   });
   expect(deleteResponse.ok(), "marked QA trip should be deleted").toBe(true);
 
-  const verifyResponse = await request.get(`${tripEndpoint}?${tripFilter}&select=id`, { headers });
-  expect(verifyResponse.ok(), "cleanup verification query should succeed").toBe(true);
-  expect(await verifyResponse.json()).toEqual([]);
+  const verifyResponse = await request.post(`${rpcEndpoint}/read_trip_share`, {
+    headers,
+    data: { p_trip_id: tripId },
+  });
+  expect(verifyResponse.ok(), "deleted QA trip should no longer be readable").toBe(false);
 }
 
 async function verifyProductionAssets(request) {
