@@ -13,6 +13,7 @@ import {
   Clock3,
   Download,
   Heart,
+  Link,
   Lock,
   MapPinned,
   Plane,
@@ -35,7 +36,7 @@ import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCES, VIBE_OPTIONS } from "../data/content";
 import { PLANNING_MODE_LABELS } from "../data/plannerTemplates";
 import { formatLocalTime, type TravelOS } from "../hooks/useTravelOS";
-import type { Experience, ImportedIdea, PlanningMode, PlanningTemplate, Vibe } from "../types/travel";
+import type { Experience, ImportedIdea, PlanningMode, PlanningTemplate, RouteStop, Vibe } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
 import { formatDriveTime } from "../utils/format";
@@ -120,7 +121,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
       ) : (
         <>
           <div className="mt-5 grid gap-4 lg:grid-cols-[22rem_1fr]">
-            <aside className="space-y-4">
+            <aside className="min-w-0 space-y-4">
               <TemplateQuickStartPanel app={app} />
 
               <div className={classNames("rounded-3xl p-4", glassPanel)}>
@@ -162,7 +163,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
               />
             </aside>
 
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4">
               <section className={classNames("rounded-3xl p-4", glassPanel)}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
@@ -212,6 +213,8 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                   <MiniCard icon={WalletCards} title="Budget" body={`$${estimatedTotal.toLocaleString()} trip estimate.`} />
                 </div>
               </section>
+
+              <BoardTripContextPanel app={app} onNavigate={onNavigate} />
 
               <RoutePreviewPanel app={app} onNavigate={onNavigate} />
 
@@ -430,6 +433,8 @@ function QuickPlanExperience({
         </div>
       </section>
 
+      <BoardTripContextPanel app={app} onNavigate={onNavigate} />
+
       <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         <QuickRoutePanel app={app} onNavigate={onNavigate} />
         <QuickDailyPlanPanel app={app} />
@@ -573,12 +578,80 @@ function QuickControlButton({
   );
 }
 
+function BoardTripContextPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab: MobileTabId) => void }) {
+  const context = getBoardTripContext(app);
+  if (!context.totalBoardIdeas) return null;
+
+  return (
+    <section className={classNames("min-w-0 overflow-hidden rounded-3xl p-4", glassPanel)}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-300 text-slate-950">
+            <Heart className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Your board is shaping this</p>
+            <h2 className="mt-1 text-xl font-semibold">{context.title}</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">{context.body}</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onNavigate("saved")}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-cyan-300/50 px-4 py-2 text-xs font-bold text-cyan-100"
+          >
+            <Heart className="h-4 w-4" /> Open board
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate("map")}
+            disabled={!context.routeAnchors.length}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-slate-700 px-4 py-2 text-xs font-bold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <MapPinned className="h-4 w-4" /> Preview route
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <RouteStat icon={MapPinned} label="Route anchors" value={context.routeAnchors.length.toString()} />
+        <RouteStat icon={Heart} label="Saved places" value={app.savedPlaces.size.toString()} />
+        <RouteStat icon={Link} label="Imported links" value={app.importedIdeas.length.toString()} />
+      </div>
+
+      {context.routeAnchors.length ? (
+        <div className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-1">
+          {context.routeAnchors.slice(0, 6).map((anchor, index) => (
+            <span
+              key={anchor.destinationId}
+              className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100"
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-300 text-[0.65rem] font-black text-slate-950">
+                {index + 1}
+              </span>
+              {anchor.name}
+              <span className="rounded-full border border-white/10 px-2 py-0.5 text-[0.58rem] uppercase tracking-[0.12em] text-slate-300">
+                {anchor.sourceLabel}
+              </span>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-4 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-3 text-xs leading-5 text-amber-100">
+          Saved ideas are on the board. Attach map locations in Saved to turn them into route anchors.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function QuickRoutePanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab: MobileTabId) => void }) {
   const routeSummary = app.itinerary.routeSummary;
   const canEditRoute = routeSummary.stops.length > 1;
 
   return (
-    <section className={classNames("rounded-3xl p-4", glassPanel)}>
+    <section className={classNames("min-w-0 overflow-hidden rounded-3xl p-4", glassPanel)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Route preview</p>
@@ -607,29 +680,36 @@ function QuickRoutePanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab:
       </div>
 
       <ol className="mt-4 space-y-2">
-        {routeSummary.stops.map((stop, index) => (
-          <li
-            key={stop.destinationId}
-            className={classNames(
-              "flex items-center gap-3 rounded-2xl border px-3 py-3",
-              stop.transferSeverity === "long"
-                ? "border-rose-300/30 bg-rose-300/10"
-                : stop.transferSeverity === "moderate"
-                  ? "border-amber-300/30 bg-amber-300/10"
-                  : "border-slate-800 bg-slate-950/70"
-            )}
-          >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-xs font-bold text-slate-950">
-              {index + 1}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold text-slate-100">{stop.name}</span>
-              <span className="block text-xs text-slate-500">
-                {stop.region} · {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"}
+        {routeSummary.stops.map((stop, index) => {
+          const boardStopLabel = getBoardStopLabel(app, stop.destinationId);
+
+          return (
+            <li
+              key={stop.destinationId}
+              className={classNames(
+                "flex min-w-0 items-center gap-3 rounded-2xl border px-3 py-3",
+                stop.transferSeverity === "long"
+                  ? "border-rose-300/30 bg-rose-300/10"
+                  : stop.transferSeverity === "moderate"
+                    ? "border-amber-300/30 bg-amber-300/10"
+                    : "border-slate-800 bg-slate-950/70"
+              )}
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-xs font-bold text-slate-950">
+                {index + 1}
               </span>
-            </span>
-          </li>
-        ))}
+              <span className="min-w-0 flex-1">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-sm font-semibold text-slate-100">{stop.name}</span>
+                  {boardStopLabel && <BoardStopBadge label={boardStopLabel} />}
+                </span>
+                <span className="block text-xs text-slate-500">
+                  {stop.region} · {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"}
+                </span>
+              </span>
+            </li>
+          );
+        })}
       </ol>
     </section>
   );
@@ -637,7 +717,7 @@ function QuickRoutePanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab:
 
 function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
   return (
-    <section className={classNames("rounded-3xl p-4", glassPanel)}>
+    <section className={classNames("min-w-0 overflow-hidden rounded-3xl p-4", glassPanel)}>
       <div>
         <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Plan cards</p>
         <h2 className="text-xl font-semibold">What to do each day</h2>
@@ -646,13 +726,17 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
         {app.itinerary.daysPlan.map((day) => {
           const experienceOverrideId = app.dayExperienceOverrides[String(day.day)] ?? "";
           const experienceOptions = getExperienceOptionsForDay(day, 6);
+          const boardStopLabel = getBoardStopLabel(app, day.destinationId);
 
           return (
             <article key={`${day.day}-${day.destinationId}`} className={classNames("rounded-2xl p-4", glassCard)}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-[0.65rem] uppercase tracking-[0.22em] text-slate-500">Day {day.day}</p>
-                <h3 className="mt-1 text-lg font-semibold text-slate-100">{day.destName}</h3>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-semibold text-slate-100">{day.destName}</h3>
+                  {boardStopLabel && <BoardStopBadge label={boardStopLabel} />}
+                </div>
                 <p className="mt-1 text-sm leading-6 text-slate-400">{day.highlight}</p>
               </div>
               <span className="rounded-full border border-slate-700 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-slate-300">
@@ -738,7 +822,7 @@ function QuickSavedIdeasPanel({
   ].slice(0, 4);
 
   return (
-    <section className={classNames("rounded-3xl p-4", glassPanel)}>
+    <section className={classNames("min-w-0 overflow-hidden rounded-3xl p-4", glassPanel)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Saved ideas</p>
@@ -1207,7 +1291,7 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
   }>;
 
   return (
-    <section className={classNames("rounded-3xl p-4", glassPanel)}>
+    <section className={classNames("min-w-0 overflow-hidden rounded-3xl p-4", glassPanel)}>
       <div className="flex items-center gap-3">
         <CheckCircle2 className="h-5 w-5 text-cyan-300" />
         <div>
@@ -1443,7 +1527,7 @@ function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (ta
   const addSavedRouteDisabled = routeAtDayLimit && !hasUnlockedRouteStop;
 
   return (
-    <section className={classNames("rounded-3xl p-4", glassPanel)}>
+    <section className={classNames("min-w-0 overflow-hidden rounded-3xl p-4", glassPanel)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Route className="h-5 w-5 text-cyan-300" />
@@ -1523,6 +1607,7 @@ function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (ta
       <ol className="mt-4 grid gap-2 md:grid-cols-2">
         {routeSummary.stops.map((stop, index) => {
           const isLocked = lockedRouteIds.has(stop.destinationId);
+          const boardStopLabel = getBoardStopLabel(app, stop.destinationId);
           const previousDestinationId = routeSummary.stops[index - 1]?.destinationId;
           const nextDestinationId = routeSummary.stops[index + 1]?.destinationId;
           const previousStopIsLocked = Boolean(previousDestinationId && lockedRouteIds.has(previousDestinationId));
@@ -1532,7 +1617,7 @@ function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (ta
             <li
               key={stop.destinationId}
               className={classNames(
-                "flex items-center gap-3 rounded-2xl border px-3 py-3",
+                "flex min-w-0 flex-wrap items-center gap-3 rounded-2xl border px-3 py-3",
                 isLocked
                   ? "border-cyan-300/35 bg-cyan-300/10"
                   : stop.transferSeverity === "long"
@@ -1548,6 +1633,7 @@ function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (ta
               <span className="min-w-0 flex-1">
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="truncate text-sm font-semibold text-slate-100">{stop.name}</span>
+                  {boardStopLabel && <BoardStopBadge label={boardStopLabel} />}
                   {isLocked && (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-cyan-300/30 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.12em] text-cyan-100">
                       <Lock className="h-2.5 w-2.5" /> Locked
@@ -1559,7 +1645,7 @@ function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (ta
                 </span>
               </span>
               {!stop.isBase && (
-                <span className="flex shrink-0 items-center gap-1">
+                <span className="ml-11 flex w-full shrink-0 items-center justify-end gap-1 sm:ml-0 sm:w-auto">
                   <IconRouteButton
                     label={isLocked ? "Unlock day" : "Keep on this day"}
                     active={isLocked}
@@ -1649,6 +1735,14 @@ function IconRouteButton({
     >
       {children}
     </button>
+  );
+}
+
+function BoardStopBadge({ label }: { label: string }) {
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.12em] text-cyan-100">
+      {label}
+    </span>
   );
 }
 
@@ -1917,6 +2011,41 @@ function formatVibeLabel(vibe: string): string {
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function getBoardTripContext(app: TravelOS) {
+  const totalBoardIdeas = app.savedPlaces.size + app.savedExperiences.size + app.importedIdeas.length;
+  const routeAnchors = app.itinerary.routeSummary.stops.reduce<Array<RouteStop & { sourceLabel: string }>>(
+    (anchors, stop) => {
+      const sourceLabel = getBoardStopLabel(app, stop.destinationId);
+      if (sourceLabel) {
+        anchors.push({ ...stop, sourceLabel });
+      }
+      return anchors;
+    },
+    []
+  );
+
+  return {
+    totalBoardIdeas,
+    routeAnchors,
+    title: routeAnchors.length
+      ? `${routeAnchors.length} board ${routeAnchors.length === 1 ? "anchor" : "anchors"} in this route`
+      : `${totalBoardIdeas} saved ${totalBoardIdeas === 1 ? "idea" : "ideas"} ready`,
+    body: routeAnchors.length
+      ? "Saved places and linked imports are pinned into the plan, so the route starts from your real Jamaica board instead of a blank itinerary."
+      : "Saved places, experiences, and imports are available. Add map locations to saved links when you want them to shape the route.",
+  };
+}
+
+function getBoardStopLabel(app: TravelOS, destinationId: string): string {
+  const saved = app.savedPlaces.has(destinationId);
+  const imported = app.importedIdeas.some((idea) => idea.linkedDestinationId === destinationId);
+
+  if (saved && imported) return "Board";
+  if (saved) return "Saved";
+  if (imported) return "Import";
+  return "";
 }
 
 function formatIntegrationReason(reason?: string): string {
