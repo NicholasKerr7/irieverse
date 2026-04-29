@@ -157,6 +157,16 @@ The flight proxy also protects the AviationStack quota:
 - If AviationStack returns a rate-limit/quota error, the proxy returns fallback metadata and stops calling AviationStack for `AVIATIONSTACK_COOLDOWN_SECONDS` seconds.
 - For local development, set `AVIATIONSTACK_DISABLED=true` in `.env.local` to force saved examples without using live quota.
 
+## Import Metadata API
+
+Saved imports call `api/import-metadata.js` after a user pastes a URL. The endpoint fetches public Open Graph metadata for normal articles and uses YouTube oEmbed for YouTube links. Google Maps, TikTok, and Instagram stay heuristic-first because those platforms commonly restrict metadata access.
+
+```text
+GET /api/import-metadata?url={encodedPublicUrl}
+```
+
+The endpoint accepts public `http`/`https` URLs only, blocks localhost/private-network targets, caches metadata in memory for 24 hours, and returns a low-confidence fallback object if metadata is unavailable. The client keeps the existing parser active either way.
+
 ## Road Routing
 
 The map uses `api/road-route.js` to request real driving geometry for each route leg. By default, the endpoint calls the public OSRM demo server:

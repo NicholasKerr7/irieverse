@@ -18,6 +18,7 @@ import {
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
+import { fetchImportMetadata, type ImportMetadata } from "../services/importMetadata";
 import type {
   Destination,
   Experience,
@@ -107,6 +108,9 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   const [importForm, setImportForm] = useState(DEFAULT_IMPORT_FORM);
   const [importAutoTitle, setImportAutoTitle] = useState("");
   const [importAutoDestinationId, setImportAutoDestinationId] = useState("");
+  const [importMetadata, setImportMetadata] = useState<ImportMetadata | null>(null);
+  const [isFetchingImportMetadata, setIsFetchingImportMetadata] = useState(false);
+  const [importMetadataError, setImportMetadataError] = useState("");
   const [importCategoryEdited, setImportCategoryEdited] = useState(false);
   const [importCollectionEdited, setImportCollectionEdited] = useState(false);
   const [importLocationEdited, setImportLocationEdited] = useState(false);
@@ -282,6 +286,63 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     };
   };
 
+  useEffect(() => {
+    const url = importForm.url.trim();
+    setImportMetadata(null);
+    setImportMetadataError("");
+
+    if (!url) {
+      setIsFetchingImportMetadata(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      setIsFetchingImportMetadata(true);
+      fetchImportMetadata(url, controller.signal)
+        .then((metadata) => {
+          if (!metadata || controller.signal.aborted) return;
+
+          setImportMetadata(metadata);
+          const suggestion = analyzeImportLink({
+            url,
+            title: metadata.title,
+            note: importForm.note || metadata.description,
+          });
+
+          setImportForm((prev) => {
+            if (prev.url.trim() !== url) return prev;
+            const shouldUseMetadataTitle = metadata.title && (!prev.title.trim() || prev.title === importAutoTitle);
+            return {
+              ...prev,
+              title: shouldUseMetadataTitle ? metadata.title : prev.title,
+              ...getSuggestedImportFields(prev, suggestion),
+              sourcePlatform: metadata.sourcePlatform,
+              sourceLabel: metadata.sourceLabel || suggestion.sourceLabel,
+            };
+          });
+          setImportAutoTitle(metadata.title || suggestion.title);
+          if (!importLocationEdited) {
+            setImportAutoDestinationId(suggestion.linkedDestinationId);
+          }
+        })
+        .catch((error) => {
+          if (controller.signal.aborted || error?.name === "AbortError") return;
+          setImportMetadataError("Metadata unavailable. Heuristic parsing is still active.");
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setIsFetchingImportMetadata(false);
+          }
+        });
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [importForm.url]);
+
   const handleImportUrlChange = (url: string) => {
     const suggestion = analyzeImportLink({ url, note: importForm.note });
 
@@ -334,7 +395,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     const url = importForm.url.trim();
     const note = importForm.note.trim();
     const suggestion = analyzeImportLink({ url, title, note });
-    const fallbackTitle = suggestion.title || note.slice(0, 56);
+    const fallbackTitle = suggestion.title || importMetadata?.title || note.slice(0, 56);
 
     if (!title && !url && !note) {
       setStatusMessage("Add a link, title, or note before saving.");
@@ -348,8 +409,8 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       category: importForm.category,
       collectionId: importForm.collectionId,
       linkedDestinationId: importForm.linkedDestinationId || undefined,
-      sourcePlatform: suggestion.sourcePlatform,
-      sourceLabel: suggestion.sourceLabel,
+      sourcePlatform: importMetadata?.sourcePlatform ?? suggestion.sourcePlatform,
+      sourceLabel: importMetadata?.sourceLabel || suggestion.sourceLabel,
       extractedPlaceName: suggestion.extractedPlaceName || importForm.extractedPlaceName || undefined,
     });
     setImportForm({
@@ -357,6 +418,8 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       category: importForm.category,
       collectionId: categoryToCollection(importForm.category),
     });
+    setImportMetadata(null);
+    setImportMetadataError("");
     setImportAutoTitle("");
     setImportAutoDestinationId("");
     setImportCategoryEdited(false);
@@ -468,7 +531,12 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
         </div>
 
         {importForm.url && importSuggestion.sourcePlatform !== "manual" && (
-          <ImportIntelligenceSummary suggestion={importSuggestion} />
+          <ImportIntelligenceSummary
+            suggestion={importSuggestion}
+            metadata={importMetadata}
+            isLoading={isFetchingImportMetadata}
+            error={importMetadataError}
+          />
         )}
 
         <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_0.8fr_0.8fr]">
@@ -617,22 +685,57 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   );
 }
 
-function ImportIntelligenceSummary({ suggestion }: { suggestion: ImportLinkSuggestion }) {
+function ImportIntelligenceSummary({
+  suggestion,
+  metadata,
+  isLoading,
+  error,
+}: {
+  suggestion: ImportLinkSuggestion;
+  metadata: ImportMetadata | null;
+  isLoading: boolean;
+  error: string;
+}) {
   const linkedDestination = suggestion.linkedDestinationId
     ? DESTINATIONS.find((destination) => destination.id === suggestion.linkedDestinationId)
     : null;
+  const metadataTitle = metadata?.title && metadata.title !== suggestion.title ? metadata.title : "";
+  const metadataDescription = metadata?.description ?? "";
 
   return (
     <div className={classNames("mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-3", glassControlMuted)}>
       <div className="flex flex-col gap-2 text-xs text-slate-300 sm:flex-row sm:items-center sm:justify-between">
         <span className="inline-flex items-center gap-2 font-semibold text-cyan-100">
           <Sparkles className="h-3.5 w-3.5" />
-          {suggestion.sourceLabel}
+          {metadata?.sourceLabel || suggestion.sourceLabel}
         </span>
         <span className="text-slate-500">
-          {suggestion.confidence === "high" ? "High confidence" : suggestion.confidence === "medium" ? "Medium confidence" : "Low confidence"}
+          {isLoading
+            ? "Checking metadata"
+            : metadata?.confidence === "high" || suggestion.confidence === "high"
+              ? "High confidence"
+              : metadata?.confidence === "medium" || suggestion.confidence === "medium"
+                ? "Medium confidence"
+                : "Low confidence"}
         </span>
       </div>
+      {(metadataTitle || metadataDescription || metadata?.imageUrl) && (
+        <div className="mt-3 flex gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3">
+          {metadata?.imageUrl && (
+            <img
+              src={metadata.imageUrl}
+              alt=""
+              className="h-16 w-16 shrink-0 rounded-2xl object-cover"
+              loading="lazy"
+            />
+          )}
+          <div className="min-w-0">
+            {metadataTitle && <p className="line-clamp-1 text-sm font-semibold text-slate-100">{metadataTitle}</p>}
+            {metadataDescription && <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{metadataDescription}</p>}
+          </div>
+        </div>
+      )}
+      {error && <p className="mt-2 text-xs text-amber-200">{error}</p>}
       <div className="mt-2 flex flex-wrap gap-2">
         {suggestion.extractedPlaceName && (
           <span className="rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1 text-[0.68rem] text-slate-200">
