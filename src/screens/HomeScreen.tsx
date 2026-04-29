@@ -1,5 +1,6 @@
 import { ArrowRight, Compass, Heart, Route } from "lucide-react";
 import { HeroSection } from "../components/HeroSection";
+import { ImageCreditBadge } from "../components/ImageCreditBadge";
 import { PageFooter } from "../components/PageFooter";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import type { TravelOS } from "../hooks/useTravelOS";
@@ -81,11 +82,14 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
         </section>
 
         <aside className={classNames("overflow-hidden rounded-3xl", glassPanel)}>
-          <img
-            src={app.destination.heroImage}
-            alt={app.destination.name}
-            className="h-44 w-full object-cover"
-          />
+          <div className="relative h-44 overflow-hidden">
+            <img
+              src={app.destination.heroImage}
+              alt={app.destination.name}
+              className="h-full w-full object-cover"
+            />
+            <ImageCreditBadge credit={app.destination.imageCredit} className="absolute left-3 top-3" />
+          </div>
           <div className="p-4">
             <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-500">
               Current base

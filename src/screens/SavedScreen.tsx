@@ -12,12 +12,14 @@ import {
   StickyNote,
   Trash2,
 } from "lucide-react";
+import { ImageCreditBadge } from "../components/ImageCreditBadge";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
 import type {
   Destination,
   Experience,
+  ImageCredit,
   ImportedIdea,
   ImportedIdeaCategory,
   ImportedIdeaSourcePlatform,
@@ -648,6 +650,12 @@ function SavedCard({
       : savedItem.kind === "experience"
         ? savedItem.item.imageUrl
         : linkedDestination?.heroImage;
+  const imageCredit: ImageCredit | undefined =
+    savedItem.kind === "place"
+      ? savedItem.item.imageCredit
+      : savedItem.kind === "experience"
+        ? savedItem.item.imageCredit
+        : linkedDestination?.imageCredit;
   const body =
     savedItem.kind === "place"
       ? savedItem.item.headline
@@ -668,6 +676,7 @@ function SavedCard({
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+        {image && <ImageCreditBadge credit={imageCredit} className="absolute left-3 top-3" />}
         <div className="absolute bottom-3 left-3 right-3">
           <p className="text-xs uppercase tracking-[0.18em] text-cyan-200">{region}</p>
           <h2 className="mt-1 text-lg font-semibold">{title}</h2>

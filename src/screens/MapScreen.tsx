@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { TravelMap, type RouteDetail, type RouteRenderStatus } from "../components/TravelMap";
+import { ImageCreditBadge } from "../components/ImageCreditBadge";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
@@ -349,6 +350,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                 className="absolute inset-0 h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
+              <ImageCreditBadge credit={selectedDestination.imageCredit} className="absolute left-3 top-3" />
               <div className="media-overlay absolute bottom-3 left-3 right-3">
                 <p className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-slate-950/70 px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.18em] text-cyan-100 backdrop-blur">
                   <Plane className="h-3 w-3" /> {selectedDestination.airportCode}

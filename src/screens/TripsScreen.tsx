@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { BookingRecommendations } from "../components/BookingRecommendations";
 import { BudgetInsight } from "../components/BudgetInsight";
+import { ImageCreditBadge } from "../components/ImageCreditBadge";
 import { ItineraryView } from "../components/ItineraryView";
 import { LiveEventsFeed } from "../components/LiveEventsFeed";
 import type { MobileTabId } from "../components/mobile/BottomNav";
@@ -78,6 +79,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
           <div className="relative min-h-72">
             <img src={app.destination.heroImage} alt={app.destination.name} className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-transparent" />
+            <ImageCreditBadge credit={app.destination.imageCredit} className="absolute left-5 top-5" />
             <div className="absolute bottom-5 left-5 right-5">
               <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/90">Trips</p>
               <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Build your Jamaica plan.</h1>

@@ -43,11 +43,17 @@ export interface Destination {
   description: string;
   highlights: string[];
   heroImage: string;
+  imageCredit?: ImageCredit;
   latitude: number;
   longitude: number;
   airportCode: string;
   quickFacts?: QuickFact[];
   markerType?: "destination" | "experience";
+}
+
+export interface ImageCredit {
+  label: string;
+  href: string;
 }
 
 export interface QuickFact {
@@ -80,6 +86,7 @@ export interface Experience {
   whatToExpect: string[];
   bestTime: string;
   imageUrl: string;
+  imageCredit?: ImageCredit;
   approxCost: string;
 }
 
