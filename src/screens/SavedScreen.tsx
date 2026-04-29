@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   CalendarDays,
+  CheckCircle2,
   ExternalLink,
   Heart,
   Link,
   MapPinned,
   MoveRight,
   Plus,
+  Route,
   Share2,
   Sparkles,
   StickyNote,
   Trash2,
+  Wand2,
 } from "lucide-react";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
@@ -21,6 +24,7 @@ import type {
   ImportedIdea,
   ImportedIdeaCategory,
   ImportedIdeaSourcePlatform,
+  PlanningTemplateId,
 } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassControl, glassControlMuted, glassField, glassPanel } from "../utils/glass";
@@ -50,6 +54,15 @@ type SavedItem =
   | { kind: "place"; item: Destination; collection: CollectionId }
   | { kind: "experience"; item: Experience; collection: CollectionId }
   | { kind: "import"; item: ImportedIdea; collection: CollectionId };
+
+type BoardSummary = {
+  totalItems: number;
+  routeReadyCount: number;
+  importedCount: number;
+  missingLocationCount: number;
+  topCollection: CollectionId;
+  topCollectionLabel: string;
+};
 
 const IMPORT_CATEGORIES: Array<{ id: ImportedIdeaCategory; label: string }> = [
   { id: "food", label: "Food" },
@@ -169,6 +182,26 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       ? savedItems
       : savedItems.filter((savedItem) => savedItem.collection === activeCollection);
   const hasSavedItems = savedItems.length > 0;
+  const boardSummary = useMemo(() => buildBoardSummary(savedItems), [savedItems]);
+
+  const handleStartQuickPlan = () => {
+    app.applyPlanningTemplate(getTemplateForCollection(boardSummary.topCollection));
+    const anchorDestinationId = getBoardAnchorDestinationId(savedItems);
+    if (anchorDestinationId) {
+      app.setPlannerBaseId(anchorDestinationId);
+    }
+    onNavigate("trips");
+  };
+
+  const handleOpenBoardMap = () => {
+    const anchorDestinationId = getBoardAnchorDestinationId(savedItems);
+    if (!anchorDestinationId) {
+      setStatusMessage("Attach a Jamaica map location to an idea before opening the map.");
+      return;
+    }
+    app.setPlannerBaseId(anchorDestinationId);
+    onNavigate("map");
+  };
 
   const handleMoveCollection = (kind: ItemKind, id: string, collection: CollectionId) => {
     if (kind === "import") {
@@ -378,6 +411,14 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
           </div>
         </div>
       </header>
+
+      <BoardPlanningPanel
+        summary={boardSummary}
+        hasSavedItems={hasSavedItems}
+        onStartPlan={handleStartQuickPlan}
+        onOpenMap={handleOpenBoardMap}
+        onExplore={() => onNavigate("explore")}
+      />
 
       <form
         onSubmit={handleImportSubmit}
@@ -611,6 +652,114 @@ function ImportIntelligenceSummary({ suggestion }: { suggestion: ImportLinkSugge
   );
 }
 
+function BoardPlanningPanel({
+  summary,
+  hasSavedItems,
+  onStartPlan,
+  onOpenMap,
+  onExplore,
+}: {
+  summary: BoardSummary;
+  hasSavedItems: boolean;
+  onStartPlan: () => void;
+  onOpenMap: () => void;
+  onExplore: () => void;
+}) {
+  const routeReady = summary.routeReadyCount > 0;
+
+  return (
+    <section className={classNames("mt-5 overflow-hidden rounded-3xl", glassPanel)}>
+      <div className="grid gap-0 lg:grid-cols-[1fr_0.82fr]">
+        <div className="p-4 sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Idea board</p>
+              <h2 className="mt-1 text-2xl font-semibold">
+                {hasSavedItems ? "Turn saved ideas into a Jamaica plan." : "Start collecting Jamaica ideas."}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                Saved places, imported links, and notes become useful when they have a board, a map anchor, and a quick path into Trips.
+              </p>
+            </div>
+            <span
+              className={classNames(
+                "inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-[0.64rem] font-bold uppercase tracking-[0.16em]",
+                routeReady
+                  ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-100"
+                  : "border-amber-300/40 bg-amber-300/10 text-amber-100"
+              )}
+            >
+              {routeReady ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+              {routeReady ? "Plan ready" : "Needs map anchors"}
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <BoardPlanningMetric icon={Heart} label="Saved ideas" value={summary.totalItems.toString()} />
+            <BoardPlanningMetric icon={MapPinned} label="Map-ready" value={summary.routeReadyCount.toString()} />
+            <BoardPlanningMetric icon={Link} label="Imports" value={summary.importedCount.toString()} />
+            <BoardPlanningMetric icon={Route} label="Top board" value={summary.topCollectionLabel} />
+          </div>
+        </div>
+
+        <div className="border-t border-slate-800 bg-slate-950/45 p-4 sm:p-5 lg:border-l lg:border-t-0">
+          <p className="text-[0.65rem] uppercase tracking-[0.26em] text-slate-500">Next best action</p>
+          <h3 className="mt-1 text-xl font-semibold">
+            {hasSavedItems ? getBoardRecommendation(summary) : "Save your first place or link."}
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            {hasSavedItems
+              ? "IrieVerse can start a Quick Plan from the strongest board and use map-ready ideas as anchors."
+              : "Browse Explore or paste a link here. The board gets smarter once a few ideas are saved."}
+          </p>
+
+          {summary.missingLocationCount > 0 && (
+            <p className="mt-3 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100">
+              {summary.missingLocationCount} imported idea{summary.missingLocationCount === 1 ? "" : "s"} still need a Jamaica map location.
+            </p>
+          )}
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={hasSavedItems ? onStartPlan : onExplore}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950"
+            >
+              <Wand2 className="h-4 w-4" /> {hasSavedItems ? "Start Quick Plan" : "Browse Explore"}
+            </button>
+            <button
+              type="button"
+              onClick={onOpenMap}
+              disabled={!routeReady}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-cyan-300/50 px-4 py-2 text-xs font-bold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <MapPinned className="h-4 w-4" /> Map-ready ideas
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BoardPlanningMetric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Heart;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className={classNames("rounded-2xl p-3", glassCard)}>
+      <Icon className="h-4 w-4 text-cyan-300" />
+      <p className="mt-2 text-[0.64rem] uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-1 line-clamp-1 text-sm font-semibold text-slate-100">{value}</p>
+    </div>
+  );
+}
+
 function SavedCard({
   savedItem,
   onAddToTrip,
@@ -776,6 +925,76 @@ function getSavedItemTitle(savedItem: SavedItem) {
 function getCollectionCount(savedItems: SavedItem[], collection: CollectionId) {
   if (collection === "all") return savedItems.length;
   return savedItems.filter((savedItem) => savedItem.collection === collection).length;
+}
+
+function buildBoardSummary(savedItems: SavedItem[]): BoardSummary {
+  const collectionCounts = new Map<CollectionId, number>();
+  COLLECTIONS.filter((collection) => collection.id !== "all").forEach((collection) => {
+    collectionCounts.set(collection.id, 0);
+  });
+
+  const routeReadyDestinationIds = new Set<string>();
+  let importedCount = 0;
+  let missingLocationCount = 0;
+
+  savedItems.forEach((savedItem) => {
+    collectionCounts.set(savedItem.collection, (collectionCounts.get(savedItem.collection) ?? 0) + 1);
+
+    const destinationId = getSavedItemDestinationId(savedItem);
+    if (destinationId) {
+      routeReadyDestinationIds.add(destinationId);
+    }
+
+    if (savedItem.kind === "import") {
+      importedCount += 1;
+      if (!savedItem.item.linkedDestinationId) {
+        missingLocationCount += 1;
+      }
+    }
+  });
+
+  const topCollection = Array.from(collectionCounts.entries()).reduce<CollectionId>(
+    (bestCollection, [collection, count]) => {
+      const bestCount = collectionCounts.get(bestCollection) ?? 0;
+      return count > bestCount ? collection : bestCollection;
+    },
+    "wishlist"
+  );
+
+  return {
+    totalItems: savedItems.length,
+    routeReadyCount: routeReadyDestinationIds.size,
+    importedCount,
+    missingLocationCount,
+    topCollection,
+    topCollectionLabel: COLLECTIONS.find((collection) => collection.id === topCollection)?.label ?? "Wishlist",
+  };
+}
+
+function getSavedItemDestinationId(savedItem: SavedItem): string {
+  if (savedItem.kind === "place") return savedItem.item.id;
+  return savedItem.item.linkedDestinationId ?? "";
+}
+
+function getBoardAnchorDestinationId(savedItems: SavedItem[]): string {
+  const activeItem = savedItems.find((savedItem) => getSavedItemDestinationId(savedItem));
+  return activeItem ? getSavedItemDestinationId(activeItem) : "";
+}
+
+function getTemplateForCollection(collection: CollectionId): PlanningTemplateId {
+  if (collection === "food") return "local-food-run";
+  if (collection === "beach" || collection === "romantic") return "river-and-beach-day";
+  if (collection === "culture" || collection === "nightlife") return "culture-night";
+  return "host-visitors";
+}
+
+function getBoardRecommendation(summary: BoardSummary): string {
+  if (summary.topCollection === "food") return "Make this a food run.";
+  if (summary.topCollection === "beach") return "Shape this into a beach day.";
+  if (summary.topCollection === "nightlife") return "Build a night-out plan.";
+  if (summary.topCollection === "culture") return "Turn this into a culture day.";
+  if (summary.topCollection === "romantic") return "Make this a soft escape.";
+  return "Start a flexible Quick Plan.";
 }
 
 function getDestinationCollection(destination: Destination, assignments: Record<string, CollectionId>): CollectionId {
