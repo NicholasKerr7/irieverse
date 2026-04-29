@@ -1,5 +1,5 @@
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
-import type { Destination, Experience, ImportedIdea, ItineraryPlan, Vibe, WeatherPlanDay } from "../types/travel";
+import type { DayExperienceOverrides, Destination, Experience, ImportedIdea, ItineraryPlan, Vibe, WeatherPlanDay } from "../types/travel";
 import { formatDriveTime } from "./format";
 
 const EARTH_RADIUS_KM = 6371;
@@ -15,6 +15,7 @@ type BuildItineraryArgs = {
   plannerDays: number;
   plannerStartDate?: string;
   weatherPlan?: WeatherPlanDay[];
+  dayExperienceOverrides?: DayExperienceOverrides;
 };
 
 type EnergyLevel = "soft" | "balanced" | "high";
@@ -29,6 +30,7 @@ export function buildItineraryPlan({
   plannerDays,
   plannerStartDate,
   weatherPlan = [],
+  dayExperienceOverrides = {},
 }: BuildItineraryArgs): ItineraryPlan {
   const safeDays = clampPlannerDays(plannerDays);
   const preferredDestinationIds = new Set<string>([
@@ -85,7 +87,10 @@ export function buildItineraryPlan({
       weatherAdjustedEnergyLevel,
       weather
     );
-    const experience = matchedExperiences[0] ?? expPool[index % expPool.length];
+    const experience =
+      getDayExperienceOverride(dayExperienceOverrides, index + 1) ??
+      matchedExperiences[0] ??
+      expPool[index % expPool.length];
 
     return {
       day: index + 1,
@@ -115,6 +120,15 @@ export function buildItineraryPlan({
     daysPlan,
     routeSummary: buildRouteSummary(routeDestinations, destination, routeMode),
   };
+}
+
+function getDayExperienceOverride(
+  dayExperienceOverrides: DayExperienceOverrides,
+  day: number
+): Experience | undefined {
+  const experienceId = dayExperienceOverrides[String(day)];
+  if (!experienceId) return undefined;
+  return EXPERIENCES.find((experience) => experience.id === experienceId);
 }
 
 export function clampPlannerDays(days: number): number {

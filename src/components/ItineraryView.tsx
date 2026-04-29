@@ -1,16 +1,26 @@
-import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, MapPin, Music2, PartyPopper, Route, Utensils, WalletCards } from "lucide-react";
+import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, MapPin, Music2, PartyPopper, Route, Utensils, WalletCards, X } from "lucide-react";
 import { ItineraryPlan } from "../types/travel";
 import { classNames } from "../utils/classNames";
+import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
 import { formatDriveTime } from "../utils/format";
 import { glassCard, glassControlMuted } from "../utils/glass";
 import { capitalise } from "../utils/text";
 
 interface ItineraryViewProps {
   itinerary: ItineraryPlan;
+  dayExperienceOverrides?: Record<string, string>;
+  onSetDayExperience?: (day: number, experienceId: string) => void;
+  onClearDayExperience?: (day: number) => void;
 }
 
-export function ItineraryView({ itinerary }: ItineraryViewProps) {
+export function ItineraryView({
+  itinerary,
+  dayExperienceOverrides = {},
+  onSetDayExperience,
+  onClearDayExperience,
+}: ItineraryViewProps) {
   const { base, days, plannerVibe, budgetPerDay, daysPlan, routeSummary } = itinerary;
+  const canEditExperiences = Boolean(onSetDayExperience && onClearDayExperience);
 
   return (
     <div className="space-y-4">
@@ -73,8 +83,12 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
       )}
 
       <ol className="grid gap-3 md:grid-cols-2">
-        {daysPlan.map((day) => (
-          <li
+        {daysPlan.map((day) => {
+          const experienceOverrideId = dayExperienceOverrides[String(day.day)] ?? "";
+          const experienceOptions = getExperienceOptionsForDay(day);
+
+          return (
+            <li
             key={day.day}
             className={[
               "rounded-2xl border p-4 shadow shadow-slate-950/30",
@@ -143,8 +157,13 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
                     {day.experience.type === "music" && <Music2 className="h-4 w-4 text-cyan-300" />}
                     {day.experience.type === "festival" && <PartyPopper className="h-4 w-4 text-amber-300" />}
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">{day.experience.title}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-100">{day.experience.title}</p>
+                      <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.12em] text-slate-400">
+                        {experienceOverrideId ? "Picked" : "Best match"}
+                      </span>
+                    </div>
                     <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
                       {day.experience.description}
                     </p>
@@ -153,10 +172,44 @@ export function ItineraryView({ itinerary }: ItineraryViewProps) {
                     </p>
                   </div>
                 </div>
+                {canEditExperiences && experienceOptions.length > 0 && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <label className="min-w-0">
+                      <span className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">Swap add-on</span>
+                      <select
+                        value={experienceOverrideId}
+                        onChange={(event) => {
+                          if (event.target.value) {
+                            onSetDayExperience?.(day.day, event.target.value);
+                          } else {
+                            onClearDayExperience?.(day.day);
+                          }
+                        }}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200"
+                      >
+                        <option value="">Use best match</option>
+                        {experienceOptions.map((experience) => (
+                          <option key={experience.id} value={experience.id}>
+                            {experience.title}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => onClearDayExperience?.(day.day)}
+                      disabled={!experienceOverrideId}
+                      className="inline-flex min-h-10 items-center justify-center gap-1 self-end rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 disabled:opacity-40"
+                    >
+                      <X className="h-3.5 w-3.5" /> Reset
+                    </button>
+                  </div>
+                )}
               </div>
             )}
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ol>
     </div>
   );

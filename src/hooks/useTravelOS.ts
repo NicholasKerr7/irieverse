@@ -37,6 +37,7 @@ import type {
   FlightOption,
   ImportedIdea,
   ItineraryPlan,
+  DayExperienceOverrides,
   LiveEvent,
   OriginAirport,
   PlanningMode,
@@ -58,6 +59,7 @@ import {
 } from "../utils/itinerary";
 import {
   isStringArray,
+  isStringRecord,
   readJsonFromStorage,
   readStringFromStorage,
   writeJsonToStorage,
@@ -71,6 +73,7 @@ const STORAGE_KEY_SAVED_EXPERIENCES = "irieverse_saved_experiences";
 const STORAGE_KEY_IMPORTED_IDEAS = "irieverse_imported_ideas";
 const STORAGE_KEY_MANUAL_ROUTE = "irieverse_manual_route";
 const STORAGE_KEY_LOCKED_ROUTE = "irieverse_locked_route";
+const STORAGE_KEY_DAY_EXPERIENCES = "irieverse_day_experiences";
 const STORAGE_KEY_THEME = "irieverse_theme";
 const STORAGE_KEY_PLANNING_MODE = "irieverse_planning_mode";
 const STORAGE_KEY_PLANNING_TEMPLATE = "irieverse_planning_template";
@@ -156,6 +159,9 @@ export function useTravelOS() {
   const [lockedRouteDestinationIds, setLockedRouteDestinationIds] = useState<string[]>(() =>
     readJsonFromStorage(STORAGE_KEY_LOCKED_ROUTE, [], isStringArray)
   );
+  const [dayExperienceOverrides, setDayExperienceOverrides] = useState<DayExperienceOverrides>(() =>
+    readJsonFromStorage(STORAGE_KEY_DAY_EXPERIENCES, {}, isStringRecord)
+  );
   const [originAirportId, setOriginAirportId] = useState(() => getInitialOriginAirportId());
   const [hasUserPreferredOrigin, setHasUserPreferredOrigin] = useState(() => Boolean(getStoredOriginAirportId()));
   const [liveFacts, setLiveFacts] = useState<QuickFact[] | null>(null);
@@ -227,6 +233,10 @@ export function useTravelOS() {
   }, [lockedRouteDestinationIds]);
 
   useEffect(() => {
+    writeJsonToStorage(STORAGE_KEY_DAY_EXPERIENCES, dayExperienceOverrides);
+  }, [dayExperienceOverrides]);
+
+  useEffect(() => {
     setManualRouteDestinationIds((prev) => {
       const normalized = normalizeRouteDestinationIds(prev, plannerBaseId, plannerDays);
       return arraysEqual(prev, normalized) ? prev : normalized;
@@ -240,6 +250,13 @@ export function useTravelOS() {
       return arraysEqual(prev, normalized) ? prev : normalized;
     });
   }, [manualRouteDestinationIds, plannerBaseId, plannerDays]);
+
+  useEffect(() => {
+    setDayExperienceOverrides((prev) => {
+      const next = normalizeDayExperienceOverrides(prev, plannerDays);
+      return stringRecordsEqual(prev, next) ? prev : next;
+    });
+  }, [plannerDays]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -520,8 +537,10 @@ export function useTravelOS() {
       plannerDays,
       plannerStartDate,
       weatherPlan,
+      dayExperienceOverrides,
     });
   }, [
+    dayExperienceOverrides,
     destination,
     importedIdeas,
     manualRouteDestinationIds,
@@ -579,6 +598,7 @@ export function useTravelOS() {
     setLockedRouteDestinationIds(
       normalizeRouteDestinationIds(payload.lockedRouteDestinationIds ?? [], payload.plannerBaseId ?? "mobay", payload.plannerDays ?? 5)
     );
+    setDayExperienceOverrides(normalizeDayExperienceOverrides(payload.dayExperienceOverrides ?? {}, payload.plannerDays ?? 5));
     setSavedPlaces(new Set(payload.savedPlaces ?? []));
     setSavedExperiences(new Set(payload.savedExperiences ?? []));
     setImportedIdeas(payload.importedIdeas ?? []);
@@ -637,6 +657,7 @@ export function useTravelOS() {
       normalizeRouteDestinationIds(template.routeDestinationIds ?? [], template.baseId, template.days)
     );
     setLockedRouteDestinationIds([]);
+    setDayExperienceOverrides({});
 
     if (template.originAirportId && ORIGIN_AIRPORTS.some((airport) => airport.id === template.originAirportId)) {
       setOriginAirportId(template.originAirportId);
@@ -773,6 +794,7 @@ export function useTravelOS() {
         originAirportId,
         manualRouteDestinationIds,
         lockedRouteDestinationIds,
+        dayExperienceOverrides,
         savedPlaces,
         savedExperiences,
         importedIdeas,
@@ -895,6 +917,28 @@ export function useTravelOS() {
     });
   };
 
+  const setDayExperience = (day: number, experienceId: string) => {
+    const safeDay = Math.round(day);
+    if (safeDay < 1 || safeDay > plannerDays) return;
+    if (!EXPERIENCES.some((experience) => experience.id === experienceId)) return;
+    saveExperience(experienceId);
+    setDayExperienceOverrides((prev) => ({
+      ...prev,
+      [String(safeDay)]: experienceId,
+    }));
+  };
+
+  const clearDayExperience = (day: number) => {
+    const safeDay = Math.round(day);
+    setDayExperienceOverrides((prev) => {
+      const key = String(safeDay);
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (!tripId || !collaborationReady) return;
     const payload = serializeTripState({
@@ -908,6 +952,7 @@ export function useTravelOS() {
       originAirportId,
       manualRouteDestinationIds,
       lockedRouteDestinationIds,
+      dayExperienceOverrides,
       savedPlaces,
       savedExperiences,
       importedIdeas,
@@ -942,6 +987,7 @@ export function useTravelOS() {
     originAirportId,
     manualRouteDestinationIds,
     lockedRouteDestinationIds,
+    dayExperienceOverrides,
     savedPlaces,
     savedExperiences,
     importedIdeas,
@@ -981,6 +1027,7 @@ export function useTravelOS() {
     setPlannerStartDate,
     manualRouteDestinationIds,
     lockedRouteDestinationIds,
+    dayExperienceOverrides,
     routeIsManual: manualRouteDestinationIds.length > 0,
     originAirportId,
     handleOriginAirportChange,
@@ -1031,6 +1078,8 @@ export function useTravelOS() {
     optimizeRouteOrder,
     resetRouteOrder,
     toggleRouteStopLock,
+    setDayExperience,
+    clearDayExperience,
     handleExportItinerary,
     handleShareTrip,
     handleCopyShareLink,
@@ -1064,6 +1113,27 @@ function getInitialPlanningTemplateId(): PlanningTemplateId {
   const savedMode = readStringFromStorage(STORAGE_KEY_PLANNING_MODE);
   const mode = isPlanningMode(savedMode) ? savedMode : DEFAULT_PLANNING_MODE;
   return getDefaultTemplateForMode(mode).id ?? DEFAULT_PLANNING_TEMPLATE_ID;
+}
+
+function normalizeDayExperienceOverrides(
+  overrides: DayExperienceOverrides,
+  plannerDays: number
+): DayExperienceOverrides {
+  const validExperienceIds = new Set(EXPERIENCES.map((experience) => experience.id));
+  const safeDays = clampPlannerDays(plannerDays);
+
+  return Object.fromEntries(
+    Object.entries(overrides).filter(([day, experienceId]) => {
+      const dayNumber = Number(day);
+      return Number.isInteger(dayNumber) && dayNumber >= 1 && dayNumber <= safeDays && validExperienceIds.has(experienceId);
+    })
+  );
+}
+
+function stringRecordsEqual(first: Record<string, string>, second: Record<string, string>): boolean {
+  const firstKeys = Object.keys(first);
+  const secondKeys = Object.keys(second);
+  return firstKeys.length === secondKeys.length && firstKeys.every((key) => first[key] === second[key]);
 }
 
 function mergeLockedRouteOrder(currentRouteIds: string[], optimizedRouteIds: string[], lockedIds: Set<string>): string[] {

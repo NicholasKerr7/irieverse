@@ -203,6 +203,8 @@ export interface ItineraryPlan {
   routeSummary: RouteSummary;
 }
 
+export type DayExperienceOverrides = Record<string, string>;
+
 export interface OriginAirport {
   id: string;
   name: string;

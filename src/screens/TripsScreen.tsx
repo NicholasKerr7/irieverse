@@ -37,6 +37,7 @@ import { PLANNING_MODE_LABELS } from "../data/plannerTemplates";
 import { formatLocalTime, type TravelOS } from "../hooks/useTravelOS";
 import type { Experience, ImportedIdea, PlanningMode, PlanningTemplate, Vibe } from "../types/travel";
 import { classNames } from "../utils/classNames";
+import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
 import { formatDriveTime } from "../utils/format";
 import { glassCard, glassControlMuted, glassPanel, glassPanelStrong } from "../utils/glass";
 
@@ -230,7 +231,12 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                     Tune
                   </button>
                 </div>
-                <ItineraryView itinerary={app.itinerary} />
+                <ItineraryView
+                  itinerary={app.itinerary}
+                  dayExperienceOverrides={app.dayExperienceOverrides}
+                  onSetDayExperience={app.setDayExperience}
+                  onClearDayExperience={app.clearDayExperience}
+                />
               </section>
 
               <BudgetInsight
@@ -637,8 +643,12 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
         <h2 className="text-xl font-semibold">What to do each day</h2>
       </div>
       <div className="mt-4 grid gap-3">
-        {app.itinerary.daysPlan.map((day) => (
-          <article key={`${day.day}-${day.destinationId}`} className={classNames("rounded-2xl p-4", glassCard)}>
+        {app.itinerary.daysPlan.map((day) => {
+          const experienceOverrideId = app.dayExperienceOverrides[String(day.day)] ?? "";
+          const experienceOptions = getExperienceOptionsForDay(day, 6);
+
+          return (
+            <article key={`${day.day}-${day.destinationId}`} className={classNames("rounded-2xl p-4", glassCard)}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-[0.65rem] uppercase tracking-[0.22em] text-slate-500">Day {day.day}</p>
@@ -660,12 +670,39 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
                 {day.experience && (
                   <p className="mt-1 text-slate-300">
                     Add-on: <span className="font-semibold text-slate-100">{day.experience.title}</span>
+                    <span className="ml-2 text-[0.62rem] uppercase tracking-[0.14em] text-cyan-200/80">
+                      {experienceOverrideId ? "picked" : "best match"}
+                    </span>
                   </p>
                 )}
               </div>
             )}
-          </article>
-        ))}
+            {experienceOptions.length > 0 && (
+              <label className="mt-3 block">
+                <span className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">Swap add-on</span>
+                <select
+                  value={experienceOverrideId}
+                  onChange={(event) => {
+                    if (event.target.value) {
+                      app.setDayExperience(day.day, event.target.value);
+                    } else {
+                      app.clearDayExperience(day.day);
+                    }
+                  }}
+                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200"
+                >
+                  <option value="">Use best match</option>
+                  {experienceOptions.map((experience) => (
+                    <option key={experience.id} value={experience.id}>
+                      {experience.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            </article>
+          );
+        })}
       </div>
     </section>
   );

@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import type { ImportedIdea, PlanningMode, PlanningTemplateId } from "../types/travel";
+import type { DayExperienceOverrides, ImportedIdea, PlanningMode, PlanningTemplateId } from "../types/travel";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -35,6 +35,7 @@ export type TripPayload = {
   originAirportId: string;
   manualRouteDestinationIds?: string[];
   lockedRouteDestinationIds?: string[];
+  dayExperienceOverrides?: DayExperienceOverrides;
   savedPlaces: string[];
   savedExperiences: string[];
   importedIdeas: ImportedIdea[];
@@ -130,6 +131,7 @@ export function serializeTripState(args: {
   originAirportId: string;
   manualRouteDestinationIds: string[];
   lockedRouteDestinationIds: string[];
+  dayExperienceOverrides: DayExperienceOverrides;
   savedPlaces: Set<string>;
   savedExperiences: Set<string>;
   importedIdeas: ImportedIdea[];
@@ -146,6 +148,7 @@ export function serializeTripState(args: {
     originAirportId: args.originAirportId,
     manualRouteDestinationIds: args.manualRouteDestinationIds,
     lockedRouteDestinationIds: args.lockedRouteDestinationIds,
+    dayExperienceOverrides: args.dayExperienceOverrides,
     savedPlaces: Array.from(args.savedPlaces),
     savedExperiences: Array.from(args.savedExperiences),
     importedIdeas: args.importedIdeas,
