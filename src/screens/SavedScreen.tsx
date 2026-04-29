@@ -65,6 +65,8 @@ type BoardSummary = {
   topCollectionLabel: string;
 };
 
+const BOARD_ROUTE_DESTINATION_LIMIT = 6;
+
 const IMPORT_CATEGORIES: Array<{ id: ImportedIdeaCategory; label: string }> = [
   { id: "food", label: "Food" },
   { id: "beach", label: "Beach" },
@@ -187,18 +189,40 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       : savedItems.filter((savedItem) => savedItem.collection === activeCollection);
   const hasSavedItems = savedItems.length > 0;
   const boardSummary = useMemo(() => buildBoardSummary(savedItems), [savedItems]);
+  const activeRouteDestinationIds = useMemo(
+    () => getRouteReadyDestinationIds(savedItems, activeCollection),
+    [activeCollection, savedItems]
+  );
+  const topBoardRouteDestinationIds = useMemo(
+    () => getRouteReadyDestinationIds(savedItems, boardSummary.topCollection),
+    [boardSummary.topCollection, savedItems]
+  );
+  const quickPlanCollection = activeRouteDestinationIds.length ? activeCollection : boardSummary.topCollection;
+  const quickPlanDestinationIds = activeRouteDestinationIds.length
+    ? activeRouteDestinationIds
+    : topBoardRouteDestinationIds;
+  const quickPlanCollectionLabel = getCollectionLabel(quickPlanCollection);
 
   const handleStartQuickPlan = () => {
-    app.applyPlanningTemplate(getTemplateForCollection(boardSummary.topCollection));
-    const anchorDestinationId = getBoardAnchorDestinationId(savedItems);
-    if (anchorDestinationId) {
-      app.setPlannerBaseId(anchorDestinationId);
+    const templateId = getTemplateForCollection(quickPlanCollection);
+    const destinationIds = quickPlanDestinationIds.length
+      ? quickPlanDestinationIds
+      : getRouteReadyDestinationIds(savedItems, "all");
+
+    if (destinationIds.length) {
+      app.buildTripFromDestinations(destinationIds, templateId);
+      setStatusMessage(
+        `Started a trip from ${destinationIds.length} map-ready idea${destinationIds.length === 1 ? "" : "s"}.`
+      );
+    } else {
+      app.applyPlanningTemplate(templateId);
+      setStatusMessage("Quick Plan started. Add map locations to bring saved ideas into the route.");
     }
     onNavigate("trips");
   };
 
   const handleOpenBoardMap = () => {
-    const anchorDestinationId = getBoardAnchorDestinationId(savedItems);
+    const anchorDestinationId = quickPlanDestinationIds[0] ?? getBoardAnchorDestinationId(savedItems);
     if (!anchorDestinationId) {
       setStatusMessage("Attach a Jamaica map location to an idea before opening the map.");
       return;
@@ -221,12 +245,12 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   };
 
   const handleAddToTrip = (savedItem: SavedItem) => {
-    if (savedItem.kind === "place") {
-      app.setPlannerBaseId(savedItem.item.id);
-    } else if (savedItem.item.linkedDestinationId) {
-      app.setPlannerBaseId(savedItem.item.linkedDestinationId);
+    const destinationId = getSavedItemDestinationId(savedItem);
+    if (destinationId) {
+      app.buildTripFromDestinations([destinationId], getTemplateForCollection(savedItem.collection));
+      setStatusMessage(`${getSavedItemTitle(savedItem)} opened in Trips.`);
     }
-    if (savedItem.kind === "import" && !savedItem.item.linkedDestinationId) {
+    if (!destinationId && savedItem.kind === "import") {
       setStatusMessage("Imported idea is ready in the trip builder. Attach a map location when you have one.");
     }
     onNavigate("trips");
@@ -478,6 +502,8 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       <BoardPlanningPanel
         summary={boardSummary}
         hasSavedItems={hasSavedItems}
+        quickPlanDestinationIds={quickPlanDestinationIds}
+        quickPlanCollectionLabel={quickPlanCollectionLabel}
         onStartPlan={handleStartQuickPlan}
         onOpenMap={handleOpenBoardMap}
         onExplore={() => onNavigate("explore")}
@@ -758,17 +784,24 @@ function ImportIntelligenceSummary({
 function BoardPlanningPanel({
   summary,
   hasSavedItems,
+  quickPlanDestinationIds,
+  quickPlanCollectionLabel,
   onStartPlan,
   onOpenMap,
   onExplore,
 }: {
   summary: BoardSummary;
   hasSavedItems: boolean;
+  quickPlanDestinationIds: string[];
+  quickPlanCollectionLabel: string;
   onStartPlan: () => void;
   onOpenMap: () => void;
   onExplore: () => void;
 }) {
   const routeReady = summary.routeReadyCount > 0;
+  const quickPlanDestinations = quickPlanDestinationIds
+    .map((destinationId) => DESTINATIONS.find((destination) => destination.id === destinationId))
+    .filter((destination): destination is Destination => Boolean(destination));
 
   return (
     <section className={classNames("mt-5 overflow-hidden rounded-3xl", glassPanel)}>
@@ -808,11 +841,17 @@ function BoardPlanningPanel({
         <div className="border-t border-slate-800 bg-slate-950/45 p-4 sm:p-5 lg:border-l lg:border-t-0">
           <p className="text-[0.65rem] uppercase tracking-[0.26em] text-slate-500">Next best action</p>
           <h3 className="mt-1 text-xl font-semibold">
-            {hasSavedItems ? getBoardRecommendation(summary) : "Save your first place or link."}
+            {hasSavedItems && quickPlanDestinations.length
+              ? `Build ${quickPlanCollectionLabel} into a trip.`
+              : hasSavedItems
+                ? getBoardRecommendation(summary)
+                : "Save your first place or link."}
           </h3>
           <p className="mt-2 text-sm leading-6 text-slate-400">
-            {hasSavedItems
-              ? "IrieVerse can start a Quick Plan from the strongest board and use map-ready ideas as anchors."
+            {hasSavedItems && quickPlanDestinations.length
+              ? "The first map-ready idea becomes the start, then the rest are pinned into the planning route."
+              : hasSavedItems
+                ? "Attach map locations to saved ideas, then IrieVerse can turn the board into a route-aware plan."
               : "Browse Explore or paste a link here. The board gets smarter once a few ideas are saved."}
           </p>
 
@@ -822,13 +861,37 @@ function BoardPlanningPanel({
             </p>
           )}
 
+          {!!quickPlanDestinations.length && (
+            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/55 p-3">
+              <p className="text-[0.65rem] uppercase tracking-[0.22em] text-slate-500">Trip anchors</p>
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                {quickPlanDestinations.slice(0, 4).map((destination, index) => (
+                  <span
+                    key={destination.id}
+                    className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100"
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-300 text-[0.65rem] font-black text-slate-950">
+                      {index + 1}
+                    </span>
+                    {destination.name}
+                  </span>
+                ))}
+                {quickPlanDestinations.length > 4 && (
+                  <span className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-300">
+                    +{quickPlanDestinations.length - 4} more
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <button
               type="button"
               onClick={hasSavedItems ? onStartPlan : onExplore}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950"
             >
-              <Wand2 className="h-4 w-4" /> {hasSavedItems ? "Start Quick Plan" : "Browse Explore"}
+              <Wand2 className="h-4 w-4" /> {hasSavedItems ? "Build from board" : "Browse Explore"}
             </button>
             <button
               type="button"
@@ -1079,9 +1142,29 @@ function getSavedItemDestinationId(savedItem: SavedItem): string {
   return savedItem.item.linkedDestinationId ?? "";
 }
 
+function getRouteReadyDestinationIds(
+  savedItems: SavedItem[],
+  collection: CollectionId = "all"
+): string[] {
+  const destinationIds: string[] = [];
+  const seen = new Set<string>();
+  const boardItems =
+    collection === "all"
+      ? savedItems
+      : savedItems.filter((savedItem) => savedItem.collection === collection);
+
+  boardItems.forEach((savedItem) => {
+    const destinationId = getSavedItemDestinationId(savedItem);
+    if (!destinationId || seen.has(destinationId)) return;
+    seen.add(destinationId);
+    destinationIds.push(destinationId);
+  });
+
+  return destinationIds.slice(0, BOARD_ROUTE_DESTINATION_LIMIT);
+}
+
 function getBoardAnchorDestinationId(savedItems: SavedItem[]): string {
-  const activeItem = savedItems.find((savedItem) => getSavedItemDestinationId(savedItem));
-  return activeItem ? getSavedItemDestinationId(activeItem) : "";
+  return getRouteReadyDestinationIds(savedItems)[0] ?? "";
 }
 
 function getTemplateForCollection(collection: CollectionId): PlanningTemplateId {
@@ -1089,6 +1172,10 @@ function getTemplateForCollection(collection: CollectionId): PlanningTemplateId 
   if (collection === "beach" || collection === "romantic") return "river-and-beach-day";
   if (collection === "culture" || collection === "nightlife") return "culture-night";
   return "host-visitors";
+}
+
+function getCollectionLabel(collection: CollectionId): string {
+  return COLLECTIONS.find((item) => item.id === collection)?.label ?? "Saved board";
 }
 
 function getBoardRecommendation(summary: BoardSummary): string {

@@ -675,6 +675,42 @@ export function useTravelOS() {
     }
   }, []);
 
+  const buildTripFromDestinations = useCallback((destinationIds: string[], templateId?: PlanningTemplateId) => {
+    const template = getPlanningTemplate(templateId ?? planningTemplateId);
+    const validDestinationIds = new Set(DESTINATIONS.map((item) => item.id));
+    const selectedDestinationIds = Array.from(new Set(destinationIds)).filter((id) => validDestinationIds.has(id));
+    const baseId = selectedDestinationIds[0] ?? template.baseId;
+    const routeDestinationIds = selectedDestinationIds.length > 1
+      ? selectedDestinationIds.slice(1)
+      : template.routeDestinationIds ?? [];
+    const targetDays = clampPlannerDays(
+      Math.max(template.days, selectedDestinationIds.length || 1)
+    );
+
+    setPlanningModeState(template.mode);
+    setPlanningTemplateId(template.id);
+    setPlannerBaseId(baseId);
+    setPlannerDays(targetDays);
+    setPlannerVibe(template.vibe);
+    setPlannerBudget(clampPlannerBudget(template.budget));
+    setManualRouteDestinationIds(
+      normalizeRouteDestinationIds(routeDestinationIds, baseId, targetDays)
+    );
+    setLockedRouteDestinationIds([]);
+    setDayExperienceOverrides({});
+    setSavedPlaces((prev) => {
+      const next = new Set(prev);
+      selectedDestinationIds.forEach((id) => next.add(id));
+      return next;
+    });
+
+    if (template.originAirportId && ORIGIN_AIRPORTS.some((airport) => airport.id === template.originAirportId)) {
+      setOriginAirportId(template.originAirportId);
+      writeStringToStorage(STORAGE_KEY_ORIGIN_AIRPORT, template.originAirportId);
+      setHasUserPreferredOrigin(true);
+    }
+  }, [planningTemplateId]);
+
   const setPlanningMode = useCallback((mode: PlanningMode) => {
     applyPlanningTemplate(getDefaultTemplateForMode(mode).id);
   }, [applyPlanningTemplate]);
@@ -1029,6 +1065,7 @@ export function useTravelOS() {
     planningTemplates,
     activePlanningTemplate,
     applyPlanningTemplate,
+    buildTripFromDestinations,
     plannerBaseId,
     setPlannerBaseId,
     plannerDays,
