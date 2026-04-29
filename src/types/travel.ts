@@ -14,6 +14,30 @@ export type ExperienceCategory = "food" | "music" | "festival";
 
 export type ExperienceType = "all" | ExperienceCategory;
 
+export type PlanningMode = "visitor" | "local" | "hosting";
+
+export type PlanningTemplateId =
+  | "first-jamaica-trip"
+  | "west-coast-reset"
+  | "local-food-run"
+  | "river-and-beach-day"
+  | "host-visitors"
+  | "culture-night";
+
+export interface PlanningTemplate {
+  id: PlanningTemplateId;
+  mode: PlanningMode;
+  title: string;
+  eyebrow: string;
+  body: string;
+  baseId: string;
+  days: number;
+  vibe: Vibe;
+  budget: number;
+  originAirportId?: string;
+  routeDestinationIds?: string[];
+}
+
 export type ImportedIdeaCategory =
   | "food"
   | "beach"

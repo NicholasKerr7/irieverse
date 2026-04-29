@@ -2,6 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ViewStateChangeEvent } from "react-map-gl/maplibre";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import {
+  DEFAULT_PLANNING_MODE,
+  DEFAULT_PLANNING_TEMPLATE_ID,
+  PLANNING_TEMPLATES,
+  getDefaultTemplateForMode,
+  getPlanningTemplate,
+  isPlanningMode,
+  isPlanningTemplateId,
+} from "../data/plannerTemplates";
+import {
   fetchBookingOptions,
   getInitialBookingSourceMeta,
   type BookingSourceMeta,
@@ -30,6 +39,8 @@ import type {
   ItineraryPlan,
   LiveEvent,
   OriginAirport,
+  PlanningMode,
+  PlanningTemplateId,
   QuickFact,
   Vibe,
   WeatherPlanDay,
@@ -61,6 +72,8 @@ const STORAGE_KEY_IMPORTED_IDEAS = "irieverse_imported_ideas";
 const STORAGE_KEY_MANUAL_ROUTE = "irieverse_manual_route";
 const STORAGE_KEY_LOCKED_ROUTE = "irieverse_locked_route";
 const STORAGE_KEY_THEME = "irieverse_theme";
+const STORAGE_KEY_PLANNING_MODE = "irieverse_planning_mode";
+const STORAGE_KEY_PLANNING_TEMPLATE = "irieverse_planning_template";
 
 const AIRPORT_TIMEZONES: Record<string, string> = {
   JFK: "America/New_York",
@@ -80,6 +93,9 @@ export const ORIGIN_AIRPORTS: OriginAirport[] = [
   { id: "yyz", name: "Toronto, CA (YYZ)", code: "YYZ", shortLabel: "Toronto", latitude: 43.6777, longitude: -79.6248 },
   { id: "lax", name: "Los Angeles, USA (LAX)", code: "LAX", shortLabel: "L.A.", latitude: 33.9416, longitude: -118.4085 },
   { id: "scl", name: "Santiago, CL (SCL)", code: "SCL", shortLabel: "Santiago", latitude: -33.4489, longitude: -70.7858 },
+  { id: "mbj", name: "Montego Bay, Jamaica (MBJ)", code: "MBJ", shortLabel: "MoBay", latitude: 18.5037, longitude: -77.9134 },
+  { id: "kin", name: "Kingston, Jamaica (KIN)", code: "KIN", shortLabel: "Kingston", latitude: 17.9357, longitude: -76.7875 },
+  { id: "ocj", name: "Ocho Rios, Jamaica (OCJ)", code: "OCJ", shortLabel: "Ochi", latitude: 18.4042, longitude: -76.969 },
 ];
 
 const DEFAULT_ORIGIN_AIRPORT_ID = ORIGIN_AIRPORTS[0].id;
@@ -123,6 +139,10 @@ export function useTravelOS() {
     readJsonFromStorage(STORAGE_KEY_IMPORTED_IDEAS, [], isImportedIdeaArray)
   );
   const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
+  const [planningMode, setPlanningModeState] = useState<PlanningMode>(() => getInitialPlanningMode());
+  const [planningTemplateId, setPlanningTemplateId] = useState<PlanningTemplateId>(() =>
+    getInitialPlanningTemplateId()
+  );
   const [plannerBaseId, setPlannerBaseId] = useState("mobay");
   const [plannerDays, setPlannerDays] = useState(5);
   const [plannerVibe, setPlannerVibe] = useState<Vibe>("mixed");
@@ -172,6 +192,11 @@ export function useTravelOS() {
     () => ORIGIN_AIRPORTS.find((airport) => airport.id === originAirportId) ?? ORIGIN_AIRPORTS[0],
     [originAirportId]
   );
+  const activePlanningTemplate = useMemo(
+    () => getPlanningTemplate(planningTemplateId),
+    [planningTemplateId]
+  );
+  const planningTemplates = PLANNING_TEMPLATES;
 
   useEffect(() => {
     writeJsonToStorage(STORAGE_KEY_SAVED_PLACES, Array.from(savedPlaces));
@@ -184,6 +209,14 @@ export function useTravelOS() {
   useEffect(() => {
     writeJsonToStorage(STORAGE_KEY_IMPORTED_IDEAS, importedIdeas);
   }, [importedIdeas]);
+
+  useEffect(() => {
+    writeStringToStorage(STORAGE_KEY_PLANNING_MODE, planningMode);
+  }, [planningMode]);
+
+  useEffect(() => {
+    writeStringToStorage(STORAGE_KEY_PLANNING_TEMPLATE, planningTemplateId);
+  }, [planningTemplateId]);
 
   useEffect(() => {
     writeJsonToStorage(STORAGE_KEY_MANUAL_ROUTE, manualRouteDestinationIds);
@@ -524,6 +557,12 @@ export function useTravelOS() {
   );
 
   const applyTripPayload = useCallback((payload: TripPayload) => {
+    if (isPlanningMode(payload.planningMode ?? null)) {
+      setPlanningModeState(payload.planningMode);
+    }
+    if (isPlanningTemplateId(payload.planningTemplateId ?? null)) {
+      setPlanningTemplateId(payload.planningTemplateId);
+    }
     setPlannerBaseId(payload.plannerBaseId ?? "mobay");
     setPlannerDays(clampPlannerDays(payload.plannerDays ?? 5));
     setPlannerVibe((payload.plannerVibe as Vibe) ?? "mixed");
@@ -585,6 +624,30 @@ export function useTravelOS() {
     setHasUserPreferredOrigin(true);
     writeStringToStorage(STORAGE_KEY_ORIGIN_AIRPORT, airportId);
   };
+
+  const applyPlanningTemplate = useCallback((templateId: PlanningTemplateId) => {
+    const template = getPlanningTemplate(templateId);
+    setPlanningModeState(template.mode);
+    setPlanningTemplateId(template.id);
+    setPlannerBaseId(template.baseId);
+    setPlannerDays(clampPlannerDays(template.days));
+    setPlannerVibe(template.vibe);
+    setPlannerBudget(clampPlannerBudget(template.budget));
+    setManualRouteDestinationIds(
+      normalizeRouteDestinationIds(template.routeDestinationIds ?? [], template.baseId, template.days)
+    );
+    setLockedRouteDestinationIds([]);
+
+    if (template.originAirportId && ORIGIN_AIRPORTS.some((airport) => airport.id === template.originAirportId)) {
+      setOriginAirportId(template.originAirportId);
+      writeStringToStorage(STORAGE_KEY_ORIGIN_AIRPORT, template.originAirportId);
+      setHasUserPreferredOrigin(true);
+    }
+  }, []);
+
+  const setPlanningMode = useCallback((mode: PlanningMode) => {
+    applyPlanningTemplate(getDefaultTemplateForMode(mode).id);
+  }, [applyPlanningTemplate]);
 
   const handlePlannerDaysChange = (days: number) => {
     setPlannerDays(clampPlannerDays(days));
@@ -700,6 +763,8 @@ export function useTravelOS() {
     setTripStatusMessage(null);
     try {
       const payload = serializeTripState({
+        planningMode,
+        planningTemplateId,
         plannerBaseId,
         plannerDays,
         plannerVibe,
@@ -833,6 +898,8 @@ export function useTravelOS() {
   useEffect(() => {
     if (!tripId || !collaborationReady) return;
     const payload = serializeTripState({
+      planningMode,
+      planningTemplateId,
       plannerBaseId,
       plannerDays,
       plannerVibe,
@@ -865,6 +932,8 @@ export function useTravelOS() {
   }, [
     tripId,
     collaborationReady,
+    planningMode,
+    planningTemplateId,
     plannerBaseId,
     plannerDays,
     plannerVibe,
@@ -894,6 +963,12 @@ export function useTravelOS() {
     importedIdeas,
     theme,
     toggleTheme: () => setTheme((prev) => (prev === "dark" ? "light" : "dark")),
+    planningMode,
+    setPlanningMode,
+    planningTemplateId,
+    planningTemplates,
+    activePlanningTemplate,
+    applyPlanningTemplate,
     plannerBaseId,
     setPlannerBaseId,
     plannerDays,
@@ -975,6 +1050,20 @@ function getInitialTheme(): ThemeMode {
 
 function getInitialOriginAirportId(): string {
   return getStoredOriginAirportId() ?? DEFAULT_ORIGIN_AIRPORT_ID;
+}
+
+function getInitialPlanningMode(): PlanningMode {
+  const savedMode = readStringFromStorage(STORAGE_KEY_PLANNING_MODE);
+  return isPlanningMode(savedMode) ? savedMode : DEFAULT_PLANNING_MODE;
+}
+
+function getInitialPlanningTemplateId(): PlanningTemplateId {
+  const savedTemplate = readStringFromStorage(STORAGE_KEY_PLANNING_TEMPLATE);
+  if (isPlanningTemplateId(savedTemplate)) return savedTemplate;
+
+  const savedMode = readStringFromStorage(STORAGE_KEY_PLANNING_MODE);
+  const mode = isPlanningMode(savedMode) ? savedMode : DEFAULT_PLANNING_MODE;
+  return getDefaultTemplateForMode(mode).id ?? DEFAULT_PLANNING_TEMPLATE_ID;
 }
 
 function mergeLockedRouteOrder(currentRouteIds: string[], optimizedRouteIds: string[], lockedIds: Set<string>): string[] {

@@ -32,8 +32,9 @@ import { ItineraryView } from "../components/ItineraryView";
 import { LiveEventsFeed } from "../components/LiveEventsFeed";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCES, VIBE_OPTIONS } from "../data/content";
+import { PLANNING_MODE_LABELS } from "../data/plannerTemplates";
 import { formatLocalTime, type TravelOS } from "../hooks/useTravelOS";
-import type { Experience, ImportedIdea, Vibe } from "../types/travel";
+import type { Experience, ImportedIdea, PlanningMode, PlanningTemplate, Vibe } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { formatDriveTime } from "../utils/format";
 import { glassCard, glassControlMuted, glassPanel, glassPanelStrong } from "../utils/glass";
@@ -44,11 +45,11 @@ type TripsScreenProps = {
 };
 
 const WIZARD_STEPS = [
-  { id: "base", label: "Choose base city" },
-  { id: "dates", label: "Choose dates" },
+  { id: "base", label: "Choose start" },
+  { id: "dates", label: "Set timing" },
   { id: "vibe", label: "Choose vibe" },
   { id: "budget", label: "Choose budget" },
-  { id: "saved", label: "Add saved spots" },
+  { id: "saved", label: "Add ideas" },
   { id: "generate", label: "Generate itinerary" },
   { id: "share", label: "Export or share" },
 ] as const;
@@ -79,11 +80,12 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
             <img src={app.destination.heroImage} alt={app.destination.name} className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-transparent" />
             <div className="absolute bottom-5 left-5 right-5">
-              <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/90">Trips</p>
-              <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Build your Jamaica plan.</h1>
+              <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/90">
+                {PLANNING_MODE_LABELS[app.planningMode].label} plan
+              </p>
+              <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">{getTripHeroTitle(app.planningMode)}</h1>
               <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
-                Shape the trip around island road time, weather signals, saved local ideas,
-                and region-by-region pacing.
+                {getTripHeroBody(app.planningMode)}
               </p>
             </div>
           </div>
@@ -99,6 +101,8 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[22rem_1fr]">
         <aside className="space-y-4">
+          <TemplateQuickStartPanel app={app} />
+
           <div className={classNames("rounded-3xl p-4", glassPanel)}>
             <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-500">Guided builder</p>
             <div className="mt-4 space-y-2">
@@ -218,7 +222,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
           />
 
           <section className="grid gap-4 xl:grid-cols-2">
-            <FlightSnapshot app={app} />
+            {app.planningMode === "local" ? <LocalPlanSnapshot app={app} /> : <FlightSnapshot app={app} />}
             <SharePanel app={app} />
           </section>
         </div>
@@ -246,6 +250,65 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
   );
 }
 
+function TemplateQuickStartPanel({ app }: { app: TravelOS }) {
+  const visibleTemplates = app.planningTemplates.filter((template) => template.mode === app.planningMode);
+
+  return (
+    <div className={classNames("rounded-3xl p-4", glassPanel)}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-500">Plan type</p>
+          <h2 className="text-base font-semibold">{PLANNING_MODE_LABELS[app.planningMode].title}</h2>
+        </div>
+        <span className="rounded-full border border-cyan-300/35 px-3 py-1 text-[0.62rem] font-bold uppercase tracking-[0.16em] text-cyan-100">
+          {app.activePlanningTemplate.eyebrow}
+        </span>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-slate-500">
+        Start from a template, then adjust the days, saved ideas, route order, and budget.
+      </p>
+      <div className="mt-3 grid gap-2">
+        {visibleTemplates.map((template) => (
+          <TemplateButton
+            key={template.id}
+            template={template}
+            active={app.planningTemplateId === template.id}
+            onClick={() => app.applyPlanningTemplate(template.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TemplateButton({
+  template,
+  active,
+  onClick,
+}: {
+  template: PlanningTemplate;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={classNames(
+        "rounded-2xl border p-3 text-left transition hover:border-cyan-300/60",
+        active ? "border-cyan-300/45 bg-cyan-300/10" : "border-slate-800 bg-slate-950/70"
+      )}
+    >
+      <span className="text-[0.62rem] uppercase tracking-[0.2em] text-cyan-300/80">{template.eyebrow}</span>
+      <span className="mt-1 block text-sm font-semibold text-slate-100">{template.title}</span>
+      <span className="mt-1 block text-xs leading-5 text-slate-500">{template.body}</span>
+      <span className="mt-2 block text-[0.68rem] text-slate-400">
+        {template.days} day{template.days === 1 ? "" : "s"} · ${template.budget}/day · {template.vibe}
+      </span>
+    </button>
+  );
+}
+
 function WizardPanel({
   app,
   activeStep,
@@ -267,25 +330,25 @@ function WizardPanel({
     <div className={classNames("rounded-3xl p-4", glassPanel)}>
       {activeStep === "base" && (
         <div className="space-y-3">
-          <WizardTitle title="Choose base city" body="Pick the island anchor for flights, events, bookings, and route starts." />
+          <WizardTitle title="Choose start" body={getBaseStepBody(app.planningMode)} />
           <PlannerSelect
-            label="Base destination"
+            label={app.planningMode === "local" ? "Home base or meetup area" : "Base destination"}
             value={app.plannerBaseId}
             onChange={app.setPlannerBaseId}
             options={DESTINATIONS.map((destination) => ({ value: destination.id, label: destination.name }))}
           />
           <PlannerSelect
-            label="Origin airport"
+            label={getOriginLabel(app.planningMode)}
             value={app.originAirportId}
             onChange={app.handleOriginAirportChange}
-            options={app.originAirports.map((airport) => ({ value: airport.id, label: airport.name }))}
+            options={getOriginOptions(app).map((airport) => ({ value: airport.id, label: airport.name }))}
           />
         </div>
       )}
 
       {activeStep === "dates" && (
         <div className="space-y-3">
-          <WizardTitle title="Choose dates" body="Set the start day and how many days the generated plan should cover." />
+          <WizardTitle title="Set timing" body={getDatesStepBody(app.planningMode)} />
           <label className="flex flex-col gap-1 text-sm text-slate-300">
             <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Start date</span>
             <input
@@ -299,7 +362,7 @@ function WizardPanel({
             <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Days</span>
             <input
               type="number"
-              min={3}
+              min={1}
               max={14}
               value={app.plannerDays}
               onChange={(event) => app.setPlannerDays(Number(event.target.value))}
@@ -485,6 +548,39 @@ function PlannerSelect({
         ))}
       </select>
     </label>
+  );
+}
+
+function LocalPlanSnapshot({ app }: { app: TravelOS }) {
+  const weatherReadyDays = app.itinerary.daysPlan.filter((day) => day.weather || day.weatherNote).length;
+
+  return (
+    <div className={classNames("rounded-3xl p-4", glassPanel)}>
+      <div>
+        <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Local plan</p>
+        <h3 className="text-base font-semibold">{app.destination.name} start</h3>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-slate-500">
+        Built for a local day or weekend, with route pacing, weather cues, and saved Jamaica ideas kept in view.
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <RouteStat
+          icon={Clock3}
+          label="Drive time"
+          value={formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)}
+        />
+        <RouteStat
+          icon={CloudSun}
+          label="Weather"
+          value={weatherReadyDays ? `${weatherReadyDays} days` : "Pending"}
+        />
+        <RouteStat
+          icon={Heart}
+          label="Saved"
+          value={`${app.savedPlaces.size + app.savedExperiences.size + app.importedIdeas.length}`}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -1209,6 +1305,45 @@ function VibeButton({ active, label, onClick }: { active: boolean; label: string
       {label}
     </button>
   );
+}
+
+function getTripHeroTitle(mode: PlanningMode): string {
+  if (mode === "local") return "Plan a Jamaica day without overthinking it.";
+  if (mode === "hosting") return "Show them Jamaica with a real plan.";
+  return "Build your Jamaica trip.";
+}
+
+function getTripHeroBody(mode: PlanningMode): string {
+  if (mode === "local") {
+    return "Pick a home base, vibe, time window, and saved ideas. IrieVerse keeps the plan realistic for local driving and weather.";
+  }
+  if (mode === "hosting") {
+    return "Choose the guest base, route, pace, and crowd-pleasers, then turn your local knowledge into a shareable plan.";
+  }
+  return "Shape the trip around island road time, weather signals, saved local ideas, and region-by-region pacing.";
+}
+
+function getBaseStepBody(mode: PlanningMode): string {
+  if (mode === "local") return "Pick where you are starting from or where the group is meeting.";
+  if (mode === "hosting") return "Pick the guest's base or the area you want to anchor the plan around.";
+  return "Pick the island anchor for flights, events, stays, and route starts.";
+}
+
+function getDatesStepBody(mode: PlanningMode): string {
+  if (mode === "local") return "Use one day for a quick run, two or three for a weekend, or more for a longer island loop.";
+  if (mode === "hosting") return "Set how long you need to keep guests moving without making the route feel rushed.";
+  return "Set the start day and how many days the generated plan should cover.";
+}
+
+function getOriginLabel(mode: PlanningMode): string {
+  if (mode === "local") return "Starting area";
+  if (mode === "hosting") return "Guest arrival or starting area";
+  return "Origin airport";
+}
+
+function getOriginOptions(app: TravelOS) {
+  if (app.planningMode !== "local") return app.originAirports;
+  return app.originAirports.filter((airport) => ["MBJ", "KIN", "OCJ"].includes(airport.code));
 }
 
 function formatIntegrationReason(reason?: string): string {

@@ -1,8 +1,10 @@
-import { ArrowRight, Compass, Heart, Route } from "lucide-react";
+import { ArrowRight, CalendarDays, Compass, Heart, MapPin, Plane, Route, Users } from "lucide-react";
 import { HeroSection } from "../components/HeroSection";
 import { PageFooter } from "../components/PageFooter";
 import type { MobileTabId } from "../components/mobile/BottomNav";
+import { PLANNING_MODE_LABELS } from "../data/plannerTemplates";
 import type { TravelOS } from "../hooks/useTravelOS";
+import type { PlanningMode, PlanningTemplate } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassPanel } from "../utils/glass";
 
@@ -10,6 +12,12 @@ type HomeScreenProps = {
   app: TravelOS;
   onNavigate: (tab: MobileTabId) => void;
 };
+
+const MODE_CARDS: Array<{ id: PlanningMode; icon: typeof Plane }> = [
+  { id: "visitor", icon: Plane },
+  { id: "local", icon: MapPin },
+  { id: "hosting", icon: Users },
+];
 
 export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
   const handleHeroNavigate = (target: string) => {
@@ -47,34 +55,78 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
           <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">
             Start here
           </p>
-          <h2 className="mt-1 text-lg font-semibold">Build a first Jamaica trip in 3 steps.</h2>
+          <h2 className="mt-1 text-lg font-semibold">What are you planning?</h2>
           <p className="mt-1 text-sm leading-6 text-slate-400">
-            Pick the basics, save a few local ideas, then let road pacing and weather cues shape the days.
+            Choose the path first. IrieVerse will tune the base, days, budget, route pacing, and saved ideas around it.
           </p>
+          <div className="mt-4 grid gap-2 lg:grid-cols-3">
+            {MODE_CARDS.map((mode) => (
+              <PlanningModeCard
+                key={mode.id}
+                mode={mode.id}
+                icon={mode.icon}
+                active={app.planningMode === mode.id}
+                onClick={() => app.setPlanningMode(mode.id)}
+              />
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/50 p-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[0.65rem] uppercase tracking-[0.26em] text-slate-500">
+                  Quick starts
+                </p>
+                <h3 className="text-base font-semibold">
+                  {PLANNING_MODE_LABELS[app.planningMode].title}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500">
+                Active: {app.activePlanningTemplate.title}
+              </p>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {app.planningTemplates
+                .filter((template) => template.mode === app.planningMode)
+                .slice(0, 2)
+                .map((template) => (
+                  <PlanningTemplateCard
+                    key={template.id}
+                    template={template}
+                    active={app.planningTemplateId === template.id}
+                    onClick={() => {
+                      app.applyPlanningTemplate(template.id);
+                      onNavigate("trips");
+                    }}
+                  />
+                ))}
+            </div>
+          </div>
+
           <div className="mt-4 grid gap-2 lg:grid-cols-3">
             <FirstTripStep
               step="1"
-              icon={Compass}
-              title="Choose base + dates"
-              body={`${app.destination.name} is selected. Tune days, vibe, and budget when ready.`}
-              cta="Start trip"
+              icon={CalendarDays}
+              title="Open your plan"
+              body={`${app.destination.name} · ${app.plannerDays} day${app.plannerDays === 1 ? "" : "s"} · ${formatModeLabel(app.planningMode)} path.`}
+              cta="Trips"
               onClick={() => onNavigate("trips")}
               primary
             />
             <FirstTripStep
               step="2"
               icon={Heart}
-              title="Save local ideas"
+              title="Save ideas"
               body={`${app.savedPlaces.size + app.savedExperiences.size + app.importedIdeas.length} saved so far. Add places or paste links.`}
-              cta="Open Saved"
+              cta="Saved"
               onClick={() => onNavigate("saved")}
             />
             <FirstTripStep
               step="3"
               icon={Route}
-              title="Preview route + weather"
+              title="Preview the route"
               body={`${app.itinerary.routeSummary.regionCount} regions · ${app.itinerary.routeSummary.totalDistanceKm} km · ${getWeatherCueLabel(app)}`}
-              cta="Open map"
+              cta="Map"
               onClick={() => onNavigate("map")}
             />
           </div>
@@ -90,9 +142,9 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
           </div>
           <div className="p-4">
             <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-500">
-              Current base
+              Current plan
             </p>
-            <h2 className="mt-1 text-xl font-semibold">{app.destination.name}</h2>
+            <h2 className="mt-1 text-xl font-semibold">{app.activePlanningTemplate.title}</h2>
             <p className="mt-1 text-sm leading-6 text-slate-400">{app.destination.headline}</p>
             <button
               type="button"
@@ -107,6 +159,68 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
 
       <PageFooter />
     </div>
+  );
+}
+
+function PlanningModeCard({
+  mode,
+  icon: Icon,
+  active,
+  onClick,
+}: {
+  mode: PlanningMode;
+  icon: typeof Plane;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const modeCopy = PLANNING_MODE_LABELS[mode];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={classNames(
+        "group flex min-h-36 flex-col rounded-2xl p-4 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/60",
+        active ? "border-cyan-300/45 bg-cyan-300/12" : glassCard
+      )}
+    >
+      <span className="flex items-center justify-between gap-3">
+        <span className="rounded-full border border-cyan-300/40 px-3 py-1 text-[0.62rem] font-bold uppercase tracking-[0.16em] text-cyan-100">
+          {modeCopy.label}
+        </span>
+        <Icon className="h-5 w-5 text-cyan-300" />
+      </span>
+      <span className="mt-4 block text-sm font-semibold text-slate-100">{modeCopy.title}</span>
+      <span className="mt-1 block flex-1 text-xs leading-5 text-slate-500">{modeCopy.body}</span>
+    </button>
+  );
+}
+
+function PlanningTemplateCard({
+  template,
+  active,
+  onClick,
+}: {
+  template: PlanningTemplate;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={classNames(
+        "rounded-2xl border p-3 text-left transition hover:border-cyan-300/60",
+        active ? "border-cyan-300/45 bg-cyan-300/10" : "border-slate-800 bg-slate-950/60"
+      )}
+    >
+      <span className="text-[0.62rem] uppercase tracking-[0.2em] text-cyan-300/80">{template.eyebrow}</span>
+      <span className="mt-1 block text-sm font-semibold text-slate-100">{template.title}</span>
+      <span className="mt-1 block text-xs leading-5 text-slate-500">{template.body}</span>
+      <span className="mt-3 inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-cyan-200">
+        Use template <ArrowRight className="h-3.5 w-3.5" />
+      </span>
+    </button>
   );
 }
 
@@ -156,4 +270,8 @@ function getWeatherCueLabel(app: TravelOS): string {
   return weatherReadyDayCount
     ? `${weatherReadyDayCount} days with weather cues`
     : "Adapts when weather is available";
+}
+
+function formatModeLabel(mode: PlanningMode): string {
+  return PLANNING_MODE_LABELS[mode].label.toLowerCase();
 }

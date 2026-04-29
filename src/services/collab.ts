@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import type { ImportedIdea } from "../types/travel";
+import type { ImportedIdea, PlanningMode, PlanningTemplateId } from "../types/travel";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -25,6 +25,8 @@ export class CollaborationError extends Error {
 }
 
 export type TripPayload = {
+  planningMode?: PlanningMode;
+  planningTemplateId?: PlanningTemplateId;
   plannerBaseId: string;
   plannerDays: number;
   plannerVibe: string;
@@ -118,6 +120,8 @@ export async function fetchTripState(tripId: string): Promise<TripPayload> {
 }
 
 export function serializeTripState(args: {
+  planningMode?: PlanningMode;
+  planningTemplateId?: PlanningTemplateId;
   plannerBaseId: string;
   plannerDays: number;
   plannerVibe: string;
@@ -132,6 +136,8 @@ export function serializeTripState(args: {
 }): TripPayload {
   const now = new Date().toISOString();
   return {
+    planningMode: args.planningMode,
+    planningTemplateId: args.planningTemplateId,
     plannerBaseId: args.plannerBaseId,
     plannerDays: args.plannerDays,
     plannerVibe: args.plannerVibe,
