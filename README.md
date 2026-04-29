@@ -28,6 +28,9 @@ Copy `.env.example` to `.env.local` and fill any of the following:
 VITE_SUPABASE_URL=your_supabase_url           # enables trip sharing
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key # enables trip sharing
 AVIATIONSTACK_API_KEY=your_key                # server-only live flights through /api/flights
+AVIATIONSTACK_DISABLED=false                  # set true locally to force saved examples
+AVIATIONSTACK_CACHE_TTL_SECONDS=900           # cache live flight lookups for 15 minutes
+AVIATIONSTACK_COOLDOWN_SECONDS=1800           # pause provider calls for 30 minutes after rate limits
 VITE_FLIGHTS_API_URL=/api/flights             # optional flight proxy override
 VITE_BOOKING_API_URL=/api/bookings            # live bookings through the Vercel Amadeus proxy
 AMADEUS_CLIENT_ID=your_amadeus_api_key        # server-only; do not prefix with VITE_
@@ -41,7 +44,7 @@ See `docs/production-env.md` for production platform setup, booking API response
 ## Deployment
 - Vercel: Import the repo, Framework = Vite, Build Command = `npm run build`, Output = `dist`, add env vars as needed.
 - The booking integration uses the Vercel serverless route at `/api/bookings`.
-- The flight integration uses the Vercel serverless route at `/api/flights` so AviationStack secrets stay server-only.
+- The flight integration uses the Vercel serverless route at `/api/flights` so AviationStack secrets stay server-only. The proxy caches live lookups and cools down after provider rate limits.
 - The map driving overlay uses the serverless route at `/api/road-route` for road geometry and maneuver previews.
 - The Trips screen shows planning confidence so production QA can verify what is live, estimated, or curated.
 - PWA shortcuts open app tabs directly with `?tab=explore`, `?tab=map`, and `?tab=trips`.

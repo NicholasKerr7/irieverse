@@ -9,6 +9,9 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | `VITE_SUPABASE_URL` | Optional | Enables shared trip links with Supabase. |
 | `VITE_SUPABASE_ANON_KEY` | Optional | Public anon key for the Supabase project. |
 | `AVIATIONSTACK_API_KEY` | Optional | Server-only AviationStack key used by `api/flights.js`. |
+| `AVIATIONSTACK_DISABLED` | Optional | Set to `true` to force saved flight examples and avoid live AviationStack requests in an environment. |
+| `AVIATIONSTACK_CACHE_TTL_SECONDS` | Optional | Server-side live flight cache TTL. Defaults to `900` seconds. |
+| `AVIATIONSTACK_COOLDOWN_SECONDS` | Optional | Server-side cooldown after AviationStack rate limits. Defaults to `1800` seconds. |
 | `VITE_FLIGHTS_API_URL` | Optional | Browser-visible flight proxy URL. Defaults to `/api/flights`. |
 | `VITE_BOOKING_API_URL` | Optional | Enables live booking recommendations from the server booking endpoint. |
 | `AMADEUS_CLIENT_ID` | Optional | Server-only Amadeus API key used by `api/bookings.js`. |
@@ -42,6 +45,8 @@ For Vercel:
 vercel env add VITE_SUPABASE_URL production
 vercel env add VITE_SUPABASE_ANON_KEY production
 vercel env add AVIATIONSTACK_API_KEY production
+vercel env add AVIATIONSTACK_CACHE_TTL_SECONDS production
+vercel env add AVIATIONSTACK_COOLDOWN_SECONDS production
 vercel env add VITE_FLIGHTS_API_URL production
 vercel env add VITE_BOOKING_API_URL production
 vercel env add AMADEUS_CLIENT_ID production
@@ -145,6 +150,12 @@ GET /api/flights?origin={airportCode}&destination={airportCode}
 ```
 
 If `AVIATIONSTACK_API_KEY` is missing or AviationStack fails, the browser falls back to `public/data/flights-sample.json`. Do not use `VITE_AVIATIONSTACK_API_KEY` in production; it exposes the provider key to the client bundle.
+
+The flight proxy also protects the AviationStack quota:
+
+- Successful live lookups are cached in memory for `AVIATIONSTACK_CACHE_TTL_SECONDS` seconds.
+- If AviationStack returns a rate-limit/quota error, the proxy returns fallback metadata and stops calling AviationStack for `AVIATIONSTACK_COOLDOWN_SECONDS` seconds.
+- For local development, set `AVIATIONSTACK_DISABLED=true` in `.env.local` to force saved examples without using live quota.
 
 ## Road Routing
 

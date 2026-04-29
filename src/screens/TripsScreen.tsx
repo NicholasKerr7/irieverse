@@ -1891,6 +1891,8 @@ function formatIntegrationReason(reason?: string): string {
     "local-sample-data": "Curated examples are active.",
     "pending-flight-proxy": "Flight lookup is getting ready.",
     "missing-aviationstack-key": "Live flight schedules are not connected yet.",
+    "aviationstack-disabled": "Live flight lookup is turned off for this environment.",
+    "aviationstack-rate-limited": "Flight provider is rate-limited right now.",
     "aviationstack-request-failed": "Live flight lookup failed.",
     "flight-proxy-request-failed": "Flight lookup failed.",
     "missing-flight-metadata": "Flight details are limited right now.",

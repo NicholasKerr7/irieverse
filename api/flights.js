@@ -1,5 +1,11 @@
 const AVIATIONSTACK_BASE_URL = "https://api.aviationstack.com/v1/flights";
 const MAX_FLIGHT_OPTIONS = 4;
+const DEFAULT_CACHE_TTL_SECONDS = 15 * 60;
+const DEFAULT_RATE_LIMIT_COOLDOWN_SECONDS = 30 * 60;
+const FLIGHT_CACHE = new Map();
+
+let aviationStackCooldownUntil = 0;
+let aviationStackCooldownReason = "";
 
 module.exports = async function flightsHandler(req, res) {
   setResponseHeaders(res);
@@ -28,16 +34,32 @@ module.exports = async function flightsHandler(req, res) {
     return;
   }
 
+  if (isAviationStackDisabled()) {
+    res.status(200).json(buildFallbackResponse("aviationstack-disabled", Boolean(getAviationStackApiKey()), origin, destination));
+    return;
+  }
+
   const apiKey = getAviationStackApiKey();
   if (!apiKey) {
+    res.status(200).json(buildFallbackResponse("missing-aviationstack-key", false, origin, destination));
+    return;
+  }
+
+  const cacheKey = getFlightCacheKey(origin, destination);
+  const cachedResponse = getCachedFlightResponse(cacheKey);
+  if (cachedResponse) {
+    res.status(200).json(cachedResponse);
+    return;
+  }
+
+  const cooldown = getAviationStackCooldown();
+  if (cooldown.active) {
+    const fallback = buildFallbackResponse(cooldown.reason, true, origin, destination);
     res.status(200).json({
-      data: [],
+      ...fallback,
       meta: {
-        source: "fallback",
-        reason: "missing-aviationstack-key",
-        providerConfigured: false,
-        origin,
-        destination,
+        ...fallback.meta,
+        retryAfterSeconds: cooldown.retryAfterSeconds,
       },
     });
     return;
@@ -45,27 +67,29 @@ module.exports = async function flightsHandler(req, res) {
 
   try {
     const flights = await fetchAviationStackFlights(apiKey, origin, destination);
-    res.status(200).json({
+    const payload = {
       data: flights,
       meta: {
         source: "aviationstack",
         providerConfigured: true,
         origin,
         destination,
+        cached: false,
       },
-    });
+    };
+    setFlightCache(cacheKey, payload);
+    res.status(200).json(payload);
   } catch (error) {
+    const isRateLimited = error instanceof AviationStackError && error.status === 429;
+    if (isRateLimited) {
+      startAviationStackCooldown("aviationstack-rate-limited");
+      console.warn("AviationStack rate limit reached; live flight lookups are cooling down.");
+      res.status(200).json(buildFallbackResponse("aviationstack-rate-limited", true, origin, destination));
+      return;
+    }
+
     console.error("AviationStack flight lookup failed", error);
-    res.status(200).json({
-      data: [],
-      meta: {
-        source: "fallback",
-        reason: "aviationstack-request-failed",
-        providerConfigured: true,
-        origin,
-        destination,
-      },
-    });
+    res.status(200).json(buildFallbackResponse("aviationstack-request-failed", true, origin, destination));
   }
 };
 
@@ -85,6 +109,11 @@ function getAviationStackApiKey() {
   ).trim();
 }
 
+function isAviationStackDisabled() {
+  const value = process.env.AVIATIONSTACK_DISABLED || process.env.IRIEVERSE_DISABLE_LIVE_FLIGHTS || "";
+  return /^(1|true|yes|on)$/i.test(value.trim());
+}
+
 async function fetchAviationStackFlights(apiKey, origin, destination) {
   const params = new URLSearchParams({
     access_key: apiKey,
@@ -96,18 +125,105 @@ async function fetchAviationStackFlights(apiKey, origin, destination) {
 
   const response = await fetch(`${AVIATIONSTACK_BASE_URL}?${params}`);
   if (!response.ok) {
-    throw new Error(`AviationStack error: ${response.status}`);
+    throw new AviationStackError(response.status, `AviationStack error: ${response.status}`);
   }
 
   const payload = await response.json();
   if (payload?.error) {
-    const message = payload.error?.message || payload.error?.type || "AviationStack API error";
-    throw new Error(message);
+    const errorType = payload.error?.type || "";
+    const message = payload.error?.message || errorType || "AviationStack API error";
+    const status = isRateLimitError(message, errorType)
+      ? 429
+      : Number(payload.error?.code) || undefined;
+    throw new AviationStackError(status, message);
   }
 
   return (Array.isArray(payload?.data) ? payload.data : [])
     .map((item) => normalizeFlightItem(item, origin, destination))
     .slice(0, MAX_FLIGHT_OPTIONS);
+}
+
+class AviationStackError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.name = "AviationStackError";
+    this.status = status;
+  }
+}
+
+function buildFallbackResponse(reason, providerConfigured, origin, destination) {
+  return {
+    data: [],
+    meta: {
+      source: "fallback",
+      reason,
+      providerConfigured,
+      origin,
+      destination,
+    },
+  };
+}
+
+function getFlightCacheKey(origin, destination) {
+  return `${origin}-${destination}`;
+}
+
+function getCachedFlightResponse(cacheKey) {
+  const entry = FLIGHT_CACHE.get(cacheKey);
+  if (!entry) return null;
+
+  if (entry.expiresAt <= Date.now()) {
+    FLIGHT_CACHE.delete(cacheKey);
+    return null;
+  }
+
+  return {
+    ...entry.payload,
+    meta: {
+      ...entry.payload.meta,
+      cached: true,
+      cacheTtlSeconds: Math.max(0, Math.ceil((entry.expiresAt - Date.now()) / 1000)),
+    },
+  };
+}
+
+function setFlightCache(cacheKey, payload) {
+  FLIGHT_CACHE.set(cacheKey, {
+    payload,
+    expiresAt: Date.now() + getCacheTtlSeconds() * 1000,
+  });
+}
+
+function getCacheTtlSeconds() {
+  return getPositiveEnvNumber("AVIATIONSTACK_CACHE_TTL_SECONDS", DEFAULT_CACHE_TTL_SECONDS);
+}
+
+function startAviationStackCooldown(reason) {
+  aviationStackCooldownReason = reason;
+  aviationStackCooldownUntil = Date.now() + getRateLimitCooldownSeconds() * 1000;
+}
+
+function getAviationStackCooldown() {
+  const retryAfterSeconds = Math.ceil((aviationStackCooldownUntil - Date.now()) / 1000);
+  return {
+    active: retryAfterSeconds > 0,
+    reason: aviationStackCooldownReason || "aviationstack-rate-limited",
+    retryAfterSeconds: Math.max(0, retryAfterSeconds),
+  };
+}
+
+function getRateLimitCooldownSeconds() {
+  return getPositiveEnvNumber("AVIATIONSTACK_COOLDOWN_SECONDS", DEFAULT_RATE_LIMIT_COOLDOWN_SECONDS);
+}
+
+function getPositiveEnvNumber(name, fallback) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function isRateLimitError(message, type) {
+  const normalized = `${message} ${type}`.toLowerCase();
+  return normalized.includes("rate") || normalized.includes("quota") || normalized.includes("limit");
 }
 
 function normalizeFlightItem(item, origin, destination) {
