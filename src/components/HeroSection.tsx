@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { ChangeEvent, KeyboardEvent } from "react";
+import { AppIcon } from "./AppIcon";
 import { ThemeToggleButton } from "./ThemeToggleButton";
 import { QuickFact } from "../types/travel";
 import type { ThemeMode } from "../hooks/useTravelOS";
@@ -60,9 +61,7 @@ export function HeroSection({
 
       <nav className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-4 pt-4 sm:px-6 lg:px-10">
         <div className="flex items-center gap-3">
-          <div className="h-6 w-10 overflow-hidden rounded-full ring-2 ring-slate-950 shadow shadow-cyan-400/50">
-            <div className="h-full w-full bg-gradient-to-r from-green-600 via-yellow-400 to-black" />
-          </div>
+          <AppIcon className="h-11 w-11 rounded-[1.1rem]" />
           <div className="flex flex-col">
             <span className="text-[0.7rem] uppercase tracking-[0.24em] text-cyan-200">IrieVerse</span>
             <span className="text-xs text-slate-300/80">Jamaica trip planner</span>

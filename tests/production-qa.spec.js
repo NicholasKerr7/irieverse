@@ -295,6 +295,7 @@ async function verifyProductionAssets(request) {
     "/manifest.webmanifest",
     "/icon-192.png",
     "/icon-512.png",
+    "/icon-1024.png",
     "/apple-touch-icon.png",
     "/sw.js",
   ];
@@ -306,7 +307,7 @@ async function verifyProductionAssets(request) {
 
   const manifest = await (await request.get(`${BASE_URL}/manifest.webmanifest`)).json();
   expect(manifest.icons.map((icon) => icon.src)).toEqual(
-    expect.arrayContaining(["/icon-192.png", "/icon-512.png", "/icon.svg"])
+    expect.arrayContaining(["/icon-192.png", "/icon-512.png", "/icon-1024.png"])
   );
   expect(manifest.shortcuts.map((shortcut) => shortcut.url)).toEqual(
     expect.arrayContaining(["/?tab=explore", "/?tab=map", "/?tab=trips"])

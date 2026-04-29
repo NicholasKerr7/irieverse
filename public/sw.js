@@ -2,9 +2,9 @@ const CACHE_NAME = "irieverse-travel-os-v4";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
-  "/icon.svg",
   "/icon-192.png",
   "/icon-512.png",
+  "/icon-1024.png",
   "/apple-touch-icon.png",
   "/data/bookings.json",
   "/data/events.json",
@@ -74,9 +74,9 @@ function shouldCache(url) {
   return (
     url.pathname.startsWith("/assets/") ||
     url.pathname.startsWith("/data/") ||
-    url.pathname === "/icon.svg" ||
     url.pathname === "/icon-192.png" ||
     url.pathname === "/icon-512.png" ||
+    url.pathname === "/icon-1024.png" ||
     url.pathname === "/apple-touch-icon.png" ||
     url.pathname === "/manifest.webmanifest"
   );

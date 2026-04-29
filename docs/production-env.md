@@ -187,7 +187,7 @@ Then test:
 - Flights display live data or a clear empty/error state.
 - Booking cards display from the configured endpoint.
 - Map route lines follow roads or gracefully fall back when the routing service is unavailable.
-- `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, and `apple-touch-icon.png` return `200`.
+- `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `icon-1024.png`, and `apple-touch-icon.png` return `200`.
 - Manifest shortcuts, screenshots, and the PWA share target are present.
 - `?tab=saved&shared_url=...&shared_title=...&shared_text=...` opens Saved with the import form prefilled and auto-categorized, then removes the share params from the URL.
 - App still works with any optional variable removed.

@@ -34,9 +34,9 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
@@ -57,14 +57,14 @@
     },
     {
       "src": "/screenshots/desktop-home.png",
-      "sizes": "2880x2000",
+      "sizes": "1440x1000",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Desktop IrieVerse home screen"
     },
     {
       "src": "/screenshots/desktop-map.png",
-      "sizes": "2880x2000",
+      "sizes": "1440x1000",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Desktop Jamaica map route view"

@@ -1,4 +1,5 @@
-import { Plane, Sparkles } from "lucide-react";
+import { Plane } from "lucide-react";
+import { AppIcon } from "./AppIcon";
 import type { MobileTabId } from "./mobile/BottomNav";
 import { NAV_TABS } from "./mobile/BottomNav";
 import { ThemeToggleButton } from "./ThemeToggleButton";
@@ -25,9 +26,7 @@ export function DesktopNav({ activeTab, onChange, theme, onToggleTheme }: Deskto
           className="group flex items-center gap-3 text-left"
           aria-label="IrieVerse home"
         >
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-300/25 bg-cyan-300/12 text-cyan-100 shadow-lg shadow-cyan-500/10 transition group-hover:border-cyan-300/60">
-            <Sparkles className="h-5 w-5" />
-          </span>
+          <AppIcon className="h-11 w-11 transition group-hover:border-cyan-300/60" />
           <span>
             <span className="block text-sm font-semibold tracking-[0.22em] text-cyan-100">IRIEVERSE</span>
             <span className="block text-xs text-slate-400">Jamaica trip planner</span>

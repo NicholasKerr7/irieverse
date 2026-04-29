@@ -254,9 +254,9 @@ Already available:
 - `public/screenshots/mobile-trips.png`
 - `public/screenshots/desktop-home.png`
 - `public/screenshots/desktop-map.png`
-- `public/icon.svg`
 - `public/icon-192.png`
 - `public/icon-512.png`
+- `public/icon-1024.png`
 - `public/apple-touch-icon.png`
 - `public/press-kit.html`
 
