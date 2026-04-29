@@ -4,12 +4,12 @@
 
 Date: 2026-04-29
 
-Result: Secure sharing flow updated locally; run the live probe after applying `20260429120000_secure_trip_sharing.sql`.
+Result: Passed secure sharing RPC probe after applying `20260429120000_secure_trip_sharing.sql`.
 
 - Linked project: `divgxhxckrthasurbdqz` (`irieverse`).
-- Expected migration history now includes:
+- Remote migration history now includes:
   `20260427120000`, `20260427195500`, and `20260429120000`.
-- The Supabase probe creates a `trips` row, reads it back through the trip-share RPC, updates it with the local edit token, deletes it through the protected cleanup RPC, and verifies the row is gone.
+- The Supabase probe created a `trips` row, read it back through the trip-share RPC, denied an update with the wrong edit token, updated it with the correct local edit token, deleted it through the protected cleanup RPC, and verified the row was gone.
 - `supabase db lint --linked` and `supabase db push --dry-run` still need a valid direct Postgres CLI login; the linked CLI login currently returns password authentication failure for `cli_login_postgres`.
 
 ## Full QA run
