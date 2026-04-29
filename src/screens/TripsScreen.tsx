@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import type { LucideProps } from "lucide-react";
 import {
   AlertTriangle,
@@ -20,6 +20,7 @@ import {
   Route,
   RotateCcw,
   Share2,
+  Sparkles,
   Unlock,
   Users,
   Wand2,
@@ -55,9 +56,11 @@ const WIZARD_STEPS = [
 ] as const;
 
 type WizardStepId = (typeof WIZARD_STEPS)[number]["id"];
+type BuilderLane = "quick" | "full";
 
 export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
   const [activeStep, setActiveStep] = useState<WizardStepId>("base");
+  const [builderLane, setBuilderLane] = useState<BuilderLane>(() => getDefaultBuilderLane(app.planningMode));
   const savedDestinations = useMemo(
     () => DESTINATIONS.filter((destination) => app.savedPlaces.has(destination.id)),
     [app.savedPlaces]
@@ -71,6 +74,10 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
   const estimatedTotal =
     (app.perDayBudget.lodging + app.perDayBudget.dining + app.perDayBudget.experiences) * app.plannerDays +
     app.transportBudget;
+
+  useEffect(() => {
+    setBuilderLane(getDefaultBuilderLane(app.planningMode));
+  }, [app.planningMode]);
 
   return (
     <section className="mx-auto min-h-screen max-w-7xl px-4 py-5 sm:px-6 lg:px-10">
@@ -99,152 +106,631 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
         </div>
       </header>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[22rem_1fr]">
-        <aside className="space-y-4">
-          <TemplateQuickStartPanel app={app} />
+      <PlanLaneSwitch activeLane={builderLane} onChange={setBuilderLane} planningMode={app.planningMode} />
 
-          <div className={classNames("rounded-3xl p-4", glassPanel)}>
-            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-500">Guided builder</p>
-            <div className="mt-4 space-y-2">
-              {WIZARD_STEPS.map((step, index) => (
-                <button
-                  key={step.id}
-                  type="button"
-                  onClick={() => setActiveStep(step.id)}
-                  className={classNames(
-                    "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition",
-                    activeStep === step.id
-                      ? "border-cyan-300 bg-cyan-300 text-slate-950"
-                      : `${glassControlMuted} text-slate-300 hover:border-cyan-300/50`
-                  )}
-                >
-                  <span className={classNames(
-                    "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold",
-                    activeStep === step.id ? "bg-slate-950 text-cyan-200" : "bg-cyan-300 text-slate-950"
-                  )}>
-                    {index + 1}
-                  </span>
-                  <span className="flex-1 text-sm font-semibold">{step.label}</span>
-                  {index < getCompletedStepIndex(app) && <Check className="h-4 w-4" />}
-                </button>
-              ))}
+      {builderLane === "quick" ? (
+        <QuickPlanExperience
+          app={app}
+          onNavigate={onNavigate}
+          savedDestinations={savedDestinations}
+          savedExperiences={savedExperiences}
+          importedIdeas={importedIdeas}
+        />
+      ) : (
+        <>
+          <div className="mt-5 grid gap-4 lg:grid-cols-[22rem_1fr]">
+            <aside className="space-y-4">
+              <TemplateQuickStartPanel app={app} />
+
+              <div className={classNames("rounded-3xl p-4", glassPanel)}>
+                <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-500">Guided builder</p>
+                <div className="mt-4 space-y-2">
+                  {WIZARD_STEPS.map((step, index) => (
+                    <button
+                      key={step.id}
+                      type="button"
+                      onClick={() => setActiveStep(step.id)}
+                      className={classNames(
+                        "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition",
+                        activeStep === step.id
+                          ? "border-cyan-300 bg-cyan-300 text-slate-950"
+                          : `${glassControlMuted} text-slate-300 hover:border-cyan-300/50`
+                      )}
+                    >
+                      <span className={classNames(
+                        "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold",
+                        activeStep === step.id ? "bg-slate-950 text-cyan-200" : "bg-cyan-300 text-slate-950"
+                      )}>
+                        {index + 1}
+                      </span>
+                      <span className="flex-1 text-sm font-semibold">{step.label}</span>
+                      {index < getCompletedStepIndex(app) && <Check className="h-4 w-4" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <WizardPanel
+                app={app}
+                activeStep={activeStep}
+                setActiveStep={setActiveStep}
+                savedDestinations={savedDestinations}
+                savedExperiences={savedExperiences}
+                importedIdeas={importedIdeas}
+                onNavigate={onNavigate}
+              />
+            </aside>
+
+            <div className="space-y-4">
+              <section className={classNames("rounded-3xl p-4", glassPanel)}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <CalendarDays className="h-5 w-5 text-cyan-300" />
+                    <div>
+                      <p className="text-[0.65rem] uppercase tracking-[0.25em] text-slate-500">Upcoming trip</p>
+                      <h2 className="text-xl font-semibold">{app.destination.name} base plan</h2>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onNavigate("saved")}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60"
+                    >
+                      <Heart className="h-3.5 w-3.5" /> Saved
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate("map")}
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60"
+                    >
+                      <Route className="h-3.5 w-3.5" /> Map route
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <MiniCard
+                    icon={Route}
+                    title="Road pacing"
+                    body={`${formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)} across ${app.itinerary.routeSummary.regionCount} regions.`}
+                  />
+                  <MiniCard
+                    icon={CloudSun}
+                    title="Weather cues"
+                    body={
+                      weatherReadyDays
+                        ? `${weatherReadyDays} days checked for rain, heat, and outdoor timing.`
+                        : "Daily plan adapts when weather is available."
+                    }
+                  />
+                  <MiniCard
+                    icon={Users}
+                    title="Local ideas"
+                    body={`${savedDestinations.length + savedExperiences.length + importedIdeas.length} saved places, experiences, and imports.`}
+                  />
+                  <MiniCard icon={WalletCards} title="Budget" body={`$${estimatedTotal.toLocaleString()} trip estimate.`} />
+                </div>
+              </section>
+
+              <RoutePreviewPanel app={app} onNavigate={onNavigate} />
+
+              <IntegrationStatusPanel app={app} />
+
+              <section className={classNames("rounded-3xl p-4", glassPanel)}>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Daily plan</p>
+                    <h2 className="text-lg font-semibold">{app.plannerDays} day itinerary</h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveStep("generate")}
+                    className="rounded-full border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300"
+                  >
+                    Tune
+                  </button>
+                </div>
+                <ItineraryView itinerary={app.itinerary} />
+              </section>
+
+              <BudgetInsight
+                perDay={app.perDayBudget}
+                transportPerTrip={app.transportBudget}
+                days={app.plannerDays}
+                vibe={app.plannerVibe}
+              />
+
+              <section className="grid gap-4 xl:grid-cols-2">
+                {app.planningMode === "local" ? <LocalPlanSnapshot app={app} /> : <FlightSnapshot app={app} />}
+                <SharePanel app={app} />
+              </section>
             </div>
           </div>
 
-          <WizardPanel
-            app={app}
-            activeStep={activeStep}
-            setActiveStep={setActiveStep}
-            savedDestinations={savedDestinations}
-            savedExperiences={savedExperiences}
-            importedIdeas={importedIdeas}
-            onNavigate={onNavigate}
-          />
-        </aside>
+          <div className="mt-6 space-y-6">
+            <BookingRecommendations
+              bookings={app.bookingOptions}
+              isLoading={app.isLoadingBookings}
+              error={app.bookingError}
+              onRefresh={app.refreshBookings}
+              destinationName={app.destination.name}
+              sourceMeta={app.bookingSourceMeta}
+            />
 
-        <div className="space-y-4">
-          <section className={classNames("rounded-3xl p-4", glassPanel)}>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <CalendarDays className="h-5 w-5 text-cyan-300" />
-                <div>
-                  <p className="text-[0.65rem] uppercase tracking-[0.25em] text-slate-500">Upcoming trip</p>
-                  <h2 className="text-xl font-semibold">{app.destination.name} base plan</h2>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => onNavigate("saved")}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60"
-                >
-                  <Heart className="h-3.5 w-3.5" /> Saved
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onNavigate("map")}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60"
-                >
-                  <Route className="h-3.5 w-3.5" /> Map route
-                </button>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <MiniCard
-                icon={Route}
-                title="Road pacing"
-                body={`${formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)} across ${app.itinerary.routeSummary.regionCount} regions.`}
-              />
-              <MiniCard
-                icon={CloudSun}
-                title="Weather cues"
-                body={
-                  weatherReadyDays
-                    ? `${weatherReadyDays} days checked for rain, heat, and outdoor timing.`
-                    : "Daily plan adapts when weather is available."
-                }
-              />
-              <MiniCard
-                icon={Users}
-                title="Local ideas"
-                body={`${savedDestinations.length + savedExperiences.length + importedIdeas.length} saved places, experiences, and imports.`}
-              />
-              <MiniCard icon={WalletCards} title="Budget" body={`$${estimatedTotal.toLocaleString()} trip estimate.`} />
-            </div>
-          </section>
+            <LiveEventsFeed
+              events={app.liveEvents}
+              isLoading={app.isLoadingEvents}
+              error={app.eventsError}
+              onRefresh={app.loadEvents}
+              selectedRegion={app.destination.region}
+            />
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
 
-          <RoutePreviewPanel app={app} onNavigate={onNavigate} />
+function PlanLaneSwitch({
+  activeLane,
+  onChange,
+  planningMode,
+}: {
+  activeLane: BuilderLane;
+  onChange: (lane: BuilderLane) => void;
+  planningMode: PlanningMode;
+}) {
+  return (
+    <div className="mt-5 grid gap-3 lg:grid-cols-2">
+      <LaneButton
+        icon={Sparkles}
+        active={activeLane === "quick"}
+        title="Quick Plan"
+        eyebrow={planningMode === "visitor" ? "Day plan" : "Recommended"}
+        body="For today, this weekend, food runs, river days, date nights, and hosting plans. No flight or booking clutter."
+        onClick={() => onChange("quick")}
+      />
+      <LaneButton
+        icon={CalendarDays}
+        active={activeLane === "full"}
+        title="Full Trip"
+        eyebrow={planningMode === "visitor" ? "Recommended" : "Multi-day"}
+        body="For full visitor itineraries with flights, stays, events, budget cards, sharing, and the complete guided builder."
+        onClick={() => onChange("full")}
+      />
+    </div>
+  );
+}
 
-          <IntegrationStatusPanel app={app} />
+function LaneButton({
+  icon: Icon,
+  active,
+  title,
+  eyebrow,
+  body,
+  onClick,
+}: {
+  icon: ComponentType<LucideProps>;
+  active: boolean;
+  title: string;
+  eyebrow: string;
+  body: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={classNames(
+        "min-h-32 rounded-3xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/60",
+        active ? "border-cyan-300/55 bg-cyan-300/12 shadow-xl shadow-cyan-950/25" : glassPanel
+      )}
+    >
+      <span className="flex items-start justify-between gap-3">
+        <span>
+          <span className="text-[0.62rem] font-bold uppercase tracking-[0.22em] text-cyan-300/85">{eyebrow}</span>
+          <span className="mt-1 block text-lg font-semibold text-slate-100">{title}</span>
+        </span>
+        <span className={classNames("flex h-10 w-10 items-center justify-center rounded-2xl", active ? "bg-cyan-300 text-slate-950" : "bg-slate-950/70 text-cyan-300")}>
+          <Icon className="h-5 w-5" />
+        </span>
+      </span>
+      <span className="mt-3 block text-sm leading-6 text-slate-400">{body}</span>
+    </button>
+  );
+}
 
-          <section className={classNames("rounded-3xl p-4", glassPanel)}>
-            <div className="mb-4 flex items-center justify-between gap-3">
+function QuickPlanExperience({
+  app,
+  onNavigate,
+  savedDestinations,
+  savedExperiences,
+  importedIdeas,
+}: {
+  app: TravelOS;
+  onNavigate: (tab: MobileTabId) => void;
+  savedDestinations: typeof DESTINATIONS;
+  savedExperiences: Experience[];
+  importedIdeas: ImportedIdea[];
+}) {
+  const estimatedTotal =
+    (app.perDayBudget.dining + app.perDayBudget.experiences) * app.plannerDays +
+    app.transportBudget;
+  const weatherReadyDays = app.itinerary.daysPlan.filter((day) => day.weather || day.weatherNote).length;
+
+  return (
+    <div className="mt-5 space-y-4">
+      <section className={classNames("overflow-hidden rounded-3xl", glassPanel)}>
+        <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
+          <div className="p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Daily plan</p>
-                <h2 className="text-lg font-semibold">{app.plannerDays} day itinerary</h2>
+                <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Quick Plan</p>
+                <h2 className="mt-1 text-2xl font-semibold">Build the day around what matters.</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                  Start with a Jamaica template, pick timing, tune vibe and budget, then preview the route. Navigation stays a handoff.
+                </p>
               </div>
               <button
                 type="button"
-                onClick={() => setActiveStep("generate")}
-                className="rounded-full border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300"
+                onClick={() => onNavigate("saved")}
+                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-cyan-300/45 px-4 py-2 text-xs font-bold text-cyan-100"
               >
-                Tune
+                <Heart className="h-4 w-4" /> Add ideas
               </button>
             </div>
-            <ItineraryView itinerary={app.itinerary} />
-          </section>
 
-          <BudgetInsight
-            perDay={app.perDayBudget}
-            transportPerTrip={app.transportBudget}
-            days={app.plannerDays}
-            vibe={app.plannerVibe}
-          />
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <QuickTemplatePicker app={app} />
+              <QuickPlanControls app={app} />
+            </div>
+          </div>
 
-          <section className="grid gap-4 xl:grid-cols-2">
-            {app.planningMode === "local" ? <LocalPlanSnapshot app={app} /> : <FlightSnapshot app={app} />}
-            <SharePanel app={app} />
-          </section>
+          <div className="border-t border-slate-800 bg-slate-950/45 p-4 sm:p-5 lg:border-l lg:border-t-0">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[0.65rem] uppercase tracking-[0.26em] text-slate-500">Ready plan</p>
+                <h3 className="text-xl font-semibold">{app.destination.name}</h3>
+              </div>
+              <span className="rounded-full border border-cyan-300/35 px-3 py-1 text-[0.62rem] font-bold uppercase tracking-[0.16em] text-cyan-100">
+                {app.plannerDays} day{app.plannerDays === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <RouteStat icon={Clock3} label="Drive time" value={formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)} />
+              <RouteStat icon={Route} label="Distance" value={`${app.itinerary.routeSummary.totalDistanceKm} km`} />
+              <RouteStat icon={CloudSun} label="Weather" value={weatherReadyDays ? `${weatherReadyDays} days` : "Pending"} />
+              <RouteStat icon={WalletCards} label="Estimate" value={`$${estimatedTotal.toLocaleString()}`} />
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => onNavigate("map")}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950"
+              >
+                <MapPinned className="h-4 w-4" /> Preview map
+              </button>
+              <button
+                type="button"
+                onClick={app.handleExportItinerary}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-emerald-300/50 px-4 py-2 text-xs font-bold text-emerald-100"
+              >
+                <Download className="h-4 w-4" /> Export
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <QuickRoutePanel app={app} onNavigate={onNavigate} />
+        <QuickDailyPlanPanel app={app} />
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
+        <QuickSavedIdeasPanel
+          savedDestinations={savedDestinations}
+          savedExperiences={savedExperiences}
+          importedIdeas={importedIdeas}
+          onExplore={() => onNavigate("explore")}
+          onSaved={() => onNavigate("saved")}
+        />
+        <SharePanel app={app} />
+      </section>
+    </div>
+  );
+}
+
+function QuickTemplatePicker({ app }: { app: TravelOS }) {
+  const templates = getQuickPlanTemplates(app);
+
+  return (
+    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-3">
+      <p className="text-[0.65rem] uppercase tracking-[0.24em] text-slate-500">1. Pick the shape</p>
+      <div className="mt-3 grid gap-2">
+        {templates.map((template) => (
+          <button
+            key={template.id}
+            type="button"
+            onClick={() => app.applyPlanningTemplate(template.id)}
+            className={classNames(
+              "rounded-2xl border p-3 text-left transition hover:border-cyan-300/60",
+              app.planningTemplateId === template.id
+                ? "border-cyan-300/45 bg-cyan-300/10"
+                : "border-slate-800 bg-slate-950/70"
+            )}
+          >
+            <span className="text-[0.62rem] uppercase tracking-[0.18em] text-cyan-300/80">{template.eyebrow}</span>
+            <span className="mt-1 block text-sm font-semibold text-slate-100">{template.title}</span>
+            <span className="mt-1 block text-xs leading-5 text-slate-500">{template.body}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QuickPlanControls({ app }: { app: TravelOS }) {
+  const quickVibes: Vibe[] = ["authentic", "chill", "adventure", "culture", "nightlife", "romantic"];
+  const budgetOptions = [65, 100, 150, 225];
+
+  return (
+    <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-3">
+      <p className="text-[0.65rem] uppercase tracking-[0.24em] text-slate-500">2. Tune it fast</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <QuickControlButton
+          label="Today"
+          body="1 day"
+          active={app.plannerDays === 1 && app.plannerStartDate === getTodayISODate()}
+          onClick={() => {
+            app.setPlannerStartDate(getTodayISODate());
+            app.setPlannerDays(1);
+          }}
+        />
+        <QuickControlButton
+          label="This weekend"
+          body="2 days"
+          active={app.plannerDays === 2 && app.plannerStartDate === getNextWeekendISODate()}
+          onClick={() => {
+            app.setPlannerStartDate(getNextWeekendISODate());
+            app.setPlannerDays(2);
+          }}
+        />
+      </div>
+
+      <p className="mt-4 text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">Vibe</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {quickVibes.map((vibe) => (
+          <button
+            key={vibe}
+            type="button"
+            onClick={() => app.setPlannerVibe(vibe)}
+            className={classNames(
+              "rounded-full border px-3 py-2 text-xs font-semibold transition",
+              app.plannerVibe === vibe
+                ? "border-cyan-300 bg-cyan-300 text-slate-950"
+                : "border-slate-700 text-slate-300 hover:border-cyan-300/60"
+            )}
+          >
+            {formatVibeLabel(vibe)}
+          </button>
+        ))}
+      </div>
+
+      <p className="mt-4 text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">Budget</p>
+      <div className="mt-2 grid grid-cols-4 gap-2">
+        {budgetOptions.map((budget) => (
+          <button
+            key={budget}
+            type="button"
+            onClick={() => app.setPlannerBudget(budget)}
+            className={classNames(
+              "rounded-2xl border px-2 py-2 text-xs font-bold transition",
+              app.plannerBudget === budget
+                ? "border-emerald-300 bg-emerald-300 text-slate-950"
+                : "border-slate-700 text-slate-300 hover:border-emerald-300/60"
+            )}
+          >
+            ${budget}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QuickControlButton({
+  label,
+  body,
+  active,
+  onClick,
+}: {
+  label: string;
+  body: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={classNames(
+        "rounded-2xl border p-3 text-left transition hover:border-cyan-300/60",
+        active ? "border-cyan-300/45 bg-cyan-300/10" : "border-slate-800 bg-slate-950/70"
+      )}
+    >
+      <span className="block text-sm font-semibold text-slate-100">{label}</span>
+      <span className="mt-1 block text-xs text-slate-500">{body}</span>
+    </button>
+  );
+}
+
+function QuickRoutePanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab: MobileTabId) => void }) {
+  const routeSummary = app.itinerary.routeSummary;
+  const canEditRoute = routeSummary.stops.length > 1;
+
+  return (
+    <section className={classNames("rounded-3xl p-4", glassPanel)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Route preview</p>
+          <h2 className="text-xl font-semibold">{routeSummary.routeTone}</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-400">
+            Planning route only. Use the handoff map for the actual drive.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={app.optimizeRouteOrder}
+            disabled={!canEditRoute}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-emerald-300/50 px-4 py-2 text-xs font-bold text-emerald-100 disabled:opacity-40"
+          >
+            <Wand2 className="h-4 w-4" /> Smooth route
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate("map")}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-cyan-300/50 px-4 py-2 text-xs font-bold text-cyan-100"
+          >
+            <MapPinned className="h-4 w-4" /> Map
+          </button>
         </div>
       </div>
 
-      <div className="mt-6 space-y-6">
-        <BookingRecommendations
-          bookings={app.bookingOptions}
-          isLoading={app.isLoadingBookings}
-          error={app.bookingError}
-          onRefresh={app.refreshBookings}
-          destinationName={app.destination.name}
-          sourceMeta={app.bookingSourceMeta}
-        />
+      <ol className="mt-4 space-y-2">
+        {routeSummary.stops.map((stop, index) => (
+          <li
+            key={stop.destinationId}
+            className={classNames(
+              "flex items-center gap-3 rounded-2xl border px-3 py-3",
+              stop.transferSeverity === "long"
+                ? "border-rose-300/30 bg-rose-300/10"
+                : stop.transferSeverity === "moderate"
+                  ? "border-amber-300/30 bg-amber-300/10"
+                  : "border-slate-800 bg-slate-950/70"
+            )}
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-xs font-bold text-slate-950">
+              {index + 1}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-slate-100">{stop.name}</span>
+              <span className="block text-xs text-slate-500">
+                {stop.region} · {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
 
-        <LiveEventsFeed
-          events={app.liveEvents}
-          isLoading={app.isLoadingEvents}
-          error={app.eventsError}
-          onRefresh={app.loadEvents}
-          selectedRegion={app.destination.region}
-        />
+function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
+  return (
+    <section className={classNames("rounded-3xl p-4", glassPanel)}>
+      <div>
+        <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Plan cards</p>
+        <h2 className="text-xl font-semibold">What to do each day</h2>
+      </div>
+      <div className="mt-4 grid gap-3">
+        {app.itinerary.daysPlan.map((day) => (
+          <article key={`${day.day}-${day.destinationId}`} className={classNames("rounded-2xl p-4", glassCard)}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-[0.65rem] uppercase tracking-[0.22em] text-slate-500">Day {day.day}</p>
+                <h3 className="mt-1 text-lg font-semibold text-slate-100">{day.destName}</h3>
+                <p className="mt-1 text-sm leading-6 text-slate-400">{day.highlight}</p>
+              </div>
+              <span className="rounded-full border border-slate-700 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-slate-300">
+                {formatVibeLabel(day.vibe)}
+              </span>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <QuickDayFact label="Drive" value={day.driveMinutesFromPrevious ? formatDriveTime(day.driveMinutesFromPrevious) : "Stay nearby"} />
+              <QuickDayFact label="Energy" value={day.energyLevel} />
+              <QuickDayFact label="Budget" value={`$${day.suggestedBudget}`} />
+            </div>
+            {(day.weatherNote || day.experience) && (
+              <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-xs leading-5 text-cyan-100">
+                {day.weatherNote && <p>{day.weatherNote}</p>}
+                {day.experience && (
+                  <p className="mt-1 text-slate-300">
+                    Add-on: <span className="font-semibold text-slate-100">{day.experience.title}</span>
+                  </p>
+                )}
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function QuickDayFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+      <p className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-1 text-xs font-semibold capitalize text-slate-200">{value}</p>
+    </div>
+  );
+}
+
+function QuickSavedIdeasPanel({
+  savedDestinations,
+  savedExperiences,
+  importedIdeas,
+  onExplore,
+  onSaved,
+}: {
+  savedDestinations: typeof DESTINATIONS;
+  savedExperiences: Experience[];
+  importedIdeas: ImportedIdea[];
+  onExplore: () => void;
+  onSaved: () => void;
+}) {
+  const totalSaved = savedDestinations.length + savedExperiences.length + importedIdeas.length;
+  const previewItems = [
+    ...savedDestinations.slice(0, 2).map((destination) => ({ id: destination.id, title: destination.name, meta: destination.region })),
+    ...savedExperiences.slice(0, 2).map((experience) => ({ id: experience.id, title: experience.title, meta: experience.location })),
+    ...importedIdeas.slice(0, 2).map((idea) => ({ id: idea.id, title: idea.title, meta: idea.sourceLabel ?? idea.category })),
+  ].slice(0, 4);
+
+  return (
+    <section className={classNames("rounded-3xl p-4", glassPanel)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Saved ideas</p>
+          <h2 className="text-xl font-semibold">{totalSaved ? `${totalSaved} ideas ready` : "Start your Jamaica board"}</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-400">
+            Quick plans get better when saved places, links, and notes are already on the board.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={totalSaved ? onSaved : onExplore}
+          className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-cyan-300/45 px-4 py-2 text-xs font-bold text-cyan-100"
+        >
+          <Heart className="h-4 w-4" /> {totalSaved ? "Open board" : "Explore"}
+        </button>
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        {previewItems.length ? (
+          previewItems.map((item) => (
+            <div key={item.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+              <p className="line-clamp-1 text-sm font-semibold text-slate-100">{item.title}</p>
+              <p className="mt-1 line-clamp-1 text-xs text-slate-500">{item.meta}</p>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-700 p-4 text-sm leading-6 text-slate-400 sm:col-span-2">
+            Save a few food spots, beaches, links, or notes, then come back here to make the plan feel personal.
+          </div>
+        )}
       </div>
     </section>
   );
@@ -1344,6 +1830,54 @@ function getOriginLabel(mode: PlanningMode): string {
 function getOriginOptions(app: TravelOS) {
   if (app.planningMode !== "local") return app.originAirports;
   return app.originAirports.filter((airport) => ["MBJ", "KIN", "OCJ"].includes(airport.code));
+}
+
+function getDefaultBuilderLane(mode: PlanningMode): BuilderLane {
+  return mode === "visitor" ? "full" : "quick";
+}
+
+function getQuickPlanTemplates(app: TravelOS): PlanningTemplate[] {
+  const seen = new Set<string>();
+  const templates: PlanningTemplate[] = [];
+  const sameModeTemplates = app.planningTemplates.filter(
+    (template) => template.mode === app.planningMode && (template.mode !== "visitor" || template.days <= 3)
+  );
+  const quickTemplates = app.planningTemplates.filter((template) => template.days <= 3);
+
+  [...sameModeTemplates, ...quickTemplates].forEach((template) => {
+    if (seen.has(template.id)) return;
+    seen.add(template.id);
+    templates.push(template);
+  });
+
+  return templates.slice(0, 4);
+}
+
+function getTodayISODate(): string {
+  return toLocalISODate(new Date());
+}
+
+function getNextWeekendISODate(): string {
+  const today = new Date();
+  const day = today.getDay();
+  const daysUntilSaturday = (6 - day + 7) % 7 || 7;
+  const nextWeekend = new Date(today);
+  nextWeekend.setDate(today.getDate() + daysUntilSaturday);
+  return toLocalISODate(nextWeekend);
+}
+
+function toLocalISODate(date: Date): string {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
+}
+
+function formatVibeLabel(vibe: string): string {
+  const option = VIBE_OPTIONS.find((item) => item.id === vibe);
+  if (option) return option.label;
+  return vibe
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function formatIntegrationReason(reason?: string): string {
