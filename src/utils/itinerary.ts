@@ -9,6 +9,7 @@ type BuildItineraryArgs = {
   destination: Destination;
   manualRouteDestinationIds: string[];
   savedPlaces: Set<string>;
+  savedExperiences: Set<string>;
   importedIdeas: ImportedIdea[];
   plannerVibe: Vibe;
   plannerBudget: number;
@@ -24,6 +25,7 @@ export function buildItineraryPlan({
   destination,
   manualRouteDestinationIds,
   savedPlaces,
+  savedExperiences,
   importedIdeas,
   plannerVibe,
   plannerBudget,
@@ -33,10 +35,16 @@ export function buildItineraryPlan({
   dayExperienceOverrides = {},
 }: BuildItineraryArgs): ItineraryPlan {
   const safeDays = clampPlannerDays(plannerDays);
+  const savedExperienceIds = new Set(savedExperiences);
+  const savedExperienceDestinationIds = EXPERIENCES
+    .filter((experience) => savedExperienceIds.has(experience.id) && experience.linkedDestinationId)
+    .map((experience) => experience.linkedDestinationId)
+    .filter((id): id is string => Boolean(id));
   const preferredDestinationIds = new Set<string>([
     destination.id,
     ...manualRouteDestinationIds,
     ...Array.from(savedPlaces),
+    ...savedExperienceDestinationIds,
     ...importedIdeas
       .map((idea) => idea.linkedDestinationId)
       .filter((id): id is string => Boolean(id)),
@@ -85,7 +93,8 @@ export function buildItineraryPlan({
       tripDestination,
       destinationVibe,
       weatherAdjustedEnergyLevel,
-      weather
+      weather,
+      savedExperienceIds
     );
     const experience =
       getDayExperienceOverride(dayExperienceOverrides, index + 1) ??
@@ -293,7 +302,8 @@ function rankExperiencesForDay(
   destination: Destination,
   dayVibe: string,
   energyLevel: EnergyLevel,
-  weather?: WeatherPlanDay
+  weather: WeatherPlanDay | undefined,
+  savedExperienceIds: Set<string>
 ): Experience[] {
   return experiences
     .map((experience) => ({
@@ -304,11 +314,21 @@ function rankExperiencesForDay(
         (experience.vibes.includes(dayVibe) ? 18 : 0) +
         (energyLevel === "high" && experience.energy === "high" ? 16 : 0) +
         (energyLevel === "soft" && experience.energy === "high" ? -28 : 0) +
+        getSavedExperienceScore(experience, destination, savedExperienceIds) +
         getWeatherExperienceScore(experience, weather) +
         experience.rating,
     }))
     .sort((a, b) => b.score - a.score)
     .map((item) => item.experience);
+}
+
+function getSavedExperienceScore(
+  experience: Experience,
+  destination: Destination,
+  savedExperienceIds: Set<string>
+): number {
+  if (!savedExperienceIds.has(experience.id)) return 0;
+  return experience.linkedDestinationId === destination.id ? 90 : 34;
 }
 
 function getWeatherForPlannerDay(

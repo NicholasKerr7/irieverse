@@ -237,6 +237,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                 <ItineraryView
                   itinerary={app.itinerary}
                   dayExperienceOverrides={app.dayExperienceOverrides}
+                  savedExperienceIds={app.savedExperiences}
                   onSetDayExperience={app.setDayExperience}
                   onClearDayExperience={app.clearDayExperience}
                 />
@@ -614,9 +615,10 @@ function BoardTripContextPanel({ app, onNavigate }: { app: TravelOS; onNavigate:
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
+      <div className="mt-4 grid gap-3 md:grid-cols-4">
         <RouteStat icon={MapPinned} label="Route anchors" value={context.routeAnchors.length.toString()} />
         <RouteStat icon={Heart} label="Saved places" value={app.savedPlaces.size.toString()} />
+        <RouteStat icon={Sparkles} label="Experiences" value={app.savedExperiences.size.toString()} />
         <RouteStat icon={Link} label="Imported links" value={app.importedIdeas.length.toString()} />
       </div>
 
@@ -814,8 +816,9 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
       <div className="mt-4 grid gap-3">
         {app.itinerary.daysPlan.map((day) => {
           const experienceOverrideId = app.dayExperienceOverrides[String(day.day)] ?? "";
-          const experienceOptions = getExperienceOptionsForDay(day, 6);
+          const experienceOptions = getExperienceOptionsForDay(day, 6, app.savedExperiences);
           const boardStopLabel = getBoardStopLabel(app, day.destinationId);
+          const experienceIsSaved = Boolean(day.experience && app.savedExperiences.has(day.experience.id));
 
           return (
             <article key={`${day.day}-${day.destinationId}`} className={classNames("rounded-2xl p-4", glassCard)}>
@@ -844,7 +847,7 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
                   <p className="mt-1 text-slate-300">
                     Add-on: <span className="font-semibold text-slate-100">{day.experience.title}</span>
                     <span className="ml-2 text-[0.62rem] uppercase tracking-[0.14em] text-cyan-200/80">
-                      {experienceOverrideId ? "picked" : "best match"}
+                      {experienceOverrideId ? "picked" : experienceIsSaved ? "saved idea" : "best match"}
                     </span>
                   </p>
                 )}
@@ -2122,17 +2125,21 @@ function getBoardTripContext(app: TravelOS) {
       ? `${routeAnchors.length} board ${routeAnchors.length === 1 ? "anchor" : "anchors"} in this route`
       : `${totalBoardIdeas} saved ${totalBoardIdeas === 1 ? "idea" : "ideas"} ready`,
     body: routeAnchors.length
-      ? "Saved places and linked imports are pinned into the plan, so the route starts from your real Jamaica board instead of a blank itinerary."
+      ? "Saved places, experiences, and linked imports are pinned into the plan, so the route starts from your real Jamaica board instead of a blank itinerary."
       : "Saved places, experiences, and imports are available. Add map locations to saved links when you want them to shape the route.",
   };
 }
 
 function getBoardStopLabel(app: TravelOS, destinationId: string): string {
   const saved = app.savedPlaces.has(destinationId);
+  const savedExperience = EXPERIENCES.some(
+    (experience) => app.savedExperiences.has(experience.id) && experience.linkedDestinationId === destinationId
+  );
   const imported = app.importedIdeas.some((idea) => idea.linkedDestinationId === destinationId);
 
-  if (saved && imported) return "Board";
+  if ([saved, savedExperience, imported].filter(Boolean).length > 1) return "Board";
   if (saved) return "Saved";
+  if (savedExperience) return "Experience";
   if (imported) return "Import";
   return "";
 }

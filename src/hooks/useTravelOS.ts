@@ -534,6 +534,7 @@ export function useTravelOS() {
       destination,
       manualRouteDestinationIds,
       savedPlaces,
+      savedExperiences,
       importedIdeas,
       plannerVibe,
       plannerBudget,
@@ -552,6 +553,7 @@ export function useTravelOS() {
     plannerStartDate,
     plannerVibe,
     savedPlaces,
+    savedExperiences,
     weatherPlan,
   ]);
 

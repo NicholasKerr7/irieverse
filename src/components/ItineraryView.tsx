@@ -9,6 +9,7 @@ import { capitalise } from "../utils/text";
 interface ItineraryViewProps {
   itinerary: ItineraryPlan;
   dayExperienceOverrides?: Record<string, string>;
+  savedExperienceIds?: Set<string>;
   onSetDayExperience?: (day: number, experienceId: string) => void;
   onClearDayExperience?: (day: number) => void;
 }
@@ -16,6 +17,7 @@ interface ItineraryViewProps {
 export function ItineraryView({
   itinerary,
   dayExperienceOverrides = {},
+  savedExperienceIds = new Set(),
   onSetDayExperience,
   onClearDayExperience,
 }: ItineraryViewProps) {
@@ -85,7 +87,8 @@ export function ItineraryView({
       <ol className="grid gap-3 md:grid-cols-2">
         {daysPlan.map((day) => {
           const experienceOverrideId = dayExperienceOverrides[String(day.day)] ?? "";
-          const experienceOptions = getExperienceOptionsForDay(day);
+          const experienceOptions = getExperienceOptionsForDay(day, 8, savedExperienceIds);
+          const experienceIsSaved = Boolean(day.experience && savedExperienceIds.has(day.experience.id));
 
           return (
             <li
@@ -161,7 +164,7 @@ export function ItineraryView({
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-semibold text-slate-100">{day.experience.title}</p>
                       <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.12em] text-slate-400">
-                        {experienceOverrideId ? "Picked" : "Best match"}
+                        {experienceOverrideId ? "Picked" : experienceIsSaved ? "Saved idea" : "Best match"}
                       </span>
                     </div>
                     <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
