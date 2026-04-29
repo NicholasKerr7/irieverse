@@ -104,15 +104,15 @@ export function getRouteStatusLabel(routeStatus: {
   fallbackLegs?: number;
   failedLegs?: number;
 }): string {
-  if (!routeStatus.totalLegs) return "No route";
-  if (routeStatus.isLoading) return "Loading roads";
-  if (routeStatus.roadLegs === routeStatus.totalLegs) return "Road routes";
+  if (!routeStatus.totalLegs) return "No preview";
+  if (routeStatus.isLoading) return "Building preview";
+  if (routeStatus.roadLegs === routeStatus.totalLegs) return "Road-following";
   if ((routeStatus.failedLegs ?? 0) > 0 && routeStatus.roadLegs > 0) {
-    return `${routeStatus.roadLegs}/${routeStatus.totalLegs} road`;
+    return "Mixed preview";
   }
-  if ((routeStatus.failedLegs ?? 0) > 0) return "Estimated route";
-  if (routeStatus.roadLegs > 0) return "Mixed routes";
-  return "Estimated route";
+  if ((routeStatus.failedLegs ?? 0) > 0) return "Estimated preview";
+  if (routeStatus.roadLegs > 0) return "Mixed preview";
+  return "Estimated preview";
 }
 
 export function getRouteColor(index: number): string {

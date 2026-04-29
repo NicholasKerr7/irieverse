@@ -227,14 +227,14 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                 <div className="min-w-0">
                   <p className="text-[0.62rem] uppercase tracking-[0.28em] text-cyan-200/80">IrieVerse Map</p>
                   <h1 className="truncate text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">
-                    Jamaica route command
+                    Jamaica route preview
                   </h1>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center text-xs sm:w-[22rem]">
                 <HudMetric icon={Radar} label="Pins" value={visibleDestinations.length.toString()} />
-                <HudMetric icon={Gauge} label="Route" value={routeSummary.routeTone.replace(" route", "")} />
+                <HudMetric icon={Gauge} label="Plan" value={routeSummary.routeTone.replace(" route", "")} />
                 <HudMetric icon={Clock3} label="Drive" value={formatDriveTime(routeSummary.totalDriveMinutes)} />
               </div>
             </div>
@@ -414,10 +414,10 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                       active={isSaved}
                     />
                     <MapAction icon={Plus} label="Add trip" onClick={handleAddToTrip} primary />
-                    <MapAction icon={Navigation} label="Drive" onClick={handleOpenDrivingGuide} />
+                    <MapAction icon={Navigation} label="Open Maps" onClick={handleOpenDrivingGuide} />
                     <MapAction
                       icon={Route}
-                      label="Route"
+                      label="Preview"
                       onClick={() => {
                         setShowRoutePreview((prev) => !prev);
                         setSheetExpanded(true);
@@ -430,7 +430,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                     <div className="mt-4 rounded-[1.5rem] border border-cyan-300/20 bg-cyan-300/10 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-[0.65rem] uppercase tracking-[0.24em] text-cyan-200">Route pulse</p>
+                          <p className="text-[0.65rem] uppercase tracking-[0.24em] text-cyan-200">Planning route</p>
                           <h3 className="mt-1 font-semibold text-slate-100">
                             {selectedRouteLeg
                               ? `Day ${selectedRouteLeg.day}: ${selectedRouteLeg.leg.fromName} to ${selectedRouteLeg.leg.toName}`
@@ -456,7 +456,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                           value={selectedRouteLeg ? formatDriveTime(selectedRouteDetail?.durationMinutes ?? selectedRouteLeg.leg.driveMinutes) : formatDriveTime(routeSummary.totalDriveMinutes)}
                         />
                         <RoutePulseFact
-                          label="Source"
+                          label="Preview"
                           value={getRouteStatusLabel(routeStatus)}
                         />
                       </div>
@@ -645,7 +645,7 @@ function RouteDayChips({
                   "h-2 w-2 rounded-full",
                   isSyncing ? "animate-pulse bg-cyan-300" : isFallback ? "bg-amber-300" : "bg-emerald-300"
                 )}
-                title={isSyncing ? "Road route loading" : isFallback ? "Estimated route" : "Road-aware route"}
+                title={isSyncing ? "Building road preview" : isFallback ? "Estimated planning preview" : "Road-following preview"}
               />
             </button>
           );
@@ -686,7 +686,7 @@ function RouteStatusPill({ routeStatus }: { routeStatus: RouteRenderStatus }) {
       />
       {label}
       {!routeStatus.isLoading && routeStatus.fallbackLegs > 0 && (
-        <span className="text-[0.65rem] opacity-75">{routeStatus.fallbackLegs} est</span>
+        <span className="text-[0.65rem] opacity-75">{routeStatus.fallbackLegs} estimated</span>
       )}
     </span>
   );
@@ -712,11 +712,17 @@ function RouteDirectionsPanel({
   routeStatus: RouteRenderStatus;
   onOpenDrivingGuide: () => void;
 }) {
+  const [showStepPreview, setShowStepPreview] = useState(false);
+
+  useEffect(() => {
+    setShowStepPreview(false);
+  }, [selectedRouteLeg?.id]);
+
   if (!selectedRouteLeg) return null;
 
   const steps = selectedRouteDetail?.steps ?? [];
   const hasRoadSteps = selectedRouteDetail?.source === "road" && steps.length > 0;
-  const visibleSteps = steps.slice(0, 8);
+  const visibleSteps = steps.slice(0, 5);
   const hiddenStepCount = Math.max(0, steps.length - visibleSteps.length);
   const panelTone = routeStatus.isLoading && !selectedRouteDetail
     ? "loading"
@@ -724,8 +730,8 @@ function RouteDirectionsPanel({
       ? "road"
       : "fallback";
   const statusText = hasRoadSteps
-    ? "Road-aware route with turn previews."
-    : selectedRouteDetail?.fallbackMessage ?? "Road-aware directions are not available yet.";
+    ? "Road-following planning preview. Open Maps for live navigation."
+    : selectedRouteDetail?.fallbackMessage ?? "Road-following preview is unavailable for this leg.";
 
   return (
     <div
@@ -741,7 +747,7 @@ function RouteDirectionsPanel({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[0.6rem] uppercase tracking-[0.22em] text-cyan-200/75">
-            {hasRoadSteps ? "Road-aware steps" : "Estimated route"}
+            {hasRoadSteps ? "Road preview" : "Estimated preview"}
           </p>
           <h4 className="mt-1 text-sm font-semibold text-slate-100">
             {selectedRouteLeg.leg.fromName} to {selectedRouteLeg.leg.toName}
@@ -753,15 +759,29 @@ function RouteDirectionsPanel({
           onClick={onOpenDrivingGuide}
           className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-cyan-300/40 px-3 py-2 text-[0.68rem] font-bold text-cyan-100"
         >
-          Maps <ArrowUpRight className="h-3.5 w-3.5" />
+          Open Maps <ArrowUpRight className="h-3.5 w-3.5" />
         </button>
       </div>
 
       {routeStatus.isLoading && !selectedRouteDetail && (
-        <p className="mt-3 text-xs text-slate-300">Finding the best road shape...</p>
+        <p className="mt-3 text-xs text-slate-300">Building the road-following preview...</p>
       )}
 
       {hasRoadSteps && (
+        <button
+          type="button"
+          onClick={() => setShowStepPreview((prev) => !prev)}
+          className="mt-3 flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/36 px-3 py-2 text-left text-xs font-bold text-slate-100 transition hover:border-cyan-300/40"
+        >
+          <span className="inline-flex items-center gap-2">
+            <Route className="h-3.5 w-3.5 text-cyan-200" />
+            {showStepPreview ? "Hide road cues" : `Show ${steps.length} road cue${steps.length === 1 ? "" : "s"}`}
+          </span>
+          {showStepPreview ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+        </button>
+      )}
+
+      {hasRoadSteps && showStepPreview && (
         <ol className="mt-3 grid gap-2">
           {visibleSteps.map((step, index) => {
             const StepIcon = getManeuverIcon(step.maneuverType, step.modifier);
@@ -794,9 +814,9 @@ function RouteDirectionsPanel({
         </ol>
       )}
 
-      {hiddenStepCount > 0 && (
+      {showStepPreview && hiddenStepCount > 0 && (
         <p className="mt-3 text-xs text-slate-400">
-          {hiddenStepCount} more turn preview{hiddenStepCount === 1 ? "" : "s"} available for this route. Open Maps for full navigation.
+          {hiddenStepCount} more road cue{hiddenStepCount === 1 ? "" : "s"} available for this route. Open Maps for live navigation.
         </p>
       )}
 
@@ -804,7 +824,7 @@ function RouteDirectionsPanel({
         <div className="mt-3 flex gap-2 rounded-xl border border-amber-300/20 bg-slate-950/42 px-3 py-2 text-xs leading-5 text-amber-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
-            Showing an estimated route for this leg. Open in Maps for live traffic and full turn-by-turn directions.
+            Showing an estimated planning preview for this leg. Open Maps for live navigation.
           </p>
         </div>
       )}
@@ -848,8 +868,8 @@ function RouteHud({
     <div className="hidden overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/78 shadow-2xl shadow-slate-950/50 backdrop-blur-2xl lg:block">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div>
-          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-cyan-200/80">Island Route</p>
-          <h2 className="text-lg font-semibold text-slate-100">{stops.length} stop flow</h2>
+          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-cyan-200/80">Planning Route</p>
+          <h2 className="text-lg font-semibold text-slate-100">{stops.length} stop plan</h2>
         </div>
         <button
           type="button"

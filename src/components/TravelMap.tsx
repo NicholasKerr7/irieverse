@@ -214,7 +214,7 @@ export const TravelMap = memo(function TravelMap({
               route: null,
               fallback: {
                 reason: "request-failed",
-                message: "A detailed road route was unavailable, so this leg is using an estimated route.",
+                message: "The road-following preview is limited here, so this leg is using an estimated path.",
               },
             },
           });
@@ -698,8 +698,8 @@ async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promi
       fallback: {
         reason: response.status === 400 ? "unsupported-route" : "request-failed",
         message: response.status === 400
-          ? "This route is outside the supported road-planning range, so the map is using an estimated route."
-          : "A detailed road route was unavailable, so this leg is using an estimated route.",
+          ? "This leg is outside the supported planning range, so the map is using an estimated path."
+          : "The road-following preview is limited here, so this leg is using an estimated path.",
       },
     };
   }
@@ -784,7 +784,7 @@ function normalizeFallbackInfo(value: unknown): RouteFallbackInfo {
   if (!isRecord(value)) {
     return {
       reason: "invalid-response",
-      message: "A detailed road route was unavailable, so this leg is using an estimated route.",
+      message: "The road-following preview is limited here, so this leg is using an estimated path.",
     };
   }
 
@@ -808,12 +808,12 @@ function normalizeFallbackReason(value: unknown): RouteFallbackReason {
 }
 
 function getFallbackMessage(reason: RouteFallbackReason | undefined): string {
-  if (reason === "loading") return "Road-aware directions are still loading for this leg.";
-  if (reason === "unsupported-route") return "This route is outside the supported road-planning range, so the map is using an estimated route.";
-  if (reason === "request-failed") return "A detailed road route was unavailable, so this leg is using an estimated route.";
-  if (reason === "invalid-response") return "The road route was incomplete, so this leg is using an estimated route.";
-  if (reason === "road-route-unavailable") return "Road-aware directions are unavailable, so this leg is using an estimated route.";
-  return "This leg uses an estimated route until road-aware directions are available.";
+  if (reason === "loading") return "The road-following preview is still building for this leg.";
+  if (reason === "unsupported-route") return "This leg is outside the supported planning range, so the map is using an estimated path.";
+  if (reason === "request-failed") return "The road-following preview is limited here, so this leg is using an estimated path.";
+  if (reason === "invalid-response") return "The road preview was incomplete, so this leg is using an estimated path.";
+  if (reason === "road-route-unavailable") return "Road-following preview is unavailable here, so this leg is using an estimated path.";
+  return "This leg is using an estimated path until a road-following preview is available.";
 }
 
 function asString(value: unknown): string | undefined {
