@@ -1,5 +1,6 @@
 import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, MapPin, Music2, PartyPopper, Route, Utensils, WalletCards, X } from "lucide-react";
-import { ItineraryPlan } from "../types/travel";
+import { DESTINATIONS, EXPERIENCES } from "../data/content";
+import type { ImportedIdea, ItineraryPlan } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
 import { formatDriveTime } from "../utils/format";
@@ -9,7 +10,9 @@ import { capitalise } from "../utils/text";
 interface ItineraryViewProps {
   itinerary: ItineraryPlan;
   dayExperienceOverrides?: Record<string, string>;
+  savedPlaceIds?: Set<string>;
   savedExperienceIds?: Set<string>;
+  importedIdeas?: ImportedIdea[];
   onSetDayExperience?: (day: number, experienceId: string) => void;
   onClearDayExperience?: (day: number) => void;
 }
@@ -17,7 +20,9 @@ interface ItineraryViewProps {
 export function ItineraryView({
   itinerary,
   dayExperienceOverrides = {},
+  savedPlaceIds = new Set(),
   savedExperienceIds = new Set(),
+  importedIdeas = [],
   onSetDayExperience,
   onClearDayExperience,
 }: ItineraryViewProps) {
@@ -89,6 +94,7 @@ export function ItineraryView({
           const experienceOverrideId = dayExperienceOverrides[String(day.day)] ?? "";
           const experienceOptions = getExperienceOptionsForDay(day, 8, savedExperienceIds);
           const experienceIsSaved = Boolean(day.experience && savedExperienceIds.has(day.experience.id));
+          const boardIdeas = getDayBoardIdeas(day.destinationId, savedPlaceIds, savedExperienceIds, importedIdeas);
 
           return (
             <li
@@ -151,6 +157,20 @@ export function ItineraryView({
               </p>
             )}
             <p className="mt-4 text-sm leading-6 text-slate-300">{day.highlight}.</p>
+
+            {!!boardIdeas.length && (
+              <div className={classNames("mt-3 rounded-2xl p-3", glassControlMuted)}>
+                <p className="text-[0.62rem] uppercase tracking-[0.18em] text-cyan-300/80">From your board</p>
+                <div className="mt-2 grid gap-2">
+                  {boardIdeas.slice(0, 3).map((idea) => (
+                    <div key={idea.id} className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+                      <p className="line-clamp-1 text-xs font-semibold text-slate-100">{idea.title}</p>
+                      <p className="mt-0.5 line-clamp-1 text-[0.68rem] text-slate-500">{idea.meta}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {day.experience && (
               <div className={classNames("mt-4 rounded-2xl p-3", glassControlMuted)}>
@@ -244,4 +264,32 @@ function getPacingLabel(totalDriveMinutes: number, days: number): string {
   if (averageDrive > 110) return "Ambitious";
   if (averageDrive > 55) return "Balanced";
   return "Relaxed";
+}
+
+function getDayBoardIdeas(
+  destinationId: string,
+  savedPlaceIds: Set<string>,
+  savedExperienceIds: Set<string>,
+  importedIdeas: ImportedIdea[]
+) {
+  const destination = DESTINATIONS.find((item) => item.id === destinationId);
+  const savedDestinationIdeas = destination && savedPlaceIds.has(destinationId)
+    ? [{ id: `place-${destination.id}`, title: destination.name, meta: "Saved place" }]
+    : [];
+  const savedExperienceIdeas = EXPERIENCES
+    .filter((experience) => savedExperienceIds.has(experience.id) && experience.linkedDestinationId === destinationId)
+    .map((experience) => ({
+      id: `experience-${experience.id}`,
+      title: experience.title,
+      meta: `Saved experience · ${experience.location}`,
+    }));
+  const importedDayIdeas = importedIdeas
+    .filter((idea) => idea.linkedDestinationId === destinationId)
+    .map((idea) => ({
+      id: `import-${idea.id}`,
+      title: idea.title,
+      meta: idea.sourceLabel || idea.extractedPlaceName || "Imported idea",
+    }));
+
+  return [...savedDestinationIdeas, ...savedExperienceIdeas, ...importedDayIdeas];
 }

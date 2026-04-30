@@ -237,7 +237,9 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                 <ItineraryView
                   itinerary={app.itinerary}
                   dayExperienceOverrides={app.dayExperienceOverrides}
+                  savedPlaceIds={app.savedPlaces}
                   savedExperienceIds={app.savedExperiences}
+                  importedIdeas={app.importedIdeas}
                   onSetDayExperience={app.setDayExperience}
                   onClearDayExperience={app.clearDayExperience}
                 />
@@ -819,6 +821,7 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
           const experienceOptions = getExperienceOptionsForDay(day, 6, app.savedExperiences);
           const boardStopLabel = getBoardStopLabel(app, day.destinationId);
           const experienceIsSaved = Boolean(day.experience && app.savedExperiences.has(day.experience.id));
+          const boardIdeas = getDayBoardIdeas(app, day.destinationId);
 
           return (
             <article key={`${day.day}-${day.destinationId}`} className={classNames("rounded-2xl p-4", glassCard)}>
@@ -851,6 +854,19 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
                     </span>
                   </p>
                 )}
+              </div>
+            )}
+            {!!boardIdeas.length && (
+              <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                <p className="text-[0.62rem] uppercase tracking-[0.18em] text-cyan-300/80">From your board</p>
+                <div className="mt-2 grid gap-2">
+                  {boardIdeas.slice(0, 3).map((idea) => (
+                    <div key={idea.id} className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2">
+                      <p className="line-clamp-1 text-xs font-semibold text-slate-100">{idea.title}</p>
+                      <p className="mt-0.5 line-clamp-1 text-[0.68rem] text-slate-500">{idea.meta}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             {experienceOptions.length > 0 && (
@@ -2142,6 +2158,29 @@ function getBoardStopLabel(app: TravelOS, destinationId: string): string {
   if (savedExperience) return "Experience";
   if (imported) return "Import";
   return "";
+}
+
+function getDayBoardIdeas(app: TravelOS, destinationId: string) {
+  const destination = DESTINATIONS.find((item) => item.id === destinationId);
+  const savedDestinationIdeas = destination && app.savedPlaces.has(destinationId)
+    ? [{ id: `place-${destination.id}`, title: destination.name, meta: "Saved place" }]
+    : [];
+  const savedExperienceIdeas = EXPERIENCES
+    .filter((experience) => app.savedExperiences.has(experience.id) && experience.linkedDestinationId === destinationId)
+    .map((experience) => ({
+      id: `experience-${experience.id}`,
+      title: experience.title,
+      meta: `Saved experience · ${experience.location}`,
+    }));
+  const importedDayIdeas = app.importedIdeas
+    .filter((idea) => idea.linkedDestinationId === destinationId)
+    .map((idea) => ({
+      id: `import-${idea.id}`,
+      title: idea.title,
+      meta: idea.sourceLabel || idea.extractedPlaceName || "Imported idea",
+    }));
+
+  return [...savedDestinationIdeas, ...savedExperienceIdeas, ...importedDayIdeas];
 }
 
 function formatIntegrationReason(reason?: string): string {
