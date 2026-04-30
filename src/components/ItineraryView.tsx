@@ -3,6 +3,7 @@ import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import type { ImportedIdea, ItineraryPlan } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
+import { getDayPlanningReasons, type DayPlanningReasonTone } from "../utils/dayPlanningReasons";
 import { formatDriveTime } from "../utils/format";
 import { glassCard, glassControlMuted } from "../utils/glass";
 import { capitalise } from "../utils/text";
@@ -95,6 +96,7 @@ export function ItineraryView({
           const experienceOptions = getExperienceOptionsForDay(day, 8, savedExperienceIds);
           const experienceIsSaved = Boolean(day.experience && savedExperienceIds.has(day.experience.id));
           const boardIdeas = getDayBoardIdeas(day.destinationId, savedPlaceIds, savedExperienceIds, importedIdeas);
+          const planningReasons = getDayPlanningReasons(day, boardIdeas.length);
 
           return (
             <li
@@ -157,6 +159,15 @@ export function ItineraryView({
               </p>
             )}
             <p className="mt-4 text-sm leading-6 text-slate-300">{day.highlight}.</p>
+
+            {!!planningReasons.length && (
+              <div className="mt-3 grid gap-2">
+                <p className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">Why this day</p>
+                {planningReasons.slice(0, 3).map((reason) => (
+                  <PlanningReasonPill key={reason.id} reason={reason} />
+                ))}
+              </div>
+            )}
 
             {!!boardIdeas.length && (
               <div className={classNames("mt-3 rounded-2xl p-3", glassControlMuted)}>
@@ -256,6 +267,30 @@ function RouteMetric({
       <h3 className="mt-1 text-sm font-semibold text-slate-100">{value}</h3>
       <p className="mt-1 text-xs leading-5 text-slate-500">{helper}</p>
     </article>
+  );
+}
+
+function PlanningReasonPill({
+  reason,
+}: {
+  reason: { label: string; body: string; tone: DayPlanningReasonTone };
+}) {
+  return (
+    <div
+      className={classNames(
+        "rounded-2xl border px-3 py-2 text-xs leading-5",
+        reason.tone === "board"
+          ? "border-cyan-300/25 bg-cyan-300/10 text-cyan-100"
+          : reason.tone === "weather"
+            ? "border-sky-300/25 bg-sky-300/10 text-sky-100"
+            : reason.tone === "experience"
+              ? "border-violet-300/25 bg-violet-300/10 text-violet-100"
+              : "border-slate-700 bg-slate-950/50 text-slate-300"
+      )}
+    >
+      <span className="font-semibold text-slate-100">{reason.label}</span>
+      <span className="mt-0.5 block text-slate-400">{reason.body}</span>
+    </div>
   );
 }
 

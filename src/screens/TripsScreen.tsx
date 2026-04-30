@@ -39,6 +39,7 @@ import { formatLocalTime, type TravelOS } from "../hooks/useTravelOS";
 import type { Experience, ImportedIdea, PlanningMode, PlanningTemplate, RouteStop, Vibe } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
+import { getDayPlanningReasons, type DayPlanningReasonTone } from "../utils/dayPlanningReasons";
 import { formatDriveTime } from "../utils/format";
 import { glassCard, glassControlMuted, glassPanel, glassPanelStrong } from "../utils/glass";
 
@@ -822,6 +823,7 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
           const boardStopLabel = getBoardStopLabel(app, day.destinationId);
           const experienceIsSaved = Boolean(day.experience && app.savedExperiences.has(day.experience.id));
           const boardIdeas = getDayBoardIdeas(app, day.destinationId);
+          const planningReasons = getDayPlanningReasons(day, boardIdeas.length);
 
           return (
             <article key={`${day.day}-${day.destinationId}`} className={classNames("rounded-2xl p-4", glassCard)}>
@@ -854,6 +856,14 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
                     </span>
                   </p>
                 )}
+              </div>
+            )}
+            {!!planningReasons.length && (
+              <div className="mt-3 grid gap-2">
+                <p className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">Why this day</p>
+                {planningReasons.slice(0, 3).map((reason) => (
+                  <QuickPlanningReason key={reason.id} reason={reason} />
+                ))}
               </div>
             )}
             {!!boardIdeas.length && (
@@ -905,6 +915,30 @@ function QuickDayFact({ label, value }: { label: string; value: string }) {
     <div className="rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2">
       <p className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">{label}</p>
       <p className="mt-1 text-xs font-semibold capitalize text-slate-200">{value}</p>
+    </div>
+  );
+}
+
+function QuickPlanningReason({
+  reason,
+}: {
+  reason: { label: string; body: string; tone: DayPlanningReasonTone };
+}) {
+  return (
+    <div
+      className={classNames(
+        "rounded-2xl border px-3 py-2 text-xs leading-5",
+        reason.tone === "board"
+          ? "border-cyan-300/25 bg-cyan-300/10 text-cyan-100"
+          : reason.tone === "weather"
+            ? "border-sky-300/25 bg-sky-300/10 text-sky-100"
+            : reason.tone === "experience"
+              ? "border-violet-300/25 bg-violet-300/10 text-violet-100"
+              : "border-slate-700 bg-slate-950/50 text-slate-300"
+      )}
+    >
+      <span className="font-semibold text-slate-100">{reason.label}</span>
+      <span className="mt-0.5 block text-slate-400">{reason.body}</span>
     </div>
   );
 }
