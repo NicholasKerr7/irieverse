@@ -197,6 +197,10 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     () => getRouteReadyDestinationIds(savedItems, boardSummary.topCollection),
     [boardSummary.topCollection, savedItems]
   );
+  const unanchoredImportedIdeas = useMemo(
+    () => app.importedIdeas.filter((idea) => !idea.linkedDestinationId),
+    [app.importedIdeas]
+  );
   const quickPlanCollection = activeRouteDestinationIds.length ? activeCollection : boardSummary.topCollection;
   const quickPlanDestinationIds = activeRouteDestinationIds.length
     ? activeRouteDestinationIds
@@ -277,6 +281,12 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       app.removeImportedIdea(savedItem.item.id);
     }
     setStatusMessage("Removed from saved");
+  };
+
+  const handleUpdateImportLocation = (idea: ImportedIdea, destinationId: string) => {
+    app.updateImportedIdea(idea.id, { linkedDestinationId: destinationId || undefined });
+    const destinationName = DESTINATIONS.find((destination) => destination.id === destinationId)?.name;
+    setStatusMessage(destinationName ? `${idea.title} attached to ${destinationName}` : "Map location cleared");
   };
 
   const handleShareLater = async (savedItem: SavedItem) => {
@@ -509,6 +519,13 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
         onExplore={() => onNavigate("explore")}
       />
 
+      {!!unanchoredImportedIdeas.length && (
+        <ImportAnchorPanel
+          ideas={unanchoredImportedIdeas}
+          onAttach={handleUpdateImportLocation}
+        />
+      )}
+
       <form
         onSubmit={handleImportSubmit}
         className={classNames("mt-5 rounded-3xl p-4", glassPanel)}
@@ -692,8 +709,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
                     }
                     onUpdateImportLocation={(destinationId) => {
                       if (savedItem.kind === "import") {
-                        app.updateImportedIdea(savedItem.item.id, { linkedDestinationId: destinationId || undefined });
-                        setStatusMessage(destinationId ? "Map location attached" : "Map location cleared");
+                        handleUpdateImportLocation(savedItem.item, destinationId);
                       }
                     }}
                   />
@@ -923,6 +939,110 @@ function BoardPlanningMetric({
       <p className="mt-2 text-[0.64rem] uppercase tracking-[0.18em] text-slate-500">{label}</p>
       <p className="mt-1 line-clamp-1 text-sm font-semibold text-slate-100">{value}</p>
     </div>
+  );
+}
+
+function ImportAnchorPanel({
+  ideas,
+  onAttach,
+}: {
+  ideas: ImportedIdea[];
+  onAttach: (idea: ImportedIdea, destinationId: string) => void;
+}) {
+  const visibleIdeas = ideas.slice(0, 4);
+  const hiddenCount = Math.max(0, ideas.length - visibleIdeas.length);
+
+  return (
+    <section className={classNames("mt-5 rounded-3xl p-4", glassPanel)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-amber-200/90">Map anchors needed</p>
+          <h2 className="mt-1 text-xl font-semibold">Attach saved links to Jamaica stops.</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+            These imports are saved, but they need a Jamaica location before they can shape the route or day cards.
+          </p>
+        </div>
+        <span className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-amber-300/35 bg-amber-300/10 px-4 py-2 text-xs font-bold text-amber-100">
+          <MapPinned className="h-4 w-4" /> {ideas.length} to place
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {visibleIdeas.map((idea) => (
+          <ImportAnchorCard key={idea.id} idea={idea} onAttach={onAttach} />
+        ))}
+      </div>
+
+      {!!hiddenCount && (
+        <p className="mt-3 text-xs leading-5 text-slate-500">
+          {hiddenCount} more imported idea{hiddenCount === 1 ? "" : "s"} can be placed from their cards below.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function ImportAnchorCard({
+  idea,
+  onAttach,
+}: {
+  idea: ImportedIdea;
+  onAttach: (idea: ImportedIdea, destinationId: string) => void;
+}) {
+  const suggestion = analyzeImportLink({ url: idea.url, title: idea.title, note: idea.note });
+  const suggestedDestination = suggestion.linkedDestinationId
+    ? DESTINATIONS.find((destination) => destination.id === suggestion.linkedDestinationId)
+    : null;
+  const meta = [
+    idea.sourceLabel || suggestion.sourceLabel,
+    formatImportedCategory(idea.category),
+    idea.extractedPlaceName || suggestion.extractedPlaceName,
+  ].filter(Boolean);
+
+  return (
+    <article className="rounded-2xl border border-amber-300/20 bg-slate-950/65 p-3">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-300/15 text-amber-100">
+          <StickyNote className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-1 text-sm font-semibold text-slate-100">{idea.title}</p>
+          <p className="mt-1 line-clamp-1 text-xs text-slate-500">
+            {meta.length ? meta.join(" · ") : "Saved Jamaica idea"}
+          </p>
+          {suggestedDestination && (
+            <button
+              type="button"
+              onClick={() => onAttach(idea, suggestedDestination.id)}
+              className="mt-3 inline-flex min-h-9 items-center justify-center gap-2 rounded-full border border-cyan-300/45 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-cyan-100"
+            >
+              <Sparkles className="h-3.5 w-3.5" /> Use {suggestedDestination.name}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <label className={classNames("mt-3 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs text-slate-400", glassControlMuted)}>
+        <MapPinned className="h-3.5 w-3.5 text-cyan-300" />
+        <span className="shrink-0 uppercase tracking-[0.16em]">Attach</span>
+        <select
+          value=""
+          onChange={(event) => {
+            if (event.target.value) {
+              onAttach(idea, event.target.value);
+            }
+          }}
+          className="min-w-0 flex-1 bg-transparent text-slate-200 focus:outline-none"
+        >
+          <option value="">Choose location</option>
+          {DESTINATIONS.map((destination) => (
+            <option key={destination.id} value={destination.id}>
+              {destination.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    </article>
   );
 }
 
