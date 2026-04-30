@@ -60,6 +60,16 @@ const WIZARD_STEPS = [
 
 type WizardStepId = (typeof WIZARD_STEPS)[number]["id"];
 type BuilderLane = "quick" | "full";
+type PlanCheckTone = "ready" | "watch" | "action";
+type PlanCheckAction = "saved" | "map" | "smooth-route";
+type PlanCheck = {
+  id: string;
+  title: string;
+  body: string;
+  tone: PlanCheckTone;
+  action?: PlanCheckAction;
+  actionLabel?: string;
+};
 
 export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
   const [activeStep, setActiveStep] = useState<WizardStepId>("base");
@@ -216,6 +226,8 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
               </section>
 
               <BoardTripContextPanel app={app} onNavigate={onNavigate} />
+
+              <PlanCheckPanel app={app} onNavigate={onNavigate} />
 
               <RoutePreviewPanel app={app} onNavigate={onNavigate} />
 
@@ -439,6 +451,8 @@ function QuickPlanExperience({
 
       <BoardTripContextPanel app={app} onNavigate={onNavigate} />
 
+      <PlanCheckPanel app={app} onNavigate={onNavigate} />
+
       <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         <QuickRoutePanel app={app} onNavigate={onNavigate} />
         <QuickDailyPlanPanel app={app} />
@@ -648,6 +662,97 @@ function BoardTripContextPanel({ app, onNavigate }: { app: TravelOS; onNavigate:
         </p>
       )}
     </section>
+  );
+}
+
+function PlanCheckPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab: MobileTabId) => void }) {
+  const checks = getPlanChecks(app);
+  const attentionCount = checks.filter((check) => check.tone !== "ready").length;
+
+  return (
+    <section className={classNames("min-w-0 overflow-hidden rounded-3xl p-4", glassPanel)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div
+            className={classNames(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
+              attentionCount ? "bg-amber-300 text-slate-950" : "bg-emerald-300 text-slate-950"
+            )}
+          >
+            {attentionCount ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
+          </div>
+          <div>
+            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Plan check</p>
+            <h2 className="mt-1 text-xl font-semibold">
+              {attentionCount ? `${attentionCount} thing${attentionCount === 1 ? "" : "s"} to review` : "Plan is ready to review"}
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
+              A quick quality pass for route pacing, weather, saved ideas, and share readiness.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onNavigate("map")}
+          className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-cyan-300/50 px-4 py-2 text-xs font-bold text-cyan-100"
+        >
+          <MapPinned className="h-4 w-4" /> Check map
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {checks.map((check) => (
+          <PlanCheckCard
+            key={check.id}
+            check={check}
+            onAction={() => {
+              if (check.action === "saved") onNavigate("saved");
+              if (check.action === "map") onNavigate("map");
+              if (check.action === "smooth-route") app.optimizeRouteOrder();
+            }}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PlanCheckCard({ check, onAction }: { check: PlanCheck; onAction: () => void }) {
+  const Icon = check.tone === "ready" ? CheckCircle2 : check.tone === "watch" ? CloudSun : AlertTriangle;
+
+  return (
+    <article
+      className={classNames(
+        "rounded-2xl border p-3",
+        check.tone === "ready"
+          ? "border-emerald-300/25 bg-emerald-300/10"
+          : check.tone === "watch"
+            ? "border-amber-300/25 bg-amber-300/10"
+            : "border-rose-300/25 bg-rose-300/10"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <Icon
+          className={classNames(
+            "mt-0.5 h-4 w-4 shrink-0",
+            check.tone === "ready" ? "text-emerald-200" : check.tone === "watch" ? "text-amber-200" : "text-rose-200"
+          )}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-slate-100">{check.title}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">{check.body}</p>
+          {check.action && (
+            <button
+              type="button"
+              onClick={onAction}
+              className="mt-3 inline-flex min-h-9 items-center justify-center rounded-full border border-white/15 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-slate-100 hover:border-cyan-300/50"
+            >
+              {check.actionLabel}
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -2178,6 +2283,103 @@ function getBoardTripContext(app: TravelOS) {
       ? "Saved places, experiences, and linked imports are pinned into the plan, so the route starts from your real Jamaica board instead of a blank itinerary."
       : "Saved places, experiences, and imports are available. Add map locations to saved links when you want them to shape the route.",
   };
+}
+
+function getPlanChecks(app: TravelOS): PlanCheck[] {
+  const checks: PlanCheck[] = [];
+  const routeWarnings = app.itinerary.routeSummary.warnings;
+  const missingLocationCount = app.importedIdeas.filter((idea) => !idea.linkedDestinationId).length;
+  const routedDestinationIds = new Set(app.itinerary.routeSummary.stops.map((stop) => stop.destinationId));
+  const savedPlacesOutsideRoute = Array.from(app.savedPlaces).filter((id) => !routedDestinationIds.has(id));
+  const weatherRiskDays = app.itinerary.daysPlan.filter((day) =>
+    day.weather && ["rain", "storm", "hot"].includes(day.weather.planningSignal)
+  );
+
+  if (routeWarnings.length) {
+    const firstWarning = routeWarnings[0];
+    checks.push({
+      id: "route-warning",
+      title: routeWarnings.length === 1 ? firstWarning.title : `${routeWarnings.length} route pacing flags`,
+      body: routeWarnings.length === 1
+        ? firstWarning.body
+        : `${firstWarning.body} Smooth the route or lock the must-keep days before sharing.`,
+      tone: "action",
+      action: "smooth-route",
+      actionLabel: "Smooth route",
+    });
+  } else {
+    checks.push({
+      id: "route-ready",
+      title: "Route pacing looks clean",
+      body: `${app.itinerary.routeSummary.stops.length} stops across ${app.itinerary.routeSummary.regionCount} region${app.itinerary.routeSummary.regionCount === 1 ? "" : "s"} with no long-transfer flags.`,
+      tone: "ready",
+    });
+  }
+
+  if (weatherRiskDays.length) {
+    checks.push({
+      id: "weather-risk",
+      title: `${weatherRiskDays.length} weather-aware day${weatherRiskDays.length === 1 ? "" : "s"}`,
+      body: "Daily notes already soften the pacing around rain, storms, or heat where the forecast needs it.",
+      tone: "watch",
+    });
+  } else if (app.itinerary.daysPlan.some((day) => day.weather || day.weatherNote)) {
+    checks.push({
+      id: "weather-ready",
+      title: "Weather cues are in place",
+      body: "The daily cards have forecast context for outdoor timing and backup planning.",
+      tone: "ready",
+    });
+  }
+
+  if (missingLocationCount) {
+    checks.push({
+      id: "missing-locations",
+      title: `${missingLocationCount} saved link${missingLocationCount === 1 ? "" : "s"} need a map location`,
+      body: "Attach Jamaica locations in Saved so those ideas can shape the route and daily plan.",
+      tone: "action",
+      action: "saved",
+      actionLabel: "Open saved",
+    });
+  } else if (app.importedIdeas.length) {
+    checks.push({
+      id: "imports-ready",
+      title: "Imported ideas are map-ready",
+      body: "Linked imports can now influence route anchors and day-level board context.",
+      tone: "ready",
+    });
+  }
+
+  if (savedPlacesOutsideRoute.length) {
+    checks.push({
+      id: "saved-outside-route",
+      title: `${savedPlacesOutsideRoute.length} saved place${savedPlacesOutsideRoute.length === 1 ? "" : "s"} outside this route`,
+      body: "Open the map or route editor if you want to add them before exporting.",
+      tone: "watch",
+      action: "map",
+      actionLabel: "Check map",
+    });
+  } else if (app.savedPlaces.size || app.savedExperiences.size) {
+    checks.push({
+      id: "saved-ready",
+      title: "Saved ideas are reflected",
+      body: "Your saved places and experiences are already visible in route anchors or daily plan context.",
+      tone: "ready",
+    });
+  }
+
+  if (!checks.some((check) => check.tone !== "ready")) {
+    checks.push({
+      id: "share-ready",
+      title: "Ready to export or share",
+      body: app.collaborationReady
+        ? "Calendar export and share links are available when you are ready."
+        : "Calendar export is available now. Share links appear when cloud sharing is connected.",
+      tone: "ready",
+    });
+  }
+
+  return checks.slice(0, 4);
 }
 
 function getBoardStopLabel(app: TravelOS, destinationId: string): string {
