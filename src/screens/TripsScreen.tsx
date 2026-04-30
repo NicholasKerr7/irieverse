@@ -1490,13 +1490,14 @@ function FlightSnapshot({ app }: { app: TravelOS }) {
 }
 
 function IntegrationStatusPanel({ app }: { app: TravelOS }) {
+  const [showDetails, setShowDetails] = useState(false);
   const sharingStatus = getSharingIntegrationStatus(app);
   const bookingStatus = getBookingIntegrationStatus(app);
   const flightStatus = getFlightSourceStatus(app);
   const integrationCards = [
     {
       icon: Share2,
-      title: "Share links",
+      title: "Share & export",
       status: sharingStatus.status,
       tone: sharingStatus.tone,
       body: sharingStatus.body,
@@ -1520,14 +1521,14 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
       title: "Road planning",
       status: "Road-aware",
       tone: "live",
-      body: "Routes follow roads when available and keep a preview line ready when a road lookup cannot finish.",
+      body: "The route map favors road-following planning lines and keeps an estimated preview available when needed.",
     },
     {
       icon: CalendarDays,
       title: "Island events",
-      status: "Curated calendar",
+      status: "Jamaica calendar",
       tone: "fallback",
-      body: "Regional events are shown from the curated Jamaica calendar.",
+      body: "Regional events are shown from the built-in Jamaica calendar.",
     },
   ] satisfies Array<{
     icon: ComponentType<LucideProps>;
@@ -1536,22 +1537,44 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
     tone: IntegrationTone;
     body: string;
   }>;
+  const liveCount = integrationCards.filter((card) => card.tone === "live").length;
+  const attentionCount = integrationCards.filter((card) => card.tone === "error").length;
 
   return (
     <section className={classNames("min-w-0 overflow-hidden rounded-3xl p-4", glassPanel)}>
-      <div className="flex items-center gap-3">
-        <CheckCircle2 className="h-5 w-5 text-cyan-300" />
-        <div>
-          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Trip readiness</p>
-          <h2 className="text-lg font-semibold">What your plan can use today</h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-3">
+          <CheckCircle2 className="h-5 w-5 text-cyan-300" />
+          <div>
+            <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Travel support</p>
+            <h2 className="text-lg font-semibold">Your plan has the essentials ready.</h2>
+            <p className="mt-1 text-xs leading-5 text-slate-400">
+              Export, route planning, stays, flights, and events stay usable even when a live source is unavailable.
+            </p>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setShowDetails((prev) => !prev)}
+          className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-cyan-300/45 px-4 py-2 text-xs font-bold text-cyan-100"
+        >
+          {showDetails ? "Hide details" : "Show details"}
+        </button>
       </div>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        {integrationCards.map((card) => (
-          <IntegrationStatusCard key={card.title} {...card} />
-        ))}
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        <TravelSupportPill label="Ready now" value={`${liveCount}/${integrationCards.length}`} tone="live" />
+        <TravelSupportPill label="Review" value={attentionCount ? `${attentionCount}` : "0"} tone={attentionCount ? "error" : "live"} />
+        <TravelSupportPill label="Always works" value="Calendar export" tone="fallback" />
       </div>
+
+      {showDetails && (
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          {integrationCards.map((card) => (
+            <IntegrationStatusCard key={card.title} {...card} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -1561,33 +1584,33 @@ type IntegrationTone = "live" | "fallback" | "error";
 function getSharingIntegrationStatus(app: TravelOS): { status: string; tone: IntegrationTone; body: string } {
   if (!app.collaborationReady) {
     return {
-      status: "Setup needed",
+      status: "Export ready",
       tone: "fallback",
-      body: "Export still works. Share links turn on once cloud sharing is connected.",
+      body: "Calendar export works now. Share links will appear when online sharing is available.",
     };
   }
 
   if (app.collaborationErrorCode === "schema-missing") {
     return {
-      status: "Setup needed",
+      status: "Export ready",
       tone: "error",
-      body: "Share links need one more setup step. Calendar export still works.",
+      body: "Calendar export works now. Share links need a quick fix before they can be created.",
     };
   }
 
   if (app.collaborationErrorCode === "permission-denied") {
     return {
-      status: "Sharing blocked",
+      status: "Export ready",
       tone: "error",
-      body: "Share links are blocked right now. Calendar export still works while this is fixed.",
+      body: "Calendar export works now. Share links are paused while sharing access is fixed.",
     };
   }
 
   if (app.collaborationErrorCode === "request-failed" || app.collaborationErrorCode === "empty-response") {
     return {
-      status: "Needs check",
+      status: "Try again",
       tone: "error",
-      body: "Share links are connected, but the latest update did not finish.",
+      body: "The latest share update did not finish. Calendar export still works.",
     };
   }
 
@@ -1604,8 +1627,34 @@ function getSharingIntegrationStatus(app: TravelOS): { status: string; tone: Int
     tone: "live",
     body: app.tripId && !app.tripCanEdit
       ? "This shared trip can be viewed here. Share again to save an editable copy."
-      : "Share links can be created and reopened. Only this browser can update links it created.",
+      : "Share links can be created and reopened from this browser.",
   };
+}
+
+function TravelSupportPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: IntegrationTone;
+}) {
+  return (
+    <div
+      className={classNames(
+        "rounded-2xl border px-3 py-2",
+        tone === "live"
+          ? "border-emerald-300/25 bg-emerald-300/10"
+          : tone === "error"
+            ? "border-rose-300/25 bg-rose-300/10"
+            : "border-amber-300/25 bg-amber-300/10"
+      )}
+    >
+      <p className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-1 text-xs font-semibold text-slate-100">{value}</p>
+    </div>
+  );
 }
 
 function IntegrationStatusCard({
@@ -1677,17 +1726,17 @@ function getFlightSourceStatus(app: TravelOS): { status: string; tone: Integrati
 
   if (app.flightsError) {
     return {
-      status: "Flight issue",
+      status: "Flights paused",
       tone: "error",
       body: meta.providerConfigured
-        ? "Flight lookup is connected, but the latest search failed."
+        ? "The latest flight search did not finish. Saved flight options are still available."
         : "Flight snapshots are unavailable right now.",
     };
   }
 
   if (meta.source === "aviationstack") {
     return {
-      status: "Live schedule",
+      status: "Live flights",
       tone: "live",
       body: "Flight snapshots are current for this origin and Jamaica airport.",
     };
@@ -1695,24 +1744,24 @@ function getFlightSourceStatus(app: TravelOS): { status: string; tone: Integrati
 
   if (meta.endpointConfigured && meta.providerConfigured) {
     return {
-      status: "Saved examples",
+      status: "Saved flights",
       tone: "fallback",
-      body: `${formatIntegrationReason(meta.reason)} Showing saved flight examples for now.`,
+      body: `${formatIntegrationReason(meta.reason)} Saved flight examples are shown for this route.`,
     };
   }
 
   if (meta.endpointConfigured) {
     return {
-      status: "Saved examples",
+      status: "Saved flights",
       tone: "fallback",
-      body: `${formatIntegrationReason(meta.reason)} Showing saved flight examples for now.`,
+      body: `${formatIntegrationReason(meta.reason)} Saved flight examples are shown for this route.`,
     };
   }
 
   return {
-    status: "Saved examples",
+    status: "Saved flights",
     tone: "fallback",
-    body: "Showing saved flight examples until live schedules are connected.",
+    body: "Saved flight examples are shown until live schedules are available.",
   };
 }
 
@@ -1721,7 +1770,7 @@ function getBookingIntegrationStatus(app: TravelOS): { status: string; tone: Int
 
   if (app.bookingError) {
     return {
-      status: "Booking issue",
+      status: "Stays paused",
       tone: "error",
       body: "Stay lookup failed, so the stay cards are temporarily empty.",
     };
@@ -1729,7 +1778,7 @@ function getBookingIntegrationStatus(app: TravelOS): { status: string; tone: Int
 
   if (meta.source === "amadeus") {
     return {
-      status: "Live stays",
+      status: "Current stays",
       tone: "live",
       body: "Current hotel options are available for this route and date window.",
     };
@@ -1737,7 +1786,7 @@ function getBookingIntegrationStatus(app: TravelOS): { status: string; tone: Int
 
   if (meta.source === "api") {
     return {
-      status: "Live stays",
+      status: "Current stays",
       tone: "live",
       body: "Current stay options are available for this trip.",
     };
@@ -1745,16 +1794,16 @@ function getBookingIntegrationStatus(app: TravelOS): { status: string; tone: Int
 
   if (meta.endpointConfigured) {
     return {
-      status: "Curated picks",
+      status: "Curated stays",
       tone: "fallback",
-      body: `${formatIntegrationReason(meta.reason)} Showing curated Jamaica stay ideas for now.`,
+      body: `${formatIntegrationReason(meta.reason)} Curated Jamaica stay ideas are shown for now.`,
     };
   }
 
   return {
-    status: "Curated picks",
+    status: "Curated stays",
     tone: "fallback",
-    body: "Showing curated Jamaica stay ideas until live booking partners are connected.",
+    body: "Curated Jamaica stay ideas are shown until current hotel options are available.",
   };
 }
 
@@ -2097,24 +2146,24 @@ function ShareSetupNotice({
 function getShareSetupNotice(app: TravelOS): { title: string; body: string; tone: "error" | "fallback" } | null {
   if (!app.collaborationReady) {
     return {
-      title: "Cloud sharing not connected",
-      body: "Calendar export still works. Share links will appear once cloud sharing is connected.",
+      title: "Share links unavailable",
+      body: "Calendar export still works. Share links will appear once online sharing is available.",
       tone: "fallback",
     };
   }
 
   if (app.collaborationErrorCode === "schema-missing") {
     return {
-      title: "Share setup incomplete",
-      body: "Share links need one more setup step. Calendar export still works while this is fixed.",
+      title: "Share links unavailable",
+      body: "Calendar export still works while share links are being fixed.",
       tone: "error",
     };
   }
 
   if (app.collaborationErrorCode === "permission-denied") {
     return {
-      title: "Share links blocked",
-      body: "Cloud sharing is connected, but share links are blocked right now. Calendar export still works.",
+      title: "Share links paused",
+      body: "Calendar export still works while sharing access is fixed.",
       tone: "error",
     };
   }
@@ -2374,7 +2423,7 @@ function getPlanChecks(app: TravelOS): PlanCheck[] {
       title: "Ready to export or share",
       body: app.collaborationReady
         ? "Calendar export and share links are available when you are ready."
-        : "Calendar export is available now. Share links appear when cloud sharing is connected.",
+        : "Calendar export is available now. Share links appear when online sharing is available.",
       tone: "ready",
     });
   }
@@ -2430,8 +2479,8 @@ function formatIntegrationReason(reason?: string): string {
     "local-sample-data": "Curated examples are active.",
     "pending-flight-proxy": "Flight lookup is getting ready.",
     "missing-aviationstack-key": "Live flight schedules are not connected yet.",
-    "aviationstack-disabled": "Live flight lookup is turned off for this environment.",
-    "aviationstack-rate-limited": "Flight provider is rate-limited right now.",
+    "aviationstack-disabled": "Live flight schedules are paused here.",
+    "aviationstack-rate-limited": "Live flight schedules are busy right now.",
     "aviationstack-request-failed": "Live flight lookup failed.",
     "flight-proxy-request-failed": "Flight lookup failed.",
     "missing-flight-metadata": "Flight details are limited right now.",

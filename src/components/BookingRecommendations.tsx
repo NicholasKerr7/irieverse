@@ -141,16 +141,16 @@ function getBookingSourceStatus(meta: BookingSourceMeta): {
 
   if (meta.endpointConfigured) {
     return {
-      label: "Curated picks",
+      label: "Curated stays",
       tone: meta.reason === "request-failed" ? "error" : "fallback",
-      body: `${formatBookingReason(meta.reason)} Showing curated Jamaica stay ideas for now.`,
+      body: `${formatBookingReason(meta.reason)} Curated Jamaica stay ideas are shown for now.`,
     };
   }
 
   return {
-    label: "Curated picks",
+    label: "Curated stays",
     tone: meta.reason === "request-failed" ? "error" : "fallback",
-    body: "Showing curated Jamaica stay ideas until live booking partners are connected.",
+    body: "Curated Jamaica stay ideas are shown until current hotel options are available.",
   };
 }
 
