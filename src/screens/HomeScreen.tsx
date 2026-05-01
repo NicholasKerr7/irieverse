@@ -1,10 +1,22 @@
-import { ArrowRight, CalendarDays, Compass, Heart, MapPin, Plane, Route, Users } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Compass,
+  Heart,
+  MapPin,
+  Plane,
+  Route,
+  Utensils,
+  Users,
+  Waves,
+} from "lucide-react";
 import { HeroSection } from "../components/HeroSection";
 import { PageFooter } from "../components/PageFooter";
 import type { MobileTabId } from "../components/mobile/BottomNav";
+import { DESTINATIONS } from "../data/content";
 import { PLANNING_MODE_LABELS } from "../data/plannerTemplates";
 import type { TravelOS } from "../hooks/useTravelOS";
-import type { PlanningMode, PlanningTemplate } from "../types/travel";
+import type { PlanningMode, PlanningTemplate, PlanningTemplateId } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassPanel } from "../utils/glass";
 
@@ -17,6 +29,44 @@ const MODE_CARDS: Array<{ id: PlanningMode; icon: typeof Plane }> = [
   { id: "visitor", icon: Plane },
   { id: "local", icon: MapPin },
   { id: "hosting", icon: Users },
+];
+
+const STARTER_ROUTES: Array<{
+  id: string;
+  title: string;
+  body: string;
+  templateId: PlanningTemplateId;
+  destinationIds: string[];
+  icon: typeof Plane;
+  actionLabel: string;
+}> = [
+  {
+    id: "first-trip",
+    title: "First Jamaica trip",
+    body: "MoBay arrival, Negril sunset, Ochi water day, and a South Coast slower finish.",
+    templateId: "first-jamaica-trip",
+    destinationIds: ["mobay", "negril", "ochi", "southcoast"],
+    icon: Plane,
+    actionLabel: "Start visitor plan",
+  },
+  {
+    id: "water-day",
+    title: "River + beach day",
+    body: "A local-friendly Ochi to Portland water plan with low-stress pacing.",
+    templateId: "river-and-beach-day",
+    destinationIds: ["ochi", "portland"],
+    icon: Waves,
+    actionLabel: "Start local plan",
+  },
+  {
+    id: "hosting",
+    title: "Hosting visitors",
+    body: "Crowd-pleasing north coast route with beach time, food stops, and easy map handoff.",
+    templateId: "host-visitors",
+    destinationIds: ["mobay", "negril", "ochi"],
+    icon: Utensils,
+    actionLabel: "Start host plan",
+  },
 ];
 
 export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
@@ -36,6 +86,11 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
     if (target === "saved") {
       onNavigate("saved");
     }
+  };
+
+  const handleStartRoute = (starterRoute: (typeof STARTER_ROUTES)[number]) => {
+    app.buildTripFromDestinations(starterRoute.destinationIds, starterRoute.templateId);
+    onNavigate("trips");
   };
 
   return (
@@ -69,6 +124,27 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
                 onClick={() => app.setPlanningMode(mode.id)}
               />
             ))}
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[0.65rem] uppercase tracking-[0.26em] text-cyan-200/85">
+                  Ready routes
+                </p>
+                <h3 className="text-base font-semibold">Skip setup and start with a Jamaica plan.</h3>
+              </div>
+              <p className="text-xs text-slate-400">Visitor, local, and hosting paths</p>
+            </div>
+            <div className="mt-3 grid gap-2 lg:grid-cols-3">
+              {STARTER_ROUTES.map((starterRoute) => (
+                <StarterRouteCard
+                  key={starterRoute.id}
+                  starterRoute={starterRoute}
+                  onClick={() => handleStartRoute(starterRoute)}
+                />
+              ))}
+            </div>
           </div>
 
           <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/50 p-3">
@@ -220,6 +296,61 @@ function PlanningTemplateCard({
       <span className="mt-3 inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-cyan-200">
         Use template <ArrowRight className="h-3.5 w-3.5" />
       </span>
+    </button>
+  );
+}
+
+function StarterRouteCard({
+  starterRoute,
+  onClick,
+}: {
+  starterRoute: (typeof STARTER_ROUTES)[number];
+  onClick: () => void;
+}) {
+  const Icon = starterRoute.icon;
+  const destinations = starterRoute.destinationIds
+    .map((destinationId) => DESTINATIONS.find((destination) => destination.id === destinationId))
+    .filter((destination): destination is (typeof DESTINATIONS)[number] => Boolean(destination));
+  const leadDestination = destinations[0];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group overflow-hidden rounded-2xl border border-white/10 bg-slate-950/65 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/60"
+    >
+      <div className="relative h-28">
+        {leadDestination && (
+          <img
+            src={leadDestination.heroImage}
+            alt=""
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            loading="lazy"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent" />
+        <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full border border-cyan-300/25 bg-slate-950/70 px-3 py-1 text-[0.62rem] font-bold uppercase tracking-[0.16em] text-cyan-100 backdrop-blur">
+          <Icon className="h-3.5 w-3.5" />
+          {destinations.length} stop{destinations.length === 1 ? "" : "s"}
+        </div>
+      </div>
+      <div className="p-3">
+        <h4 className="text-sm font-semibold text-slate-100">{starterRoute.title}</h4>
+        <p className="mt-1 min-h-12 text-xs leading-5 text-slate-500">{starterRoute.body}</p>
+        <div className="mt-3 flex max-w-full gap-1.5 overflow-x-auto pb-1">
+          {destinations.map((destination) => (
+            <span
+              key={destination.id}
+              className="shrink-0 rounded-full border border-white/10 bg-white/[0.05] px-2 py-1 text-[0.64rem] font-semibold text-slate-300"
+            >
+              {destination.name}
+            </span>
+          ))}
+        </div>
+        <span className="mt-3 inline-flex items-center gap-1 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-cyan-200">
+          {starterRoute.actionLabel} <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+        </span>
+      </div>
     </button>
   );
 }
