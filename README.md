@@ -5,7 +5,7 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 - Destination + experience explorer with vibe filters and search
 - Interactive map powered by MapLibre with road-following route overlays
 - Jamaica-specific road pacing, weather cues, and local food/music/beach/culture content
-- Saved boards with automatic Google Maps, TikTok, Instagram, YouTube, and article link parsing
+- Saved boards with automatic Google Maps, TikTok, Instagram, YouTube, and article link parsing plus preview images/descriptions when metadata is available
 - Optional email sign-in for cloud-saved Jamaica boards across devices
 - PWA share target for sending external travel links into the Saved import flow
 - Region-aware trip planner with editable route order, route pacing, drive estimates, budget, dates, and ICS export
@@ -46,7 +46,7 @@ See `docs/production-env.md` for production platform setup, booking API response
 - Vercel: Import the repo, Framework = Vite, Build Command = `npm run build`, Output = `dist`, add env vars as needed.
 - The booking integration uses the Vercel serverless route at `/api/bookings`.
 - The flight integration uses the Vercel serverless route at `/api/flights` so AviationStack secrets stay server-only. The proxy caches live lookups and cools down after provider rate limits.
-- The import flow uses `/api/import-metadata` for Open Graph and YouTube metadata, then falls back to local link heuristics when platforms block metadata.
+- The import flow uses `/api/import-metadata` for Open Graph and YouTube metadata, follows safe public redirects for cleaner canonical URLs, then falls back to local link heuristics when platforms block metadata.
 - The map driving overlay uses the serverless route at `/api/road-route` for road geometry and maneuver previews.
 - The Trips screen shows planning confidence so production QA can verify what is live, estimated, or curated.
 - PWA shortcuts open app tabs directly with `?tab=explore`, `?tab=map`, and `?tab=trips`.

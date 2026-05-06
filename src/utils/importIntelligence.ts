@@ -15,6 +15,7 @@ type ImportLinkInput = {
   url?: string;
   title?: string;
   note?: string;
+  description?: string;
 };
 
 const GENERIC_SHARED_TITLES = [
@@ -28,12 +29,12 @@ const GENERIC_SHARED_TITLES = [
 ];
 
 const DESTINATION_ALIASES: Record<string, string[]> = {
-  mobay: ["montego bay", "mobay", "hip strip", "doctor's cave", "doctors cave", "great river"],
-  negril: ["negril", "seven mile", "rick's cafe", "ricks cafe", "west end", "norman manley boulevard"],
-  ochi: ["ocho rios", "ochi", "dunn's river", "dunns river", "blue hole", "white river"],
-  kingston: ["kingston", "devon house", "bob marley", "dub club", "trenchtown", "new kingston"],
-  portland: ["port antonio", "portland", "boston bay", "frenchman's cove", "frenchmans cove", "blue lagoon", "rio grande"],
-  southcoast: ["south coast", "treasure beach", "pelican bar", "ys falls", "black river", "accompong", "cockpit country"],
+  mobay: ["montego bay", "mobay", "st james", "hip strip", "doctor's cave", "doctors cave", "great river", "rose hall"],
+  negril: ["negril", "westmoreland", "hanover", "seven mile", "rick's cafe", "ricks cafe", "west end", "norman manley boulevard"],
+  ochi: ["ocho rios", "ochi", "st ann", "runaway bay", "dunn's river", "dunns river", "blue hole", "white river"],
+  kingston: ["kingston", "st andrew", "devon house", "bob marley", "dub club", "trenchtown", "new kingston", "port royal"],
+  portland: ["port antonio", "portland", "boston bay", "frenchman's cove", "frenchmans cove", "blue lagoon", "rio grande", "fairy hill"],
+  southcoast: ["south coast", "st elizabeth", "treasure beach", "pelican bar", "ys falls", "black river", "accompong", "cockpit country"],
 };
 
 export function analyzeImportLink(input: ImportLinkInput): ImportLinkSuggestion {
@@ -43,10 +44,11 @@ export function analyzeImportLink(input: ImportLinkInput): ImportLinkSuggestion 
   const sourceLabel = getSourceLabel(sourcePlatform, parsedUrl);
   const humanTitle = cleanHumanTitle(input.title ?? "");
   const note = normalizeText(input.note ?? "");
+  const description = normalizeText(input.description ?? "");
   const placeFromUrl = parsedUrl ? extractPlaceFromUrl(parsedUrl, sourcePlatform) : "";
   const articleTitle = parsedUrl && sourcePlatform === "article" ? titleFromArticleUrl(parsedUrl) : "";
   const socialTitle = titleFromSocialUrl(parsedUrl, sourcePlatform);
-  const extractedPlaceName = cleanPlaceName(placeFromUrl || humanTitle || articleTitle || "");
+  const extractedPlaceName = inferPlaceName(placeFromUrl, humanTitle, description, note, articleTitle);
   const title = firstNonEmpty(
     humanTitle,
     extractedPlaceName,
@@ -60,6 +62,7 @@ export function analyzeImportLink(input: ImportLinkInput): ImportLinkSuggestion 
     articleTitle,
     socialTitle,
     note,
+    description,
     normalizedUrl,
     sourceLabel,
   ].join(" ");
@@ -223,6 +226,14 @@ function getSuggestionConfidence(
   if (source === "google-maps" && extractedPlaceName && linkedDestinationId) return "high";
   if (extractedPlaceName || linkedDestinationId) return "medium";
   return "low";
+}
+
+function inferPlaceName(...candidates: string[]): string {
+  const cleanedCandidates = candidates.map(cleanPlaceName).filter(Boolean);
+  const exactPlace = cleanedCandidates.find((candidate) =>
+    /beach|bar|bay|cafe|café|falls|hotel|house|museum|restaurant|river|villa/i.test(candidate)
+  );
+  return exactPlace ?? cleanedCandidates[0] ?? "";
 }
 
 function cleanHumanTitle(value: string): string {

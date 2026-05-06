@@ -1433,7 +1433,11 @@ function isImportedIdea(value: unknown): value is ImportedIdea {
     (idea.linkedDestinationId === undefined || typeof idea.linkedDestinationId === "string") &&
     (idea.sourcePlatform === undefined || typeof idea.sourcePlatform === "string") &&
     (idea.sourceLabel === undefined || typeof idea.sourceLabel === "string") &&
-    (idea.extractedPlaceName === undefined || typeof idea.extractedPlaceName === "string")
+    (idea.extractedPlaceName === undefined || typeof idea.extractedPlaceName === "string") &&
+    (idea.description === undefined || typeof idea.description === "string") &&
+    (idea.imageUrl === undefined || typeof idea.imageUrl === "string") &&
+    (idea.siteName === undefined || typeof idea.siteName === "string") &&
+    (idea.canonicalUrl === undefined || typeof idea.canonicalUrl === "string")
   );
 }
 

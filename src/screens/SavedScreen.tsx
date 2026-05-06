@@ -484,10 +484,12 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
           if (!metadata || controller.signal.aborted) return;
 
           setImportMetadata(metadata);
+          const metadataUrl = metadata.finalUrl || metadata.url || url;
           const suggestion = analyzeImportLink({
-            url,
+            url: metadataUrl,
             title: metadata.title,
             note: importForm.note || metadata.description,
+            description: metadata.description,
           });
 
           setImportForm((prev) => {
@@ -540,7 +542,12 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   };
 
   const handleImportTitleChange = (title: string) => {
-    const suggestion = analyzeImportLink({ url: importForm.url, title, note: importForm.note });
+    const suggestion = analyzeImportLink({
+      url: importMetadata?.finalUrl || importForm.url,
+      title,
+      note: importForm.note,
+      description: importMetadata?.description,
+    });
 
     setImportForm((prev) => {
       return {
@@ -555,7 +562,12 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   };
 
   const handleImportNoteChange = (note: string) => {
-    const suggestion = analyzeImportLink({ url: importForm.url, title: importForm.title, note });
+    const suggestion = analyzeImportLink({
+      url: importMetadata?.finalUrl || importForm.url,
+      title: importForm.title,
+      note,
+      description: importMetadata?.description,
+    });
 
     setImportForm((prev) => {
       return {
@@ -574,7 +586,12 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     const title = importForm.title.trim();
     const url = importForm.url.trim();
     const note = importForm.note.trim();
-    const suggestion = analyzeImportLink({ url, title, note });
+    const suggestion = analyzeImportLink({
+      url: importMetadata?.finalUrl || url,
+      title,
+      note,
+      description: importMetadata?.description,
+    });
     const fallbackTitle = suggestion.title || importMetadata?.title || note.slice(0, 56);
 
     if (!title && !url && !note) {
@@ -592,6 +609,10 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       sourcePlatform: importMetadata?.sourcePlatform ?? suggestion.sourcePlatform,
       sourceLabel: importMetadata?.sourceLabel || suggestion.sourceLabel,
       extractedPlaceName: suggestion.extractedPlaceName || importForm.extractedPlaceName || undefined,
+      description: importMetadata?.description || undefined,
+      imageUrl: importMetadata?.imageUrl || undefined,
+      siteName: importMetadata?.siteName || importMetadata?.sourceLabel || undefined,
+      canonicalUrl: importMetadata?.finalUrl || undefined,
     });
     setImportForm({
       ...DEFAULT_IMPORT_FORM,
@@ -902,8 +923,9 @@ function ImportIntelligenceSummary({
   const linkedDestination = suggestion.linkedDestinationId
     ? DESTINATIONS.find((destination) => destination.id === suggestion.linkedDestinationId)
     : null;
-  const metadataTitle = metadata?.title && metadata.title !== suggestion.title ? metadata.title : "";
-  const metadataDescription = metadata?.description ?? "";
+  const previewTitle = metadata?.title || suggestion.title;
+  const previewDescription = metadata?.description ?? "";
+  const previewSite = metadata?.siteName || metadata?.sourceLabel || suggestion.sourceLabel;
 
   return (
     <div className={classNames("mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-3", glassControlMuted)}>
@@ -922,7 +944,7 @@ function ImportIntelligenceSummary({
                 : "Low confidence"}
         </span>
       </div>
-      {(metadataTitle || metadataDescription || metadata?.imageUrl) && (
+      {(previewTitle || previewDescription || metadata?.imageUrl) && (
         <div className="mt-3 flex gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3">
           {metadata?.imageUrl && (
             <img
@@ -933,8 +955,9 @@ function ImportIntelligenceSummary({
             />
           )}
           <div className="min-w-0">
-            {metadataTitle && <p className="line-clamp-1 text-sm font-semibold text-slate-100">{metadataTitle}</p>}
-            {metadataDescription && <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{metadataDescription}</p>}
+            {previewSite && <p className="line-clamp-1 text-[0.62rem] uppercase tracking-[0.16em] text-cyan-200/80">{previewSite}</p>}
+            {previewTitle && <p className="mt-1 line-clamp-1 text-sm font-semibold text-slate-100">{previewTitle}</p>}
+            {previewDescription && <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{previewDescription}</p>}
           </div>
         </div>
       )}
@@ -1297,9 +1320,13 @@ function ImportAnchorCard({
   return (
     <article className="rounded-2xl border border-amber-300/20 bg-slate-950/65 p-3">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-300/15 text-amber-100">
-          <StickyNote className="h-4 w-4" />
-        </div>
+        {idea.imageUrl ? (
+          <img src={idea.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-2xl object-cover" loading="lazy" />
+        ) : (
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-300/15 text-amber-100">
+            <StickyNote className="h-4 w-4" />
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <p className="line-clamp-1 text-sm font-semibold text-slate-100">{idea.title}</p>
           <p className="mt-1 line-clamp-1 text-xs text-slate-500">
@@ -1369,7 +1396,7 @@ function SavedCard({
       : savedItem.kind === "experience"
         ? `${savedItem.item.region} · ${savedItem.item.location}`
         : [
-            savedItem.item.sourceLabel || formatImportedCategory(savedItem.item.category),
+            savedItem.item.siteName || savedItem.item.sourceLabel || formatImportedCategory(savedItem.item.category),
             savedItem.item.extractedPlaceName || linkedDestination?.name || "Attach map later",
           ].join(" · ");
   const image =
@@ -1377,13 +1404,14 @@ function SavedCard({
       ? savedItem.item.heroImage
       : savedItem.kind === "experience"
         ? savedItem.item.imageUrl
-        : linkedDestination?.heroImage;
+        : savedItem.item.imageUrl || linkedDestination?.heroImage;
   const body =
     savedItem.kind === "place"
       ? savedItem.item.headline
       : savedItem.kind === "experience"
         ? savedItem.item.description
-        : savedItem.item.note || savedItem.item.extractedPlaceName || savedItem.item.url || "Manual Jamaica idea";
+        : savedItem.item.note || savedItem.item.description || savedItem.item.extractedPlaceName || savedItem.item.url || "Manual Jamaica idea";
+  const sourceUrl = savedItem.kind === "import" ? (savedItem.item.canonicalUrl || savedItem.item.url) : "";
 
   return (
     <article className={classNames("overflow-hidden rounded-3xl", glassCard)}>
@@ -1405,9 +1433,9 @@ function SavedCard({
       </div>
       <div className="p-4">
         <p className="line-clamp-2 text-sm leading-6 text-slate-400">{body}</p>
-        {savedItem.kind === "import" && savedItem.item.url && (
+        {savedItem.kind === "import" && sourceUrl && (
           <a
-            href={savedItem.item.url}
+            href={sourceUrl}
             target="_blank"
             rel="noreferrer"
             className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-cyan-200 hover:text-cyan-100"

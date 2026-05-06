@@ -119,6 +119,10 @@ export interface ImportedIdea {
   sourcePlatform?: ImportedIdeaSourcePlatform;
   sourceLabel?: string;
   extractedPlaceName?: string;
+  description?: string;
+  imageUrl?: string;
+  siteName?: string;
+  canonicalUrl?: string;
 }
 
 export interface WeatherPlanDay {

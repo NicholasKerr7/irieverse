@@ -62,24 +62,27 @@ function setResponseHeaders(res) {
 }
 
 async function resolveMetadata(url) {
-  const sourcePlatform = detectSourcePlatform(url);
+  const metadataUrl = await resolveRedirectUrl(url).catch(() => url);
+  const sourcePlatform = detectSourcePlatform(metadataUrl);
 
   if (sourcePlatform === "youtube") {
-    return resolveYouTubeMetadata(url);
+    return resolveYouTubeMetadata(metadataUrl, url);
   }
 
   if (sourcePlatform === "google-maps" || sourcePlatform === "tiktok" || sourcePlatform === "instagram") {
-    return buildBaseMetadata(url, {
-      title: titleFromUrl(url, sourcePlatform),
+    return buildBaseMetadata(metadataUrl, {
+      sourceUrl: url.toString(),
+      finalUrl: metadataUrl.toString(),
+      title: titleFromUrl(metadataUrl, sourcePlatform),
       confidence: sourcePlatform === "google-maps" ? "medium" : "low",
       reason: "platform-restricted",
     });
   }
 
-  return resolveArticleMetadata(url);
+  return resolveArticleMetadata(metadataUrl, url);
 }
 
-async function resolveYouTubeMetadata(url) {
+async function resolveYouTubeMetadata(url, sourceUrl = url) {
   const oembedUrl = new URL("https://www.youtube.com/oembed");
   oembedUrl.searchParams.set("url", url.toString());
   oembedUrl.searchParams.set("format", "json");
@@ -97,6 +100,8 @@ async function resolveYouTubeMetadata(url) {
 
   const payload = await response.json();
   return buildBaseMetadata(url, {
+    sourceUrl: sourceUrl.toString(),
+    finalUrl: url.toString(),
     title: asString(payload.title),
     description: asString(payload.author_name),
     imageUrl: asString(payload.thumbnail_url),
@@ -105,7 +110,7 @@ async function resolveYouTubeMetadata(url) {
   });
 }
 
-async function resolveArticleMetadata(url) {
+async function resolveArticleMetadata(url, sourceUrl = url) {
   const response = await fetchWithTimeout(url.toString(), {
     headers: {
       Accept: "text/html,application/xhtml+xml",
@@ -123,19 +128,22 @@ async function resolveArticleMetadata(url) {
   }
 
   const html = (await response.text()).slice(0, MAX_HTML_BYTES);
+  const finalUrl = parseSafeUrl(response.url) ?? url;
   const title = firstNonEmpty(
     getMetaContent(html, ["og:title", "twitter:title", "title"]),
     getTitleTag(html),
-    titleFromUrl(url, "article")
+    titleFromUrl(finalUrl, "article")
   );
   const description = getMetaContent(html, ["og:description", "twitter:description", "description"]);
-  const imageUrl = normalizeImageUrl(getMetaContent(html, ["og:image", "twitter:image", "image"]), url);
+  const imageUrl = normalizeImageUrl(getMetaContent(html, ["og:image", "twitter:image", "image"]), finalUrl);
   const siteName = firstNonEmpty(
     getMetaContent(html, ["og:site_name", "application-name"]),
-    readableHost(url.hostname)
+    readableHost(finalUrl.hostname)
   );
 
-  return buildBaseMetadata(url, {
+  return buildBaseMetadata(finalUrl, {
+    sourceUrl: sourceUrl.toString(),
+    finalUrl: finalUrl.toString(),
     title,
     description,
     imageUrl,
@@ -147,8 +155,8 @@ async function resolveArticleMetadata(url) {
 function buildBaseMetadata(url, overrides = {}) {
   const sourcePlatform = detectSourcePlatform(url);
   return {
-    url: url.toString(),
-    finalUrl: url.toString(),
+    url: overrides.sourceUrl || url.toString(),
+    finalUrl: overrides.finalUrl || url.toString(),
     sourcePlatform,
     sourceLabel: overrides.siteName || getSourceLabel(sourcePlatform, url),
     title: cleanText(overrides.title ?? ""),
@@ -159,6 +167,34 @@ function buildBaseMetadata(url, overrides = {}) {
     reason: overrides.reason,
     cached: false,
   };
+}
+
+async function resolveRedirectUrl(url) {
+  let currentUrl = url;
+
+  for (let index = 0; index < 5; index += 1) {
+    await assertPublicHostname(currentUrl);
+    const response = await fetchWithTimeout(currentUrl.toString(), {
+      method: "HEAD",
+      redirect: "manual",
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "User-Agent": "IrieVerseBot/1.0 (+https://irieverse.app)",
+      },
+    });
+
+    const location = response.headers.get("location");
+    if (!location || response.status < 300 || response.status >= 400) {
+      return currentUrl;
+    }
+
+    const nextUrl = parseSafeUrl(new URL(location, currentUrl).toString());
+    if (!nextUrl) return currentUrl;
+    await assertPublicHostname(nextUrl);
+    currentUrl = nextUrl;
+  }
+
+  return currentUrl;
 }
 
 async function fetchWithTimeout(url, options = {}) {
