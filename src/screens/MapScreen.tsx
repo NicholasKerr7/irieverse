@@ -322,6 +322,26 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
           <p className="mt-2 text-sm leading-6 text-slate-400">
             Clear search or switch layers to bring Jamaica pins back onto the map.
           </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {!!app.search && (
+              <button
+                type="button"
+                onClick={() => app.setSearch("")}
+                className="inline-flex min-h-10 items-center justify-center rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950"
+              >
+                Clear search
+              </button>
+            )}
+            {activeCategory !== "all" && (
+              <button
+                type="button"
+                onClick={() => setActiveCategory("all")}
+                className="inline-flex min-h-10 items-center justify-center rounded-full border border-cyan-300/50 px-4 py-2 text-xs font-bold text-cyan-100"
+              >
+                Show all layers
+              </button>
+            )}
+          </div>
         </div>
       )}
 

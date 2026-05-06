@@ -1,4 +1,4 @@
-import { Compass, MapPinned } from "lucide-react";
+import { Compass, MapPinned, type LucideIcon } from "lucide-react";
 import { classNames } from "../utils/classNames";
 import { glassPanelStrong } from "../utils/glass";
 
@@ -8,6 +8,19 @@ type ScreenSkeletonProps = {
 
 type CardGridSkeletonProps = {
   count?: number;
+};
+
+type EmptyStatePanelProps = {
+  icon?: LucideIcon;
+  eyebrow?: string;
+  title: string;
+  body: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
+  tone?: "neutral" | "info" | "warning" | "error";
+  className?: string;
 };
 
 export function ScreenSkeleton({ label = "Preparing Jamaica" }: ScreenSkeletonProps) {
@@ -50,6 +63,68 @@ export function ScreenSkeleton({ label = "Preparing Jamaica" }: ScreenSkeletonPr
             <SkeletonBlock className="mt-2 h-3 w-4/5" />
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+export function EmptyStatePanel({
+  icon: Icon = Compass,
+  eyebrow,
+  title,
+  body,
+  actionLabel,
+  onAction,
+  secondaryLabel,
+  onSecondary,
+  tone = "neutral",
+  className,
+}: EmptyStatePanelProps) {
+  const toneClasses = getEmptyStateToneClasses(tone);
+
+  return (
+    <div className={classNames("rounded-3xl border border-dashed p-5", toneClasses.panel, className)}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 gap-3">
+          <div className={classNames("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl", toneClasses.icon)}>
+            <Icon className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            {eyebrow && (
+              <p className={classNames("text-[0.64rem] uppercase tracking-[0.22em]", toneClasses.eyebrow)}>
+                {eyebrow}
+              </p>
+            )}
+            <h3 className="mt-1 text-base font-semibold text-slate-100">{title}</h3>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">{body}</p>
+          </div>
+        </div>
+
+        {(actionLabel && onAction) || (secondaryLabel && onSecondary) ? (
+          <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+            {secondaryLabel && onSecondary && (
+              <button
+                type="button"
+                onClick={onSecondary}
+                className="inline-flex min-h-10 items-center justify-center rounded-full border border-slate-700/80 px-4 py-2 text-xs font-bold text-slate-200 hover:border-cyan-300/60 hover:text-cyan-100"
+              >
+                {secondaryLabel}
+              </button>
+            )}
+            {actionLabel && onAction && (
+              <button
+                type="button"
+                onClick={onAction}
+                className={classNames(
+                  "inline-flex min-h-10 items-center justify-center rounded-full px-4 py-2 text-xs font-bold",
+                  tone === "error" ? "bg-rose-200 text-slate-950" : "bg-cyan-300 text-slate-950"
+                )}
+              >
+                {actionLabel}
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -98,6 +173,38 @@ export function CardGridSkeleton({ count = 2 }: CardGridSkeletonProps) {
       ))}
     </div>
   );
+}
+
+function getEmptyStateToneClasses(tone: EmptyStatePanelProps["tone"]) {
+  if (tone === "error") {
+    return {
+      panel: "border-rose-300/35 bg-rose-300/10",
+      icon: "bg-rose-300/15 text-rose-100",
+      eyebrow: "text-rose-200/90",
+    };
+  }
+
+  if (tone === "warning") {
+    return {
+      panel: "border-amber-300/35 bg-amber-300/10",
+      icon: "bg-amber-300/15 text-amber-100",
+      eyebrow: "text-amber-200/90",
+    };
+  }
+
+  if (tone === "info") {
+    return {
+      panel: "border-cyan-300/30 bg-cyan-300/10",
+      icon: "bg-cyan-300/15 text-cyan-100",
+      eyebrow: "text-cyan-200/90",
+    };
+  }
+
+  return {
+    panel: "border-slate-700/80 bg-slate-950/55",
+    icon: "bg-slate-800/80 text-cyan-200",
+    eyebrow: "text-slate-500",
+  };
 }
 
 function SkeletonBlock({ className }: { className?: string }) {

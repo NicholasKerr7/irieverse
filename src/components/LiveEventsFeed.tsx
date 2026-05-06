@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { LiveEvent } from "../types/travel";
-import { CalendarDays, RefreshCcw } from "lucide-react";
-import { CardGridSkeleton } from "./LoadingStates";
+import { AlertTriangle, CalendarDays, PartyPopper, RefreshCcw } from "lucide-react";
+import { CardGridSkeleton, EmptyStatePanel } from "./LoadingStates";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassPanel } from "../utils/glass";
 
@@ -41,14 +41,30 @@ export const LiveEventsFeed = memo(function LiveEventsFeed({
         </button>
       </div>
 
-      {error && <p className="text-xs text-rose-400">{error}</p>}
+      {error && (
+        <EmptyStatePanel
+          icon={AlertTriangle}
+          eyebrow="Events"
+          title="Island calendar needs a refresh"
+          body={error}
+          actionLabel="Refresh events"
+          onAction={onRefresh}
+          tone="error"
+        />
+      )}
 
       {!error && isLoading && !events.length && <CardGridSkeleton count={2} />}
 
       {!error && !isLoading && !events.length && (
-        <p className="text-xs text-slate-400">
-          No events for this region right now.
-        </p>
+        <EmptyStatePanel
+          icon={PartyPopper}
+          eyebrow="Events"
+          title="No events matched this region yet"
+          body="Try refreshing, or switch the trip base to a nearby area with more music, food, and culture options."
+          actionLabel="Refresh events"
+          onAction={onRefresh}
+          tone="info"
+        />
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">

@@ -1,7 +1,8 @@
 import { CalendarDays, Heart, MapPin, Route, Star } from "lucide-react";
+import { EmptyStatePanel } from "./LoadingStates";
 import { Destination } from "../types/travel";
 import { classNames } from "../utils/classNames";
-import { glassCard, glassControlMuted, glassPanelStrong } from "../utils/glass";
+import { glassCard, glassPanelStrong } from "../utils/glass";
 
 interface PlacesGridProps {
   items: Destination[];
@@ -22,9 +23,14 @@ export function PlacesGrid({
 }: PlacesGridProps) {
   if (!items.length) {
     return (
-      <div className={classNames("mt-5 rounded-2xl border-dashed p-6 text-sm text-slate-400", glassControlMuted)}>
-        No destinations match those filters yet. Try a different vibe or search.
-      </div>
+      <EmptyStatePanel
+        icon={MapPin}
+        eyebrow="Places"
+        title="No Jamaica places matched"
+        body="Try a different search, vibe, or sort. Beaches, food towns, culture stops, and mountain escapes are still available in Explore."
+        tone="info"
+        className="mt-5"
+      />
     );
   }
 

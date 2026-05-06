@@ -1,5 +1,5 @@
-import { ExternalLink } from "lucide-react";
-import { CardGridSkeleton } from "./LoadingStates";
+import { BedDouble, ExternalLink, RefreshCcw } from "lucide-react";
+import { CardGridSkeleton, EmptyStatePanel } from "./LoadingStates";
 import type { BookingSourceMeta } from "../services/bookings";
 import type { BookingOption } from "../types/travel";
 import { classNames } from "../utils/classNames";
@@ -47,14 +47,30 @@ export function BookingRecommendations({
         </div>
       </div>
 
-      {error && <p className="text-xs text-rose-400">{error}</p>}
+      {error && (
+        <EmptyStatePanel
+          icon={RefreshCcw}
+          eyebrow="Stays"
+          title="Stay lookup needs a refresh"
+          body={error}
+          actionLabel="Refresh stays"
+          onAction={onRefresh}
+          tone="error"
+        />
+      )}
 
       {!error && isLoading && !bookings.length && <CardGridSkeleton count={2} />}
 
       {!error && !isLoading && !bookings.length && (
-        <p className="text-xs text-slate-400">
-          No tailored stays available for this combo yet.
-        </p>
+        <EmptyStatePanel
+          icon={BedDouble}
+          eyebrow="Stays"
+          title="No stays matched this plan yet"
+          body="Refresh once more, or adjust the base and dates in Trips to widen the match."
+          actionLabel="Refresh stays"
+          onAction={onRefresh}
+          tone="info"
+        />
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">

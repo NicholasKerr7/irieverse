@@ -10,6 +10,7 @@ import {
   Utensils,
   WalletCards,
 } from "lucide-react";
+import { EmptyStatePanel } from "./LoadingStates";
 import { Experience } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassControlMuted } from "../utils/glass";
@@ -25,9 +26,14 @@ interface ExperiencesGridProps {
 export function ExperiencesGrid({ items, saved, onToggleSaved, onAddToTrip }: ExperiencesGridProps) {
   if (!items.length) {
     return (
-      <div className={classNames("mt-5 rounded-2xl border-dashed p-6 text-sm text-slate-400", glassControlMuted)}>
-        No experiences match those filters yet. Try a different type, vibe or search.
-      </div>
+      <EmptyStatePanel
+        icon={Music2}
+        eyebrow="Experiences"
+        title="No experiences matched"
+        body="Try another type, vibe, or search. Food runs, music nights, culture stops, and beach days can still be added to the trip."
+        tone="info"
+        className="mt-5"
+      />
     );
   }
 

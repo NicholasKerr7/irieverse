@@ -97,6 +97,26 @@ test("traveler-facing screens avoid integration jargon", async ({ page }) => {
   expect(issues).toEqual([]);
 });
 
+test("empty states give clear recovery actions", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await openCleanTab(page, "explore", []);
+  await page.getByPlaceholder("Search Mobay, Negril, jerk, music...").fill("zzzz-no-match");
+  await expect(page.getByText("No Jamaica places matched")).toBeVisible();
+
+  await page.getByRole("button", { name: "Experiences" }).click();
+  await expect(page.getByText("No experiences matched")).toBeVisible();
+
+  await openCleanTab(page, "map", []);
+  await page.getByPlaceholder("Search beaches, food, music, culture...").fill("zzzz-no-match");
+  await expect(page.getByText("No map pins match")).toBeVisible();
+  await page.getByText("Clear search", { exact: true }).click();
+  await expect(page.getByText("No map pins match")).toBeHidden();
+
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 async function openCleanTab(page, tab, storageKeys) {
   await page.goto(`/?tab=${tab}`, { waitUntil: "domcontentloaded" });
   await page.evaluate((keys) => {
