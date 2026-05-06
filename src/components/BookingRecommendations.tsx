@@ -146,27 +146,30 @@ function getBookingSourceStatus(meta: BookingSourceMeta): {
     return {
       label: "Curated stays",
       tone: meta.reason === "request-failed" ? "error" : "fallback",
-      body: `${formatBookingReason(meta.reason)} Curated Jamaica stay ideas are shown for now.`,
+      body: getCuratedStayBody(meta.reason, true),
     };
   }
 
   return {
     label: "Curated stays",
     tone: meta.reason === "request-failed" ? "error" : "fallback",
-    body: "Curated Jamaica stay ideas are shown until current hotel options are available.",
+    body: getCuratedStayBody(meta.reason, false),
   };
 }
 
-function formatBookingReason(reason?: string): string {
+function getCuratedStayBody(reason: string | undefined, endpointConfigured: boolean): string {
   const labels: Record<string, string> = {
-    "missing-amadeus-credentials": "Live hotel pricing is not connected yet.",
-    "no-amadeus-offers": "No live hotel matches came back for this combination.",
-    "amadeus-request-failed": "Live hotel lookup failed.",
-    "request-failed": "Stay lookup failed.",
-    "custom-endpoint": "Stay details are limited right now.",
-    "endpoint-configured": "Stay data is connected.",
-    "local-sample-data": "Curated examples are active.",
+    "missing-amadeus-credentials": "Current hotel prices are not available here yet, so curated Jamaica stay ideas are shown.",
+    "no-amadeus-offers": "No current hotel matches came back for this combination, so curated Jamaica stay ideas are shown.",
+    "amadeus-request-failed": "The latest hotel lookup did not finish, so curated Jamaica stay ideas are shown.",
+    "request-failed": "The latest stay lookup did not finish, so curated Jamaica stay ideas are shown.",
+    "custom-endpoint": "Stay details are limited right now, so curated Jamaica stay ideas are shown.",
+    "endpoint-configured": "Curated Jamaica stay ideas are shown for now.",
+    "local-sample-data": "Curated Jamaica stay ideas are shown for now.",
   };
 
-  return reason ? labels[reason] ?? "Stay details are limited right now." : "Live stay data is not available yet.";
+  if (reason && labels[reason]) return labels[reason];
+  return endpointConfigured
+    ? "Curated Jamaica stay ideas are shown for now."
+    : "Curated Jamaica stay ideas are shown until current hotel options are available.";
 }

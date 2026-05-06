@@ -76,6 +76,27 @@ test("trip day cards support area edits, locks, and single-day add-on refresh", 
   expect(issues).toEqual([]);
 });
 
+test("traveler-facing screens avoid integration jargon", async ({ page }) => {
+  const issues = collectPageIssues(page);
+  const internalTerms = /\b(Supabase|schema|OSRM|AviationStack|Amadeus|fallback|API key|public\.trips)\b/i;
+
+  for (const tab of ["home", "explore", "map", "saved", "trips"]) {
+    await openCleanTab(page, tab, []);
+
+    if (tab === "trips") {
+      const detailsButton = page.getByRole("button", { name: "Show details" }).first();
+      if (await detailsButton.isVisible()) {
+        await detailsButton.click();
+      }
+    }
+
+    const visibleText = await page.locator("body").innerText();
+    expect(visibleText, `${tab} screen should not expose internal integration terms`).not.toMatch(internalTerms);
+  }
+
+  expect(issues).toEqual([]);
+});
+
 async function openCleanTab(page, tab, storageKeys) {
   await page.goto(`/?tab=${tab}`, { waitUntil: "domcontentloaded" });
   await page.evaluate((keys) => {

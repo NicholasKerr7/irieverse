@@ -260,13 +260,13 @@ function mapAmadeusOffer(item, index, params) {
   return {
     id: `amadeus-${hotel.hotelId || slugify(title)}-${offer.id || index}`,
     title,
-    provider: "Amadeus Hotels",
+    provider: "Hotel partner",
     type: "hotel",
     price: Math.round(priceValue),
     currency: offer.price?.currency || "USD",
     url: buildHotelSearchUrl(title, params.cityCode),
     description: [
-      roomType ? titleCase(roomType) : "Live hotel offer",
+      roomType ? titleCase(roomType) : "Current hotel offer",
       `${params.checkInDate} to ${params.checkOutDate}`,
       `${params.adults} adult${params.adults === 1 ? "" : "s"}`,
     ].join(" | "),
@@ -275,7 +275,7 @@ function mapAmadeusOffer(item, index, params) {
 }
 
 function buildPerks(offer, boardType) {
-  const perks = ["Live Amadeus availability"];
+  const perks = ["Current availability"];
 
   if (boardType) {
     perks.push(boardType);

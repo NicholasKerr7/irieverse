@@ -810,12 +810,12 @@ function normalizeFallbackReason(value: unknown): RouteFallbackReason {
 }
 
 function getFallbackMessage(reason: RouteFallbackReason | undefined): string {
-  if (reason === "loading") return "The road-following preview is still building for this leg.";
-  if (reason === "unsupported-route") return "This leg is outside the supported planning range, so the map is using an estimated path.";
-  if (reason === "request-failed") return "The road-following preview is limited here, so this leg is using an estimated path.";
-  if (reason === "invalid-response") return "The road preview was incomplete, so this leg is using an estimated path.";
-  if (reason === "road-route-unavailable") return "Road-following preview is unavailable here, so this leg is using an estimated path.";
-  return "This leg is using an estimated path until a road-following preview is available.";
+  if (reason === "loading") return "The road preview is still being prepared for this leg.";
+  if (reason === "unsupported-route") return "This leg is outside the detailed planning range, so the map is using a simple route line.";
+  if (reason === "request-failed") return "Detailed road planning is limited here, so this leg is using a simple route line.";
+  if (reason === "invalid-response") return "The road preview was incomplete, so this leg is using a simple route line.";
+  if (reason === "road-route-unavailable") return "Detailed road planning is unavailable here, so this leg is using a simple route line.";
+  return "This leg is using a simple route line until detailed road planning is available.";
 }
 
 function asString(value: unknown): string | undefined {

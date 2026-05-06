@@ -50,7 +50,7 @@ module.exports = async function roadRouteHandler(req, res) {
       meta: {
         source: "fallback",
         reason: "road-route-unavailable",
-        message: "Road-following directions are unavailable, so the app can use its estimated preview route.",
+        message: "Road planning is limited for this leg, so the app is keeping a simple estimated route line.",
       },
     });
   }

@@ -414,7 +414,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                       active={isSaved}
                     />
                     <MapAction icon={Plus} label="Add trip" onClick={handleAddToTrip} primary />
-                    <MapAction icon={Navigation} label="Open Maps" onClick={handleOpenDrivingGuide} />
+                    <MapAction icon={Navigation} label="Open in Maps" onClick={handleOpenDrivingGuide} />
                     <MapAction
                       icon={Route}
                       label="Preview"
@@ -730,8 +730,8 @@ function RouteDirectionsPanel({
       ? "road"
       : "fallback";
   const statusText = hasRoadSteps
-    ? "Road-following planning preview. Open Maps for live navigation."
-    : selectedRouteDetail?.fallbackMessage ?? "Road-following preview is unavailable for this leg.";
+    ? "Route line follows roads where available. Open in Maps when you are ready to drive."
+    : selectedRouteDetail?.fallbackMessage ?? "Using a simple planning line for this leg.";
 
   return (
     <div
@@ -747,7 +747,7 @@ function RouteDirectionsPanel({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[0.6rem] uppercase tracking-[0.22em] text-cyan-200/75">
-            {hasRoadSteps ? "Road preview" : "Estimated preview"}
+            {hasRoadSteps ? "Road line" : "Planning estimate"}
           </p>
           <h4 className="mt-1 text-sm font-semibold text-slate-100">
             {selectedRouteLeg.leg.fromName} to {selectedRouteLeg.leg.toName}
@@ -759,12 +759,12 @@ function RouteDirectionsPanel({
           onClick={onOpenDrivingGuide}
           className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-cyan-300/40 px-3 py-2 text-[0.68rem] font-bold text-cyan-100"
         >
-          Open Maps <ArrowUpRight className="h-3.5 w-3.5" />
+          Open in Maps <ArrowUpRight className="h-3.5 w-3.5" />
         </button>
       </div>
 
       {routeStatus.isLoading && !selectedRouteDetail && (
-        <p className="mt-3 text-xs text-slate-300">Building the road-following preview...</p>
+        <p className="mt-3 text-xs text-slate-300">Building the road preview...</p>
       )}
 
       {hasRoadSteps && (
@@ -775,7 +775,7 @@ function RouteDirectionsPanel({
         >
           <span className="inline-flex items-center gap-2">
             <Route className="h-3.5 w-3.5 text-cyan-200" />
-            {showStepPreview ? "Hide road cues" : `Show ${steps.length} road cue${steps.length === 1 ? "" : "s"}`}
+            {showStepPreview ? "Hide route notes" : `Show ${steps.length} route note${steps.length === 1 ? "" : "s"}`}
           </span>
           {showStepPreview ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
         </button>
@@ -816,7 +816,7 @@ function RouteDirectionsPanel({
 
       {showStepPreview && hiddenStepCount > 0 && (
         <p className="mt-3 text-xs text-slate-400">
-          {hiddenStepCount} more road cue{hiddenStepCount === 1 ? "" : "s"} available for this route. Open Maps for live navigation.
+          {hiddenStepCount} more route note{hiddenStepCount === 1 ? "" : "s"} available for this route. Open in Maps for the full drive.
         </p>
       )}
 
@@ -824,7 +824,7 @@ function RouteDirectionsPanel({
         <div className="mt-3 flex gap-2 rounded-xl border border-amber-300/20 bg-slate-950/42 px-3 py-2 text-xs leading-5 text-amber-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
-            Showing an estimated planning preview for this leg. Open Maps for live navigation.
+            Showing a simple planning line for this leg. Open in Maps when you are ready to drive.
           </p>
         </div>
       )}

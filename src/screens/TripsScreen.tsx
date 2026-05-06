@@ -1612,7 +1612,7 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
       title: "Road planning",
       status: "Road-aware",
       tone: "live",
-      body: "The route map favors road-following planning lines and keeps an estimated preview available when needed.",
+      body: "The route map favors road-aware planning lines and keeps a simple route line available when detailed data is limited.",
     },
     {
       icon: CalendarDays,
@@ -1640,7 +1640,7 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
             <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Travel support</p>
             <h2 className="text-lg font-semibold">Your plan has the essentials ready.</h2>
             <p className="mt-1 text-xs leading-5 text-slate-400">
-              Export, route planning, stays, flights, and events stay usable even when a live source is unavailable.
+              Export, route planning, stays, flights, and events stay useful even when internet data is limited.
             </p>
           </div>
         </div>
@@ -1835,24 +1835,24 @@ function getFlightSourceStatus(app: TravelOS): { status: string; tone: Integrati
 
   if (meta.endpointConfigured && meta.providerConfigured) {
     return {
-      status: "Saved flights",
+      status: "Example flights",
       tone: "fallback",
-      body: `${formatIntegrationReason(meta.reason)} Saved flight examples are shown for this route.`,
+      body: getExampleFlightBody(meta.reason, true),
     };
   }
 
   if (meta.endpointConfigured) {
     return {
-      status: "Saved flights",
+      status: "Example flights",
       tone: "fallback",
-      body: `${formatIntegrationReason(meta.reason)} Saved flight examples are shown for this route.`,
+      body: getExampleFlightBody(meta.reason, true),
     };
   }
 
   return {
-    status: "Saved flights",
+    status: "Example flights",
     tone: "fallback",
-    body: "Saved flight examples are shown until live schedules are available.",
+    body: getExampleFlightBody(meta.reason, false),
   };
 }
 
@@ -1887,14 +1887,14 @@ function getBookingIntegrationStatus(app: TravelOS): { status: string; tone: Int
     return {
       status: "Curated stays",
       tone: "fallback",
-      body: `${formatIntegrationReason(meta.reason)} Curated Jamaica stay ideas are shown for now.`,
+      body: getCuratedStayBody(meta.reason, true),
     };
   }
 
   return {
     status: "Curated stays",
     tone: "fallback",
-    body: "Curated Jamaica stay ideas are shown until current hotel options are available.",
+    body: getCuratedStayBody(meta.reason, false),
   };
 }
 
@@ -2559,26 +2559,40 @@ function getDayBoardIdeas(app: TravelOS, destinationId: string) {
   return [...savedDestinationIdeas, ...savedExperienceIdeas, ...importedDayIdeas];
 }
 
-function formatIntegrationReason(reason?: string): string {
+function getCuratedStayBody(reason: string | undefined, endpointConfigured: boolean): string {
   const labels: Record<string, string> = {
-    "missing-amadeus-credentials": "Live hotel pricing is not connected yet.",
-    "no-amadeus-offers": "No live hotel matches came back for this combination.",
-    "amadeus-request-failed": "Live hotel lookup failed.",
-    "request-failed": "The latest lookup failed.",
-    "custom-endpoint": "Stay details are limited right now.",
-    "endpoint-configured": "Stay data is connected.",
-    "local-sample-data": "Curated examples are active.",
-    "pending-flight-proxy": "Flight lookup is getting ready.",
-    "missing-aviationstack-key": "Live flight schedules are not connected yet.",
-    "aviationstack-disabled": "Live flight schedules are paused here.",
-    "aviationstack-rate-limited": "Live flight schedules are busy right now.",
-    "aviationstack-request-failed": "Live flight lookup failed.",
-    "flight-proxy-request-failed": "Flight lookup failed.",
-    "missing-flight-metadata": "Flight details are limited right now.",
-    "flight-data-unavailable": "Flight data is unavailable.",
+    "missing-amadeus-credentials": "Current hotel prices are not available here yet, so curated Jamaica stay ideas are shown.",
+    "no-amadeus-offers": "No current hotel matches came back for this combination, so curated Jamaica stay ideas are shown.",
+    "amadeus-request-failed": "The latest hotel lookup did not finish, so curated Jamaica stay ideas are shown.",
+    "request-failed": "The latest stay lookup did not finish, so curated Jamaica stay ideas are shown.",
+    "custom-endpoint": "Stay details are limited right now, so curated Jamaica stay ideas are shown.",
+    "endpoint-configured": "Curated Jamaica stay ideas are shown for now.",
+    "local-sample-data": "Curated Jamaica stay ideas are shown for now.",
   };
 
-  return reason ? labels[reason] ?? "Travel details are limited right now." : "Live travel data is not available yet.";
+  if (reason && labels[reason]) return labels[reason];
+  return endpointConfigured
+    ? "Curated Jamaica stay ideas are shown for now."
+    : "Curated Jamaica stay ideas are shown until current hotel options are available.";
+}
+
+function getExampleFlightBody(reason: string | undefined, endpointConfigured: boolean): string {
+  const labels: Record<string, string> = {
+    "pending-flight-proxy": "Flight lookup is warming up, so example flight options are shown for this route.",
+    "missing-aviationstack-key": "Current flight schedules are not available here yet, so example flight options are shown.",
+    "aviationstack-disabled": "Current flight schedules are paused here, so example flight options are shown.",
+    "aviationstack-rate-limited": "Current flight schedules are busy right now, so example flight options are shown.",
+    "aviationstack-request-failed": "The latest flight lookup did not finish, so example flight options are shown.",
+    "flight-proxy-request-failed": "The latest flight lookup did not finish, so example flight options are shown.",
+    "missing-flight-metadata": "Flight details are limited right now, so example flight options are shown.",
+    "flight-data-unavailable": "Flight data is unavailable right now, so example flight options are shown.",
+    "local-sample-data": "Example flight options are shown until current schedules are available.",
+  };
+
+  if (reason && labels[reason]) return labels[reason];
+  return endpointConfigured
+    ? "Example flight options are shown for this route."
+    : "Example flight options are shown until current schedules are available.";
 }
 
 function getCompletedStepIndex(app: TravelOS) {
