@@ -437,7 +437,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
 
   const handleShareLater = async (savedItem: SavedItem) => {
     const title = getSavedItemTitle(savedItem);
-    const url = savedItem.kind === "import" ? savedItem.item.url : "";
+    const url = savedItem.kind === "import" ? (savedItem.item.canonicalUrl || savedItem.item.url) : "";
     const text = `IrieVerse Jamaica idea: ${title}${url ? ` ${url}` : ""}`;
     try {
       if (navigator.share) {
@@ -599,7 +599,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       return;
     }
 
-    app.addImportedIdea({
+    const importedIdeaPayload: Omit<ImportedIdea, "id" | "createdAt"> = {
       title: title || fallbackTitle || "Imported Jamaica idea",
       url,
       note,
@@ -613,7 +613,13 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       imageUrl: importMetadata?.imageUrl || undefined,
       siteName: importMetadata?.siteName || importMetadata?.sourceLabel || undefined,
       canonicalUrl: importMetadata?.finalUrl || undefined,
-    });
+    };
+    const existingImport = findExistingImportedIdea(app.importedIdeas, importedIdeaPayload);
+    if (existingImport) {
+      app.updateImportedIdea(existingImport.id, mergeImportedIdeaPayload(existingImport, importedIdeaPayload));
+    } else {
+      app.addImportedIdea(importedIdeaPayload);
+    }
     setImportForm({
       ...DEFAULT_IMPORT_FORM,
       category: importForm.category,
@@ -626,7 +632,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     setImportCategoryEdited(false);
     setImportCollectionEdited(false);
     setImportLocationEdited(false);
-    setStatusMessage("Imported idea saved");
+    setStatusMessage(existingImport ? "Imported idea updated" : "Imported idea saved");
   };
 
   const handleCategoryChange = (category: ImportedIdeaCategory) => {
@@ -1640,6 +1646,68 @@ function getExperienceCollection(experience: Experience, assignments: Record<str
 
 function getImportCollection(idea: ImportedIdea): CollectionId {
   return normalizeCollectionId(idea.collectionId) ?? categoryToCollection(idea.category);
+}
+
+function findExistingImportedIdea(
+  importedIdeas: ImportedIdea[],
+  nextIdea: Omit<ImportedIdea, "id" | "createdAt">
+): ImportedIdea | null {
+  const nextUrlKeys = getImportUrlKeys(nextIdea);
+  if (!nextUrlKeys.size) return null;
+
+  return importedIdeas.find((idea) => {
+    const ideaUrlKeys = getImportUrlKeys(idea);
+    return Array.from(nextUrlKeys).some((key) => ideaUrlKeys.has(key));
+  }) ?? null;
+}
+
+function mergeImportedIdeaPayload(
+  existingIdea: ImportedIdea,
+  nextIdea: Omit<ImportedIdea, "id" | "createdAt">
+): Omit<ImportedIdea, "id" | "createdAt"> {
+  return {
+    ...nextIdea,
+    linkedDestinationId: nextIdea.linkedDestinationId ?? existingIdea.linkedDestinationId,
+    sourcePlatform: nextIdea.sourcePlatform ?? existingIdea.sourcePlatform,
+    sourceLabel: nextIdea.sourceLabel || existingIdea.sourceLabel,
+    extractedPlaceName: nextIdea.extractedPlaceName || existingIdea.extractedPlaceName,
+    description: nextIdea.description || existingIdea.description,
+    imageUrl: nextIdea.imageUrl || existingIdea.imageUrl,
+    siteName: nextIdea.siteName || existingIdea.siteName,
+    canonicalUrl: nextIdea.canonicalUrl || existingIdea.canonicalUrl,
+  };
+}
+
+function getImportUrlKeys(idea: Pick<ImportedIdea, "url" | "canonicalUrl">): Set<string> {
+  return new Set(
+    [idea.url, idea.canonicalUrl]
+      .map((url) => normalizeImportComparisonUrl(url ?? ""))
+      .filter(Boolean)
+  );
+}
+
+function normalizeImportComparisonUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  try {
+    const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    url.hash = "";
+    Array.from(url.searchParams.keys()).forEach((key) => {
+      const normalizedKey = key.toLowerCase();
+      if (
+        normalizedKey.startsWith("utm_") ||
+        ["fbclid", "gclid", "igsh", "si", "feature", "ref", "source"].includes(normalizedKey)
+      ) {
+        url.searchParams.delete(key);
+      }
+    });
+    url.searchParams.sort();
+    url.hostname = url.hostname.replace(/^www\./, "").toLowerCase();
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return trimmed.toLowerCase().replace(/#.*$/, "").replace(/\/$/, "");
+  }
 }
 
 function normalizeCollectionId(collectionId: string): CollectionId | null {
