@@ -255,6 +255,9 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                   savedExperienceIds={app.savedExperiences}
                   importedIdeas={app.importedIdeas}
                   dayNotes={app.dayNotes}
+                  lockedRouteDestinationIds={app.lockedRouteDestinationIds}
+                  onSetRouteStopForDay={app.setRouteStopForDay}
+                  onToggleRouteStopLock={app.toggleRouteStopLock}
                   onSetDayExperience={app.setDayExperience}
                   onClearDayExperience={app.clearDayExperience}
                   onSetDayNote={app.setDayNote}
@@ -934,6 +937,8 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
           const experienceIsSaved = Boolean(day.experience && app.savedExperiences.has(day.experience.id));
           const boardIdeas = getDayBoardIdeas(app, day.destinationId);
           const planningReasons = getDayPlanningReasons(day, boardIdeas.length);
+          const routeStopForDay = app.itinerary.routeSummary.stops.find((stop) => stop.day === day.day);
+          const dayIsLocked = app.lockedRouteDestinationIds.includes(day.destinationId);
 
           return (
             <article key={`${day.day}-${day.destinationId}`} className={classNames("rounded-2xl p-4", glassCard)}>
@@ -955,6 +960,42 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
               <QuickDayFact label="Energy" value={day.energyLevel} />
               <QuickDayFact label="Budget" value={`$${day.suggestedBudget}`} />
             </div>
+            {routeStopForDay && (
+              <div className="mt-3 grid gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <label className="min-w-0">
+                  <span className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">
+                    {day.day === 1 ? "Base area" : "Day area"}
+                  </span>
+                  <select
+                    value={day.destinationId}
+                    onChange={(event) => app.setRouteStopForDay(day.day, event.target.value)}
+                    disabled={dayIsLocked}
+                    className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 disabled:opacity-50"
+                  >
+                    {DESTINATIONS.map((destination) => (
+                      <option key={destination.id} value={destination.id}>
+                        {destination.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {!day.isBase && (
+                  <button
+                    type="button"
+                    onClick={() => app.toggleRouteStopLock(day.destinationId)}
+                    className={classNames(
+                      "inline-flex min-h-10 items-center justify-center gap-2 self-end rounded-full border px-3 py-2 text-xs font-bold",
+                      dayIsLocked
+                        ? "border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
+                        : "border-slate-700 text-slate-200"
+                    )}
+                  >
+                    {dayIsLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                    {dayIsLocked ? "Unlock day" : "Keep day"}
+                  </button>
+                )}
+              </div>
+            )}
             {(day.weatherNote || day.experience) && (
               <div className="mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-3 text-xs leading-5 text-cyan-100">
                 {day.weatherNote && <p>{day.weatherNote}</p>}

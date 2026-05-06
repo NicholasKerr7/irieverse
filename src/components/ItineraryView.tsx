@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, MapPin, Music2, PartyPopper, Route, StickyNote, Utensils, WalletCards, X } from "lucide-react";
+import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, Lock, MapPin, Music2, PartyPopper, Route, StickyNote, Unlock, Utensils, WalletCards, X } from "lucide-react";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import type { ImportedIdea, ItineraryPlan } from "../types/travel";
 import { classNames } from "../utils/classNames";
@@ -15,6 +15,9 @@ interface ItineraryViewProps {
   savedExperienceIds?: Set<string>;
   importedIdeas?: ImportedIdea[];
   dayNotes?: Record<string, string>;
+  lockedRouteDestinationIds?: string[];
+  onSetRouteStopForDay?: (day: number, destinationId: string) => void;
+  onToggleRouteStopLock?: (destinationId: string) => void;
   onSetDayExperience?: (day: number, experienceId: string) => void;
   onClearDayExperience?: (day: number) => void;
   onSetDayNote?: (day: number, note: string) => void;
@@ -28,6 +31,9 @@ export function ItineraryView({
   savedExperienceIds = new Set(),
   importedIdeas = [],
   dayNotes = {},
+  lockedRouteDestinationIds = [],
+  onSetRouteStopForDay,
+  onToggleRouteStopLock,
   onSetDayExperience,
   onClearDayExperience,
   onSetDayNote,
@@ -36,6 +42,7 @@ export function ItineraryView({
   const { base, days, plannerVibe, budgetPerDay, daysPlan, routeSummary } = itinerary;
   const canEditExperiences = Boolean(onSetDayExperience && onClearDayExperience);
   const canEditNotes = Boolean(onSetDayNote && onClearDayNote);
+  const lockedDestinationIds = new Set(lockedRouteDestinationIds);
 
   return (
     <div className="space-y-4">
@@ -105,6 +112,10 @@ export function ItineraryView({
           const experienceIsSaved = Boolean(day.experience && savedExperienceIds.has(day.experience.id));
           const boardIdeas = getDayBoardIdeas(day.destinationId, savedPlaceIds, savedExperienceIds, importedIdeas);
           const planningReasons = getDayPlanningReasons(day, boardIdeas.length);
+          const routeStopForDay = routeSummary.stops.find((stop) => stop.day === day.day);
+          const canEditRouteStop = Boolean(onSetRouteStopForDay && routeStopForDay);
+          const canToggleRouteStopLock = Boolean(onToggleRouteStopLock && routeStopForDay && !day.isBase);
+          const isRouteStopLocked = lockedDestinationIds.has(day.destinationId);
 
           return (
             <li
@@ -160,6 +171,44 @@ export function ItineraryView({
               {day.routeNote}
               {day.distanceFromPreviousKm ? ` · ${day.distanceFromPreviousKm} km from previous stop` : ""}
             </p>
+            {(canEditRouteStop || canToggleRouteStopLock) && (
+              <div className={classNames("mt-3 grid gap-2 rounded-2xl p-3 sm:grid-cols-[minmax(0,1fr)_auto]", glassControlMuted)}>
+                {canEditRouteStop && (
+                  <label className="min-w-0">
+                    <span className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">
+                      {day.day === 1 ? "Base area" : "Day area"}
+                    </span>
+                    <select
+                      value={day.destinationId}
+                      onChange={(event) => onSetRouteStopForDay?.(day.day, event.target.value)}
+                      disabled={isRouteStopLocked}
+                      className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200 disabled:opacity-50"
+                    >
+                      {DESTINATIONS.map((destination) => (
+                        <option key={destination.id} value={destination.id}>
+                          {destination.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {canToggleRouteStopLock && (
+                  <button
+                    type="button"
+                    onClick={() => onToggleRouteStopLock?.(day.destinationId)}
+                    className={classNames(
+                      "inline-flex min-h-10 items-center justify-center gap-2 self-end rounded-full border px-3 py-2 text-xs font-bold",
+                      isRouteStopLocked
+                        ? "border-cyan-300/50 bg-cyan-300/10 text-cyan-100"
+                        : "border-slate-700 text-slate-200"
+                    )}
+                  >
+                    {isRouteStopLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                    {isRouteStopLocked ? "Unlock day" : "Keep day"}
+                  </button>
+                )}
+              </div>
+            )}
             {day.weatherNote && (
               <p className="mt-3 flex gap-2 rounded-2xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs leading-5 text-sky-100">
                 <CloudSun className="mt-0.5 h-3.5 w-3.5 shrink-0" />

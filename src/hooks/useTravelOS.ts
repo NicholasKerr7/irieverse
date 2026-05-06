@@ -992,6 +992,54 @@ export function useTravelOS() {
     });
   };
 
+  const setRouteStopForDay = (day: number, destinationId: string) => {
+    const safeDay = Math.round(day);
+    const targetDestination = DESTINATIONS.find((item) => item.id === destinationId);
+    if (!targetDestination || safeDay < 1 || safeDay > plannerDays) return;
+
+    const currentDayDestinationId = itinerary.daysPlan[safeDay - 1]?.destinationId;
+    const lockedIds = new Set(lockedRouteDestinationIds);
+    if (currentDayDestinationId && currentDayDestinationId !== targetDestination.id && lockedIds.has(currentDayDestinationId)) return;
+    if (lockedIds.has(targetDestination.id) && currentDayDestinationId !== targetDestination.id) return;
+
+    const currentRoute = manualRouteDestinationIds.length
+      ? manualRouteDestinationIds
+      : itinerary.routeSummary.stops.slice(1).map((stop) => stop.destinationId);
+    const dayKey = String(safeDay);
+
+    if (safeDay === 1) {
+      setPlannerBaseId(targetDestination.id);
+      savePlace(targetDestination.id);
+      setManualRouteDestinationIds(
+        normalizeRouteDestinationIds(currentRoute, targetDestination.id, plannerDays)
+      );
+      setLockedRouteDestinationIds((prev) =>
+        normalizeRouteDestinationIds(
+          prev.filter((id) => id !== targetDestination.id),
+          targetDestination.id,
+          plannerDays
+        )
+      );
+    } else {
+      const targetIndex = safeDay - 2;
+      savePlace(targetDestination.id);
+      setManualRouteDestinationIds(() =>
+        normalizeRouteDestinationIds(
+          setRouteDestinationAtIndex(currentRoute, destination.id, targetDestination.id, targetIndex, plannerDays),
+          destination.id,
+          plannerDays
+        )
+      );
+    }
+
+    setDayExperienceOverrides((prev) => {
+      if (!prev[dayKey]) return prev;
+      const next = { ...prev };
+      delete next[dayKey];
+      return next;
+    });
+  };
+
   const setDayExperience = (day: number, experienceId: string) => {
     const safeDay = Math.round(day);
     if (safeDay < 1 || safeDay > plannerDays) return;
@@ -1190,6 +1238,7 @@ export function useTravelOS() {
     optimizeRouteOrder,
     resetRouteOrder,
     toggleRouteStopLock,
+    setRouteStopForDay,
     setDayExperience,
     clearDayExperience,
     setDayNote,
@@ -1291,6 +1340,40 @@ function appendRouteDestination(
     nextRouteIds.splice(removableIndex, 1);
   }
 
+  return nextRouteIds;
+}
+
+function setRouteDestinationAtIndex(
+  currentRouteIds: string[],
+  baseId: string,
+  destinationId: string,
+  targetIndex: number,
+  plannerDays: number
+): string[] {
+  const maxStops = Math.max(0, clampPlannerDays(plannerDays) - 1);
+  if (targetIndex < 0 || targetIndex >= maxStops) return currentRouteIds;
+
+  const nextRouteIds = [...currentRouteIds];
+  if (destinationId === baseId) {
+    nextRouteIds.splice(targetIndex, 1);
+    return nextRouteIds;
+  }
+
+  const existingIndex = nextRouteIds.indexOf(destinationId);
+  if (existingIndex >= 0) {
+    [nextRouteIds[targetIndex], nextRouteIds[existingIndex]] = [nextRouteIds[existingIndex], nextRouteIds[targetIndex]];
+    return nextRouteIds;
+  }
+
+  while (nextRouteIds.length <= targetIndex) {
+    const filler = DESTINATIONS.find(
+      (item) => item.id !== baseId && item.id !== destinationId && !nextRouteIds.includes(item.id)
+    );
+    if (!filler) break;
+    nextRouteIds.push(filler.id);
+  }
+
+  nextRouteIds[targetIndex] = destinationId;
   return nextRouteIds;
 }
 
