@@ -204,6 +204,7 @@ export interface ItineraryPlan {
 }
 
 export type DayExperienceOverrides = Record<string, string>;
+export type DayNotes = Record<string, string>;
 
 export interface OriginAirport {
   id: string;

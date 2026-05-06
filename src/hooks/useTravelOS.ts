@@ -41,6 +41,7 @@ import type {
   ImportedIdea,
   ItineraryPlan,
   DayExperienceOverrides,
+  DayNotes,
   LiveEvent,
   OriginAirport,
   PlanningMode,
@@ -77,6 +78,7 @@ const STORAGE_KEY_IMPORTED_IDEAS = "irieverse_imported_ideas";
 const STORAGE_KEY_MANUAL_ROUTE = "irieverse_manual_route";
 const STORAGE_KEY_LOCKED_ROUTE = "irieverse_locked_route";
 const STORAGE_KEY_DAY_EXPERIENCES = "irieverse_day_experiences";
+const STORAGE_KEY_DAY_NOTES = "irieverse_day_notes";
 const STORAGE_KEY_THEME = "irieverse_theme";
 const STORAGE_KEY_PLANNING_MODE = "irieverse_planning_mode";
 const STORAGE_KEY_PLANNING_TEMPLATE = "irieverse_planning_template";
@@ -165,6 +167,9 @@ export function useTravelOS() {
   const [dayExperienceOverrides, setDayExperienceOverrides] = useState<DayExperienceOverrides>(() =>
     readJsonFromStorage(STORAGE_KEY_DAY_EXPERIENCES, {}, isStringRecord)
   );
+  const [dayNotes, setDayNotes] = useState<DayNotes>(() =>
+    readJsonFromStorage(STORAGE_KEY_DAY_NOTES, {}, isStringRecord)
+  );
   const [originAirportId, setOriginAirportId] = useState(() => getInitialOriginAirportId());
   const [hasUserPreferredOrigin, setHasUserPreferredOrigin] = useState(() => Boolean(getStoredOriginAirportId()));
   const [liveFacts, setLiveFacts] = useState<QuickFact[] | null>(null);
@@ -241,6 +246,10 @@ export function useTravelOS() {
   }, [dayExperienceOverrides]);
 
   useEffect(() => {
+    writeJsonToStorage(STORAGE_KEY_DAY_NOTES, dayNotes);
+  }, [dayNotes]);
+
+  useEffect(() => {
     setManualRouteDestinationIds((prev) => {
       const normalized = normalizeRouteDestinationIds(prev, plannerBaseId, plannerDays);
       return arraysEqual(prev, normalized) ? prev : normalized;
@@ -258,6 +267,10 @@ export function useTravelOS() {
   useEffect(() => {
     setDayExperienceOverrides((prev) => {
       const next = normalizeDayExperienceOverrides(prev, plannerDays);
+      return stringRecordsEqual(prev, next) ? prev : next;
+    });
+    setDayNotes((prev) => {
+      const next = normalizeDayNotes(prev, plannerDays);
       return stringRecordsEqual(prev, next) ? prev : next;
     });
   }, [plannerDays]);
@@ -605,6 +618,7 @@ export function useTravelOS() {
       normalizeRouteDestinationIds(payload.lockedRouteDestinationIds ?? [], payload.plannerBaseId ?? "mobay", payload.plannerDays ?? 5)
     );
     setDayExperienceOverrides(normalizeDayExperienceOverrides(payload.dayExperienceOverrides ?? {}, payload.plannerDays ?? 5));
+    setDayNotes(normalizeDayNotes(payload.dayNotes ?? {}, payload.plannerDays ?? 5));
     setSavedPlaces(new Set(payload.savedPlaces ?? []));
     setSavedExperiences(new Set(payload.savedExperiences ?? []));
     setImportedIdeas(payload.importedIdeas ?? []);
@@ -676,6 +690,7 @@ export function useTravelOS() {
     );
     setLockedRouteDestinationIds([]);
     setDayExperienceOverrides({});
+    setDayNotes({});
 
     if (template.originAirportId && ORIGIN_AIRPORTS.some((airport) => airport.id === template.originAirportId)) {
       setOriginAirportId(template.originAirportId);
@@ -707,6 +722,7 @@ export function useTravelOS() {
     );
     setLockedRouteDestinationIds([]);
     setDayExperienceOverrides({});
+    setDayNotes({});
     setSavedPlaces((prev) => {
       const next = new Set(prev);
       selectedDestinationIds.forEach((id) => next.add(id));
@@ -849,6 +865,7 @@ export function useTravelOS() {
         manualRouteDestinationIds,
         lockedRouteDestinationIds,
         dayExperienceOverrides,
+        dayNotes,
         savedPlaces,
         savedExperiences,
         importedIdeas,
@@ -997,6 +1014,36 @@ export function useTravelOS() {
     });
   };
 
+  const setDayNote = (day: number, note: string) => {
+    const safeDay = Math.round(day);
+    if (safeDay < 1 || safeDay > plannerDays) return;
+    const key = String(safeDay);
+    const normalizedNote = note.slice(0, 280);
+    setDayNotes((prev) => {
+      if (!normalizedNote.trim()) {
+        if (!prev[key]) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return {
+        ...prev,
+        [key]: normalizedNote,
+      };
+    });
+  };
+
+  const clearDayNote = (day: number) => {
+    const safeDay = Math.round(day);
+    const key = String(safeDay);
+    setDayNotes((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (!tripId || !tripEditToken || !collaborationReady) return;
     const payload = serializeTripState({
@@ -1011,6 +1058,7 @@ export function useTravelOS() {
       manualRouteDestinationIds,
       lockedRouteDestinationIds,
       dayExperienceOverrides,
+      dayNotes,
       savedPlaces,
       savedExperiences,
       importedIdeas,
@@ -1047,6 +1095,7 @@ export function useTravelOS() {
     manualRouteDestinationIds,
     lockedRouteDestinationIds,
     dayExperienceOverrides,
+    dayNotes,
     savedPlaces,
     savedExperiences,
     importedIdeas,
@@ -1089,6 +1138,7 @@ export function useTravelOS() {
     manualRouteDestinationIds,
     lockedRouteDestinationIds,
     dayExperienceOverrides,
+    dayNotes,
     routeIsManual: manualRouteDestinationIds.length > 0,
     originAirportId,
     handleOriginAirportChange,
@@ -1142,6 +1192,8 @@ export function useTravelOS() {
     toggleRouteStopLock,
     setDayExperience,
     clearDayExperience,
+    setDayNote,
+    clearDayNote,
     handleExportItinerary,
     handleShareTrip,
     handleCopyShareLink,
@@ -1189,6 +1241,19 @@ function normalizeDayExperienceOverrides(
       const dayNumber = Number(day);
       return Number.isInteger(dayNumber) && dayNumber >= 1 && dayNumber <= safeDays && validExperienceIds.has(experienceId);
     })
+  );
+}
+
+function normalizeDayNotes(notes: DayNotes, plannerDays: number): DayNotes {
+  const safeDays = clampPlannerDays(plannerDays);
+
+  return Object.fromEntries(
+    Object.entries(notes)
+      .map(([day, note]) => [day, note.slice(0, 280)] as const)
+      .filter(([day, note]) => {
+        const dayNumber = Number(day);
+        return Number.isInteger(dayNumber) && dayNumber >= 1 && dayNumber <= safeDays && Boolean(note.trim());
+      })
   );
 }
 

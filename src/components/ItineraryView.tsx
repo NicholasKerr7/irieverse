@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, MapPin, Music2, PartyPopper, Route, Utensils, WalletCards, X } from "lucide-react";
+import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, MapPin, Music2, PartyPopper, Route, StickyNote, Utensils, WalletCards, X } from "lucide-react";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import type { ImportedIdea, ItineraryPlan } from "../types/travel";
 import { classNames } from "../utils/classNames";
@@ -14,8 +14,11 @@ interface ItineraryViewProps {
   savedPlaceIds?: Set<string>;
   savedExperienceIds?: Set<string>;
   importedIdeas?: ImportedIdea[];
+  dayNotes?: Record<string, string>;
   onSetDayExperience?: (day: number, experienceId: string) => void;
   onClearDayExperience?: (day: number) => void;
+  onSetDayNote?: (day: number, note: string) => void;
+  onClearDayNote?: (day: number) => void;
 }
 
 export function ItineraryView({
@@ -24,11 +27,15 @@ export function ItineraryView({
   savedPlaceIds = new Set(),
   savedExperienceIds = new Set(),
   importedIdeas = [],
+  dayNotes = {},
   onSetDayExperience,
   onClearDayExperience,
+  onSetDayNote,
+  onClearDayNote,
 }: ItineraryViewProps) {
   const { base, days, plannerVibe, budgetPerDay, daysPlan, routeSummary } = itinerary;
   const canEditExperiences = Boolean(onSetDayExperience && onClearDayExperience);
+  const canEditNotes = Boolean(onSetDayNote && onClearDayNote);
 
   return (
     <div className="space-y-4">
@@ -94,6 +101,7 @@ export function ItineraryView({
         {daysPlan.map((day) => {
           const experienceOverrideId = dayExperienceOverrides[String(day.day)] ?? "";
           const experienceOptions = getExperienceOptionsForDay(day, 8, savedExperienceIds);
+          const dayNote = dayNotes[String(day.day)] ?? "";
           const experienceIsSaved = Boolean(day.experience && savedExperienceIds.has(day.experience.id));
           const boardIdeas = getDayBoardIdeas(day.destinationId, savedPlaceIds, savedExperienceIds, importedIdeas);
           const planningReasons = getDayPlanningReasons(day, boardIdeas.length);
@@ -159,6 +167,42 @@ export function ItineraryView({
               </p>
             )}
             <p className="mt-4 text-sm leading-6 text-slate-300">{day.highlight}.</p>
+
+            {(canEditNotes || dayNote) && (
+              <div className={classNames("mt-3 rounded-2xl p-3", glassControlMuted)}>
+                <label className="block">
+                  <span className="inline-flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">
+                    <StickyNote className="h-3.5 w-3.5 text-cyan-300" /> Day note
+                  </span>
+                  {canEditNotes ? (
+                    <textarea
+                      value={dayNote}
+                      onChange={(event) => onSetDayNote?.(day.day, event.target.value)}
+                      maxLength={280}
+                      rows={2}
+                      placeholder="Add reservation times, pickup notes, must-do stops, or reminders."
+                      className="mt-2 w-full resize-none rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs leading-5 text-slate-200 placeholder:text-slate-600 focus:outline-none"
+                    />
+                  ) : (
+                    <p className="mt-2 text-xs leading-5 text-slate-300">{dayNote}</p>
+                  )}
+                </label>
+                {canEditNotes && (
+                  <div className="mt-2 flex items-center justify-between gap-2 text-[0.68rem] text-slate-500">
+                    <span>{dayNote.length}/280</span>
+                    {dayNote && (
+                      <button
+                        type="button"
+                        onClick={() => onClearDayNote?.(day.day)}
+                        className="font-semibold text-slate-300 hover:text-cyan-100"
+                      >
+                        Clear note
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {!!planningReasons.length && (
               <div className="mt-3 grid gap-2">

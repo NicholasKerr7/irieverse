@@ -22,6 +22,7 @@ import {
   RotateCcw,
   Share2,
   Sparkles,
+  StickyNote,
   Unlock,
   Users,
   Wand2,
@@ -253,8 +254,11 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                   savedPlaceIds={app.savedPlaces}
                   savedExperienceIds={app.savedExperiences}
                   importedIdeas={app.importedIdeas}
+                  dayNotes={app.dayNotes}
                   onSetDayExperience={app.setDayExperience}
                   onClearDayExperience={app.clearDayExperience}
+                  onSetDayNote={app.setDayNote}
+                  onClearDayNote={app.clearDayNote}
                 />
               </section>
 
@@ -924,6 +928,7 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
       <div className="mt-4 grid gap-3">
         {app.itinerary.daysPlan.map((day) => {
           const experienceOverrideId = app.dayExperienceOverrides[String(day.day)] ?? "";
+          const dayNote = app.dayNotes[String(day.day)] ?? "";
           const experienceOptions = getExperienceOptionsForDay(day, 6, app.savedExperiences);
           const boardStopLabel = getBoardStopLabel(app, day.destinationId);
           const experienceIsSaved = Boolean(day.experience && app.savedExperiences.has(day.experience.id));
@@ -984,6 +989,33 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
                 </div>
               </div>
             )}
+            <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+              <label className="block">
+                <span className="inline-flex items-center gap-2 text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">
+                  <StickyNote className="h-3.5 w-3.5 text-cyan-300" /> Day note
+                </span>
+                <textarea
+                  value={dayNote}
+                  onChange={(event) => app.setDayNote(day.day, event.target.value)}
+                  maxLength={280}
+                  rows={2}
+                  placeholder="Add reservation times, pickup notes, must-do stops, or reminders."
+                  className="mt-2 w-full resize-none rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs leading-5 text-slate-200 placeholder:text-slate-600 focus:outline-none"
+                />
+              </label>
+              <div className="mt-2 flex items-center justify-between gap-2 text-[0.68rem] text-slate-500">
+                <span>{dayNote.length}/280</span>
+                {dayNote && (
+                  <button
+                    type="button"
+                    onClick={() => app.clearDayNote(day.day)}
+                    className="font-semibold text-slate-300 hover:text-cyan-100"
+                  >
+                    Clear note
+                  </button>
+                )}
+              </div>
+            </div>
             {experienceOptions.length > 0 && (
               <label className="mt-3 block">
                 <span className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">Swap add-on</span>
