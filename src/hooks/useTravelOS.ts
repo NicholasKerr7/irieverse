@@ -15,6 +15,7 @@ import {
   getInitialBookingSourceMeta,
   type BookingSourceMeta,
 } from "../services/bookings";
+import type { CloudBoardPayload } from "../services/cloudBoards";
 import {
   type CollaborationErrorCode,
   type TripPayload,
@@ -609,6 +610,12 @@ export function useTravelOS() {
     setImportedIdeas(payload.importedIdeas ?? []);
   }, []);
 
+  const applyCloudBoard = useCallback((payload: CloudBoardPayload) => {
+    setSavedPlaces(new Set(payload.savedPlaces ?? []));
+    setSavedExperiences(new Set(payload.savedExperiences ?? []));
+    setImportedIdeas(payload.importedIdeas ?? []);
+  }, []);
+
   useEffect(() => {
     if (!collaborationReady || typeof window === "undefined") return;
 
@@ -1068,6 +1075,7 @@ export function useTravelOS() {
     activePlanningTemplate,
     applyPlanningTemplate,
     buildTripFromDestinations,
+    applyCloudBoard,
     plannerBaseId,
     setPlannerBaseId,
     plannerDays,

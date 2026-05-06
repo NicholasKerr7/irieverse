@@ -6,7 +6,7 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 
 | Name | Required | Purpose |
 | --- | --- | --- |
-| `VITE_SUPABASE_URL` | Optional | Enables shared trip links with Supabase. |
+| `VITE_SUPABASE_URL` | Optional | Enables email sign-in, cloud-saved boards, and shared trip links with Supabase. |
 | `VITE_SUPABASE_ANON_KEY` | Optional | Public anon key for the Supabase project. |
 | `AVIATIONSTACK_API_KEY` | Optional | Server-only AviationStack key used by `api/flights.js`. |
 | `AVIATIONSTACK_DISABLED` | Optional | Set to `true` to force saved flight examples and avoid live AviationStack requests in an environment. |
@@ -61,7 +61,24 @@ For this Vercel app, `VITE_BOOKING_API_URL` should be:
 /api/bookings
 ```
 
-## Supabase Sharing
+## Supabase Boards And Sharing
+
+Cloud-saved boards use Supabase Auth email sign-in plus an owner-scoped table named `user_boards`.
+
+```text
+id uuid primary key
+user_id uuid references auth.users(id)
+board_key text
+data jsonb
+created_at timestamptz
+updated_at timestamptz
+```
+
+The migration in `supabase/migrations/20260506120000_create_user_boards.sql` creates this table, enables row-level security, and allows authenticated users to read/write only their own board rows.
+
+Saved board data includes saved places, saved experiences, imported ideas, collection assignments, and map anchors. The app still keeps the local board active when the user is signed out or Supabase is not configured.
+
+In the Supabase dashboard, keep Email Auth enabled and add the production app URL to the allowed redirect URLs so magic-link sign-in can return to `/?tab=saved`.
 
 Trip sharing expects a Supabase table named `trips` with this shape:
 

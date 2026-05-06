@@ -1,8 +1,6 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { DayExperienceOverrides, ImportedIdea, PlanningMode, PlanningTemplateId } from "../types/travel";
+import { hasSupabaseBackend, supabaseClient } from "./supabaseClient";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const EDIT_TOKEN_STORAGE_KEY = "irieverse_trip_edit_tokens";
 const EDIT_TOKEN_BYTE_LENGTH = 32;
 
@@ -50,15 +48,7 @@ export type SaveTripStateResult = {
   mode: "created" | "updated";
 };
 
-let supabase: SupabaseClient | null = null;
-
-if (supabaseUrl && supabaseAnonKey) {
-  supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: { persistSession: false },
-  });
-}
-
-export const hasCollaborationBackend = () => Boolean(supabase);
+export const hasCollaborationBackend = hasSupabaseBackend;
 
 export function getCollaborationErrorCode(error: unknown): CollaborationErrorCode {
   return error instanceof CollaborationError ? error.code : "request-failed";
@@ -74,7 +64,7 @@ export async function saveTripState(
   payload: TripPayload,
   editToken?: string | null
 ): Promise<SaveTripStateResult> {
-  if (!supabase) {
+  if (!supabaseClient) {
     throw new CollaborationError(
       "not-configured",
       "Share links are not connected yet. Calendar export still works."
@@ -85,7 +75,7 @@ export async function saveTripState(
   const editTokenHash = await hashEditToken(activeEditToken);
 
   if (tripId && editToken) {
-    const { data, error } = await supabase.rpc("update_trip_share", {
+    const { data, error } = await supabaseClient.rpc("update_trip_share", {
       p_trip_id: tripId,
       p_trip_data: payload,
       p_edit_token_hash: editTokenHash,
@@ -102,7 +92,7 @@ export async function saveTripState(
     return { id: tripId, editToken: activeEditToken, mode: "updated" };
   }
 
-  const { data, error } = await supabase.rpc("create_trip_share", {
+  const { data, error } = await supabaseClient.rpc("create_trip_share", {
     p_trip_data: payload,
     p_edit_token_hash: editTokenHash,
   });
@@ -119,13 +109,13 @@ export async function saveTripState(
 }
 
 export async function fetchTripState(tripId: string): Promise<TripPayload> {
-  if (!supabase) {
+  if (!supabaseClient) {
     throw new CollaborationError(
       "not-configured",
       "Shared trips are not connected yet."
     );
   }
-  const { data, error } = await supabase.rpc("read_trip_share", {
+  const { data, error } = await supabaseClient.rpc("read_trip_share", {
     p_trip_id: tripId,
   });
 

@@ -10,6 +10,7 @@ Result: Passed secure sharing RPC probe after applying `20260429120000_secure_tr
 - Remote migration history now includes:
   `20260427120000`, `20260427195500`, and `20260429120000`.
 - The Supabase probe created a `trips` row, read it back through the trip-share RPC, denied an update with the wrong edit token, updated it with the correct local edit token, deleted it through the protected cleanup RPC, and verified the row was gone.
+- Cloud board storage now also needs `20260506120000_create_user_boards.sql` applied before testing signed-in board save/load.
 - `supabase db lint --linked` and `supabase db push --dry-run` still need a valid direct Postgres CLI login; the linked CLI login currently returns password authentication failure for `cli_login_postgres`.
 
 ## Full QA run

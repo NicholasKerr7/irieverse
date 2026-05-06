@@ -2,22 +2,38 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   CalendarDays,
   CheckCircle2,
+  Cloud,
   ExternalLink,
   Heart,
   Link,
+  LogOut,
   MapPinned,
+  Mail,
   MoveRight,
   Plus,
+  RefreshCcw,
   Route,
   Share2,
   Sparkles,
   StickyNote,
   Trash2,
+  UploadCloud,
   Wand2,
 } from "lucide-react";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
+import {
+  fetchCloudBoard,
+  getCloudUser,
+  hasCloudBoardBackend,
+  onCloudAuthChange,
+  requestCloudSignIn,
+  saveCloudBoard,
+  signOutCloudUser,
+  type CloudBoardPayload,
+  type CloudUser,
+} from "../services/cloudBoards";
 import { fetchImportMetadata, type ImportMetadata } from "../services/importMetadata";
 import type {
   Destination,
@@ -116,15 +132,67 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   const [importCategoryEdited, setImportCategoryEdited] = useState(false);
   const [importCollectionEdited, setImportCollectionEdited] = useState(false);
   const [importLocationEdited, setImportLocationEdited] = useState(false);
+  const [cloudUser, setCloudUser] = useState<CloudUser | null>(null);
+  const [cloudEmail, setCloudEmail] = useState("");
+  const [cloudStatusMessage, setCloudStatusMessage] = useState("");
+  const [cloudBoardUpdatedAt, setCloudBoardUpdatedAt] = useState("");
+  const [isCloudBusy, setIsCloudBusy] = useState(false);
 
   const importSuggestion = useMemo(
     () => analyzeImportLink(importForm),
     [importForm]
   );
+  const cloudBoardsReady = hasCloudBoardBackend();
 
   useEffect(() => {
     writeJsonToStorage(STORAGE_KEY_COLLECTIONS, collectionAssignments);
   }, [collectionAssignments]);
+
+  useEffect(() => {
+    if (!cloudBoardsReady) return;
+    let cancelled = false;
+
+    getCloudUser()
+      .then((user) => {
+        if (!cancelled) setCloudUser(user);
+      })
+      .catch(() => {
+        if (!cancelled) setCloudStatusMessage("Online boards are unavailable right now.");
+      });
+
+    const unsubscribe = onCloudAuthChange((user) => {
+      setCloudUser(user);
+      if (user) {
+        setCloudStatusMessage("Signed in. You can save or load your Jamaica board.");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [cloudBoardsReady]);
+
+  useEffect(() => {
+    if (!cloudUser) {
+      setCloudBoardUpdatedAt("");
+      return;
+    }
+
+    let cancelled = false;
+    fetchCloudBoard()
+      .then((board) => {
+        if (cancelled || !board) return;
+        setCloudBoardUpdatedAt(board.updatedAt || board.data.updatedAt);
+      })
+      .catch(() => {
+        if (!cancelled) setCloudStatusMessage("Online board is not ready yet.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cloudUser]);
 
   useEffect(() => {
     const sharedIdea = getSharedIdeaFromUrl();
@@ -287,6 +355,84 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     app.updateImportedIdea(idea.id, { linkedDestinationId: destinationId || undefined });
     const destinationName = DESTINATIONS.find((destination) => destination.id === destinationId)?.name;
     setStatusMessage(destinationName ? `${idea.title} attached to ${destinationName}` : "Map location cleared");
+  };
+
+  const buildCloudBoardPayload = (): CloudBoardPayload => ({
+    version: 1,
+    savedPlaces: Array.from(app.savedPlaces),
+    savedExperiences: Array.from(app.savedExperiences),
+    importedIdeas: app.importedIdeas,
+    collectionAssignments,
+    updatedAt: new Date().toISOString(),
+  });
+
+  const handleCloudSignIn = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const email = cloudEmail.trim();
+    if (!email) {
+      setCloudStatusMessage("Enter your email to send a sign-in link.");
+      return;
+    }
+
+    setIsCloudBusy(true);
+    try {
+      await requestCloudSignIn(email);
+      setCloudStatusMessage("Check your email for the IrieVerse sign-in link.");
+    } catch (error) {
+      console.error(error);
+      setCloudStatusMessage("Sign-in link could not be sent right now.");
+    } finally {
+      setIsCloudBusy(false);
+    }
+  };
+
+  const handleSaveCloudBoard = async () => {
+    setIsCloudBusy(true);
+    try {
+      const board = await saveCloudBoard(buildCloudBoardPayload());
+      setCloudBoardUpdatedAt(board.updatedAt || board.data.updatedAt);
+      setCloudStatusMessage("Jamaica board saved online.");
+    } catch (error) {
+      console.error(error);
+      setCloudStatusMessage("Online board could not be saved right now.");
+    } finally {
+      setIsCloudBusy(false);
+    }
+  };
+
+  const handleLoadCloudBoard = async () => {
+    setIsCloudBusy(true);
+    try {
+      const board = await fetchCloudBoard();
+      if (!board) {
+        setCloudStatusMessage("No online board saved yet.");
+        return;
+      }
+
+      app.applyCloudBoard(board.data);
+      setCollectionAssignments(sanitizeCollectionAssignments(board.data.collectionAssignments));
+      setCloudBoardUpdatedAt(board.updatedAt || board.data.updatedAt);
+      setCloudStatusMessage("Online board loaded onto this device.");
+    } catch (error) {
+      console.error(error);
+      setCloudStatusMessage("Online board could not be loaded right now.");
+    } finally {
+      setIsCloudBusy(false);
+    }
+  };
+
+  const handleCloudSignOut = async () => {
+    setIsCloudBusy(true);
+    try {
+      await signOutCloudUser();
+      setCloudUser(null);
+      setCloudStatusMessage("Signed out of online boards.");
+    } catch (error) {
+      console.error(error);
+      setCloudStatusMessage("Sign out did not finish.");
+    } finally {
+      setIsCloudBusy(false);
+    }
   };
 
   const handleShareLater = async (savedItem: SavedItem) => {
@@ -517,6 +663,21 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
         onStartPlan={handleStartQuickPlan}
         onOpenMap={handleOpenBoardMap}
         onExplore={() => onNavigate("explore")}
+      />
+
+      <CloudBoardPanel
+        ready={cloudBoardsReady}
+        user={cloudUser}
+        email={cloudEmail}
+        statusMessage={cloudStatusMessage}
+        updatedAt={cloudBoardUpdatedAt}
+        isBusy={isCloudBusy}
+        totalItems={boardSummary.totalItems}
+        onEmailChange={setCloudEmail}
+        onSignIn={handleCloudSignIn}
+        onSave={handleSaveCloudBoard}
+        onLoad={handleLoadCloudBoard}
+        onSignOut={handleCloudSignOut}
       />
 
       {!!unanchoredImportedIdeas.length && (
@@ -793,6 +954,140 @@ function ImportIntelligenceSummary({
           </span>
         )}
       </div>
+    </div>
+  );
+}
+
+function CloudBoardPanel({
+  ready,
+  user,
+  email,
+  statusMessage,
+  updatedAt,
+  isBusy,
+  totalItems,
+  onEmailChange,
+  onSignIn,
+  onSave,
+  onLoad,
+  onSignOut,
+}: {
+  ready: boolean;
+  user: CloudUser | null;
+  email: string;
+  statusMessage: string;
+  updatedAt: string;
+  isBusy: boolean;
+  totalItems: number;
+  onEmailChange: (email: string) => void;
+  onSignIn: (event: FormEvent<HTMLFormElement>) => void;
+  onSave: () => void;
+  onLoad: () => void;
+  onSignOut: () => void;
+}) {
+  return (
+    <section className={classNames("mt-5 overflow-hidden rounded-3xl", glassPanel)}>
+      <div className="grid gap-0 lg:grid-cols-[1fr_0.82fr]">
+        <div className="p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-300 text-slate-950">
+              <Cloud className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Online board</p>
+              <h2 className="mt-1 text-xl font-semibold">
+                {user ? "Save this Jamaica board across devices." : "Keep your Jamaica ideas recoverable."}
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+                Sign in with email to save places, experiences, imported links, collections, and map anchors to your account.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <CloudBoardMetric label="Board items" value={totalItems.toString()} />
+            <CloudBoardMetric label="Signed in" value={user ? "Yes" : "No"} />
+            <CloudBoardMetric label="Last online save" value={formatCloudBoardDate(updatedAt)} />
+          </div>
+        </div>
+
+        <div className="border-t border-slate-800 bg-slate-950/45 p-4 sm:p-5 lg:border-l lg:border-t-0">
+          {!ready && (
+            <div className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-3 text-sm leading-6 text-amber-100">
+              Online boards are not available in this build yet. This device still keeps your saved ideas locally.
+            </div>
+          )}
+
+          {ready && !user && (
+            <form onSubmit={onSignIn} className="space-y-3">
+              <label className="block">
+                <span className="text-[0.65rem] uppercase tracking-[0.22em] text-slate-500">Email sign-in</span>
+                <span className={classNames("mt-2 flex items-center gap-2 rounded-2xl px-3 py-2", glassControl)}>
+                  <Mail className="h-4 w-4 text-cyan-300" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => onEmailChange(event.target.value)}
+                    placeholder="you@example.com"
+                    className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none"
+                  />
+                </span>
+              </label>
+              <button
+                type="submit"
+                disabled={isBusy}
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950 disabled:opacity-50"
+              >
+                <Mail className="h-4 w-4" /> {isBusy ? "Sending..." : "Send sign-in link"}
+              </button>
+            </form>
+          )}
+
+          {ready && user && (
+            <div>
+              <p className="text-[0.65rem] uppercase tracking-[0.22em] text-slate-500">Signed in as</p>
+              <p className="mt-1 truncate text-sm font-semibold text-slate-100">{user.email}</p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={onSave}
+                  disabled={isBusy}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950 disabled:opacity-50"
+                >
+                  <UploadCloud className="h-4 w-4" /> Save online
+                </button>
+                <button
+                  type="button"
+                  onClick={onLoad}
+                  disabled={isBusy}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-cyan-300/50 px-4 py-2 text-xs font-bold text-cyan-100 disabled:opacity-50"
+                >
+                  <RefreshCcw className="h-4 w-4" /> Load online
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={onSignOut}
+                disabled={isBusy}
+                className="mt-3 inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-slate-700 px-4 py-2 text-xs font-bold text-slate-300 disabled:opacity-50"
+              >
+                <LogOut className="h-4 w-4" /> Sign out
+              </button>
+            </div>
+          )}
+
+          {statusMessage && <p className="mt-3 text-xs leading-5 text-cyan-100">{statusMessage}</p>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CloudBoardMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+      <p className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-1 truncate text-xs font-semibold text-slate-100">{value}</p>
     </div>
   );
 }
@@ -1345,6 +1640,18 @@ function categoryToCollection(category: ImportedIdeaCategory): CollectionId {
 
 function formatImportedCategory(category: ImportedIdeaCategory): string {
   return IMPORT_CATEGORIES.find((item) => item.id === category)?.label ?? "Idea";
+}
+
+function formatCloudBoardDate(value: string): string {
+  if (!value) return "Not yet";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Saved";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function getSharedIdeaFromUrl(): { title: string; url: string; note: string } | null {

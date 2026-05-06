@@ -6,12 +6,13 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 - Interactive map powered by MapLibre with road-following route overlays
 - Jamaica-specific road pacing, weather cues, and local food/music/beach/culture content
 - Saved boards with automatic Google Maps, TikTok, Instagram, YouTube, and article link parsing
+- Optional email sign-in for cloud-saved Jamaica boards across devices
 - PWA share target for sending external travel links into the Saved import flow
 - Region-aware trip planner with editable route order, route pacing, drive estimates, budget, dates, and ICS export
 - Trip planning confidence panel for share links, stays, flights, road routes, and events
 - Flight snapshot with live schedules or saved examples
 - Island calendar and stay recommendations with live data or curated examples
-- Optional Supabase-backed view-only trip sharing with local edit-token updates
+- Optional Supabase-backed cloud boards and view-only trip sharing with local edit-token updates
 - Production QA deletes its own Supabase test share rows through the protected cleanup RPC
 - PWA manifest, install icons, app shortcuts, and same-origin offline cache for fallback data/assets
 
@@ -25,8 +26,8 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 Copy `.env.example` to `.env.local` and fill any of the following:
 
 ```
-VITE_SUPABASE_URL=your_supabase_url           # enables trip sharing
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key # enables trip sharing
+VITE_SUPABASE_URL=your_supabase_url           # enables cloud boards + trip sharing
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key # enables cloud boards + trip sharing
 AVIATIONSTACK_API_KEY=your_key                # server-only live flights through /api/flights
 AVIATIONSTACK_DISABLED=false                  # set true locally to force saved examples
 AVIATIONSTACK_CACHE_TTL_SECONDS=900           # cache live flight lookups for 15 minutes
