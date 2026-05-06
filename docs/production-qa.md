@@ -30,7 +30,7 @@ Result: 3 Playwright tests passed.
 Coverage:
 
 - Live app routes: `/`, `/?tab=map`
-- PWA assets: `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `icon-1024.png`, `apple-touch-icon.png`, `sw.js`
+- PWA assets: `manifest.webmanifest`, favicons, install icons from 72px to 1024px, maskable icons, `apple-touch-icon.png`, `sw.js`
 - Mobile screens: Home, Explore places, Explore experiences, Map, Saved import, Trips
 - Desktop screens: Home hero navigation, Map
 - User flows: save destination, auto-parse/import saved idea, add saved idea to trip, export ICS, share-link availability

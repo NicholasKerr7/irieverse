@@ -303,9 +303,18 @@ async function verifyProductionAssets(request) {
     "/",
     "/?tab=map",
     "/manifest.webmanifest",
+    "/favicon-16.png",
+    "/favicon-32.png",
+    "/icon-72.png",
+    "/icon-96.png",
+    "/icon-128.png",
+    "/icon-144.png",
     "/icon-192.png",
+    "/icon-384.png",
     "/icon-512.png",
     "/icon-1024.png",
+    "/maskable-icon-192.png",
+    "/maskable-icon-512.png",
     "/apple-touch-icon.png",
     "/sw.js",
   ];
@@ -317,7 +326,21 @@ async function verifyProductionAssets(request) {
 
   const manifest = await (await request.get(`${BASE_URL}/manifest.webmanifest`)).json();
   expect(manifest.icons.map((icon) => icon.src)).toEqual(
-    expect.arrayContaining(["/icon-192.png", "/icon-512.png", "/icon-1024.png"])
+    expect.arrayContaining([
+      "/icon-72.png",
+      "/icon-96.png",
+      "/icon-128.png",
+      "/icon-144.png",
+      "/icon-192.png",
+      "/icon-384.png",
+      "/icon-512.png",
+      "/icon-1024.png",
+      "/maskable-icon-192.png",
+      "/maskable-icon-512.png",
+    ])
+  );
+  expect(manifest.icons.filter((icon) => icon.purpose === "maskable").map((icon) => icon.src)).toEqual(
+    expect.arrayContaining(["/maskable-icon-192.png", "/maskable-icon-512.png"])
   );
   expect(manifest.shortcuts.map((shortcut) => shortcut.url)).toEqual(
     expect.arrayContaining(["/?tab=explore", "/?tab=map", "/?tab=trips"])

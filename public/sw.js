@@ -1,10 +1,19 @@
-const CACHE_NAME = "irieverse-travel-os-v4";
+const CACHE_NAME = "irieverse-travel-os-v5";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
+  "/favicon-16.png",
+  "/favicon-32.png",
+  "/icon-72.png",
+  "/icon-96.png",
+  "/icon-128.png",
+  "/icon-144.png",
   "/icon-192.png",
+  "/icon-384.png",
   "/icon-512.png",
   "/icon-1024.png",
+  "/maskable-icon-192.png",
+  "/maskable-icon-512.png",
   "/apple-touch-icon.png",
   "/data/bookings.json",
   "/data/events.json",
@@ -74,9 +83,18 @@ function shouldCache(url) {
   return (
     url.pathname.startsWith("/assets/") ||
     url.pathname.startsWith("/data/") ||
+    url.pathname === "/favicon-16.png" ||
+    url.pathname === "/favicon-32.png" ||
+    url.pathname === "/icon-72.png" ||
+    url.pathname === "/icon-96.png" ||
+    url.pathname === "/icon-128.png" ||
+    url.pathname === "/icon-144.png" ||
     url.pathname === "/icon-192.png" ||
+    url.pathname === "/icon-384.png" ||
     url.pathname === "/icon-512.png" ||
     url.pathname === "/icon-1024.png" ||
+    url.pathname === "/maskable-icon-192.png" ||
+    url.pathname === "/maskable-icon-512.png" ||
     url.pathname === "/apple-touch-icon.png" ||
     url.pathname === "/manifest.webmanifest"
   );

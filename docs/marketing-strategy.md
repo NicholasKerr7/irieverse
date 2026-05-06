@@ -257,9 +257,18 @@ Already available:
 - `public/screenshots/mobile-trips.png`
 - `public/screenshots/desktop-home.png`
 - `public/screenshots/desktop-map.png`
+- `public/favicon-16.png`
+- `public/favicon-32.png`
+- `public/icon-72.png`
+- `public/icon-96.png`
+- `public/icon-128.png`
+- `public/icon-144.png`
 - `public/icon-192.png`
+- `public/icon-384.png`
 - `public/icon-512.png`
 - `public/icon-1024.png`
+- `public/maskable-icon-192.png`
+- `public/maskable-icon-512.png`
 - `public/apple-touch-icon.png`
 - `public/press-kit.html`
 
