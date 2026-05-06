@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import { CardGridSkeleton } from "./LoadingStates";
 import type { BookingSourceMeta } from "../services/bookings";
 import type { BookingOption } from "../types/travel";
 import { classNames } from "../utils/classNames";
@@ -48,9 +49,11 @@ export function BookingRecommendations({
 
       {error && <p className="text-xs text-rose-400">{error}</p>}
 
-      {!error && !bookings.length && (
+      {!error && isLoading && !bookings.length && <CardGridSkeleton count={2} />}
+
+      {!error && !isLoading && !bookings.length && (
         <p className="text-xs text-slate-400">
-          {isLoading ? "Checking our booking partners…" : "No tailored stays available for this combo yet."}
+          No tailored stays available for this combo yet.
         </p>
       )}
 

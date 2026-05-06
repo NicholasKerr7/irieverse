@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { LiveEvent } from "../types/travel";
 import { CalendarDays, RefreshCcw } from "lucide-react";
+import { CardGridSkeleton } from "./LoadingStates";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassPanel } from "../utils/glass";
 
@@ -42,9 +43,11 @@ export const LiveEventsFeed = memo(function LiveEventsFeed({
 
       {error && <p className="text-xs text-rose-400">{error}</p>}
 
-      {!error && !events.length && (
+      {!error && isLoading && !events.length && <CardGridSkeleton count={2} />}
+
+      {!error && !isLoading && !events.length && (
         <p className="text-xs text-slate-400">
-          {isLoading ? "Checking the island calendar…" : "No events for this region right now."}
+          No events for this region right now.
         </p>
       )}
 

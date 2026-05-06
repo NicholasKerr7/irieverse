@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { DesktopNav } from "../DesktopNav";
+import { ScreenSkeleton } from "../LoadingStates";
 import { ThemeToggleButton } from "../ThemeToggleButton";
 import { useTravelOS } from "../../hooks/useTravelOS";
 import { ExploreScreen } from "../../screens/ExploreScreen";
@@ -76,24 +77,9 @@ export function MobileShell() {
         </div>
       )}
       <div className="pb-[calc(env(safe-area-inset-bottom)+6.1rem)] md:pb-0">
-        <Suspense fallback={<ScreenFallback />}>{screen}</Suspense>
+        <Suspense fallback={<ScreenSkeleton label={getLoadingLabel(activeTab)} />}>{screen}</Suspense>
       </div>
       <BottomNav activeTab={activeTab} onChange={setActiveTab} />
-    </div>
-  );
-}
-
-function ScreenFallback() {
-  return (
-    <div className="app-shell flex min-h-dvh items-center justify-center px-4 text-center">
-      <div className="glass-panel-strong w-full max-w-sm rounded-3xl border p-5">
-        <div className="mx-auto h-10 w-10 animate-pulse rounded-2xl bg-cyan-300/25" />
-        <p className="mt-4 text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300">Loading</p>
-        <div className="mt-4 space-y-2">
-          <div className="mx-auto h-3 w-48 animate-pulse rounded-full bg-slate-700" />
-          <div className="mx-auto h-3 w-32 animate-pulse rounded-full bg-slate-800" />
-        </div>
-      </div>
     </div>
   );
 }
@@ -104,6 +90,14 @@ function getInitialTab(): MobileTabId {
   const tab = params.get("tab");
   if (isMobileTabId(tab)) return tab;
   return params.has("trip") ? "trips" : "home";
+}
+
+function getLoadingLabel(tab: MobileTabId): string {
+  if (tab === "map") return "Building Jamaica map";
+  if (tab === "saved") return "Opening saved board";
+  if (tab === "trips") return "Preparing trip plan";
+  if (tab === "explore") return "Loading Jamaica ideas";
+  return "Preparing IrieVerse";
 }
 
 function isMobileTabId(value: string | null): value is MobileTabId {

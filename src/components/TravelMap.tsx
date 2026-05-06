@@ -3,6 +3,7 @@ import Map, { Layer, Marker, Source, type MapRef, type ViewStateChangeEvent } fr
 import type { Destination, RouteLeg } from "../types/travel";
 import type { ThemeMode } from "../hooks/useTravelOS";
 import { MapPin } from "lucide-react";
+import { MapCanvasSkeleton } from "./LoadingStates";
 import { classNames } from "../utils/classNames";
 import { formatMiles } from "../utils/format";
 import { getRouteColor, type MapPinCategory } from "../utils/mapRoutes";
@@ -337,7 +338,7 @@ export const TravelMap = memo(function TravelMap({
     <div
       ref={containerRef}
       className={classNames(
-        "rounded-3xl border border-slate-800 overflow-hidden bg-slate-950/60",
+        "relative rounded-3xl border border-slate-800 overflow-hidden bg-slate-950/60",
         className
       )}
     >
@@ -552,6 +553,7 @@ export const TravelMap = memo(function TravelMap({
           );
         })}
       </Map>
+      {!mapReady && <MapCanvasSkeleton />}
     </div>
   );
 });
