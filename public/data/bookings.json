@@ -3,11 +3,11 @@
     {
       "id": "mbj-boutique-bliss",
       "title": "Boutique Bliss on the Hip Strip",
-      "provider": "Stay22",
+      "provider": "Curated Jamaica pick",
       "type": "hotel",
       "price": 245,
       "currency": "USD",
-      "url": "https://example.com/book/hip-strip-boutique",
+      "url": "https://www.google.com/search?q=Boutique+hotel+Hip+Strip+Montego+Bay",
       "description": "Ocean-view suites steps from jerk smoke pits + curated vinyl nights.",
       "rating": 4.7,
       "perks": ["Breakfast included", "Rooftop plunge pool", "Late checkout"]
@@ -15,11 +15,11 @@
     {
       "id": "mbj-flight-jetblue",
       "title": "JetBlue Mint · NYC → MBJ nonstop",
-      "provider": "Duffel",
+      "provider": "Curated flight pick",
       "type": "flight",
       "price": 620,
       "currency": "USD",
-      "url": "https://example.com/book/jetblue-mbj",
+      "url": "https://www.google.com/search?q=flights+JFK+to+MBJ",
       "description": "Midday departure with lie-flat seats and Gate 5 lounge access.",
       "perks": ["2 checked bags", "Priority security"]
     }
@@ -28,11 +28,11 @@
     {
       "id": "kin-skyline-lofts",
       "title": "Skyline Lofts & Sound Studio",
-      "provider": "Stay22",
+      "provider": "Curated Jamaica pick",
       "type": "hotel",
       "price": 210,
       "currency": "USD",
-      "url": "https://example.com/book/skyline-lofts",
+      "url": "https://www.google.com/search?q=boutique+hotel+Kingston+Jamaica",
       "description": "Industrial lofts with attached dub studio + rooftop vinyl bar.",
       "rating": 4.5,
       "perks": ["Studio drop-in", "Night market shuttle"]

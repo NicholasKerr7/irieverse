@@ -821,11 +821,11 @@ export function useTravelOS() {
 
   const handleExportItinerary = () => {
     if (!plannerStartDate) {
-      alert("Please choose a trip start date before exporting.");
+      setTripStatusMessage("Choose a trip start date before exporting.");
       return;
     }
     if (!itinerary.daysPlan.length) {
-      alert("Itinerary is empty. Adjust planner settings and try again.");
+      setTripStatusMessage("Add at least one itinerary day before exporting.");
       return;
     }
     try {
@@ -839,9 +839,10 @@ export function useTravelOS() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      setTripStatusMessage("Calendar file downloaded.");
     } catch (error) {
       console.error(error);
-      alert("Unable to generate itinerary export right now.");
+      setTripStatusMessage("Calendar export could not be created right now.");
     }
   };
 
