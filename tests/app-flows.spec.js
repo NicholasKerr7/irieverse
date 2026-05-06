@@ -41,6 +41,26 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   expect(issues).toEqual([]);
 });
 
+test("share-target imports preserve provided titles", async ({ page }) => {
+  const issues = collectPageIssues(page);
+  const params = new URLSearchParams({
+    tab: "saved",
+    source: "share-target",
+    shared_title: "QA Blue Mountain coffee stop",
+    shared_url: "https://maps.google.com/?q=Blue+Mountain+Coffee+Jamaica",
+    shared_text: "Production QA import idea attached to a Jamaica board.",
+  });
+
+  await page.goto(`/?${params}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText("Shared idea ready to save")).toBeVisible();
+  await expect(page.getByPlaceholder("Jerk stop in Port Antonio")).toHaveValue("QA Blue Mountain coffee stop");
+  await page.waitForTimeout(1200);
+  await expect(page.getByPlaceholder("Jerk stop in Port Antonio")).toHaveValue("QA Blue Mountain coffee stop");
+  await expect(page.locator("textarea")).toHaveValue("Production QA import idea attached to a Jamaica board.");
+
+  expect(issues).toEqual([]);
+});
+
 test("trip day cards support area edits, locks, and single-day add-on refresh", async ({ page }) => {
   const issues = collectPageIssues(page);
 
@@ -163,7 +183,10 @@ function collectPageIssues(page) {
 
   page.on("console", (message) => {
     const text = message.text();
-    const expectedLocalFetchNoise = text.includes("TypeError: Failed to fetch") || text.includes("Failed to load resource");
+    const expectedLocalFetchNoise =
+      text.includes("TypeError: Failed to fetch") ||
+      text.includes("Failed to load resource") ||
+      (text.includes("api.open-meteo.com") && text.includes("CORS policy"));
     if (message.type() === "error" && !expectedLocalFetchNoise) {
       issues.push(`console: ${text}`);
     }

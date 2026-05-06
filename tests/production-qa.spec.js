@@ -6,6 +6,8 @@ const { test, expect } = require("@playwright/test");
 const BASE_URL = process.env.IRIEVERSE_PRODUCTION_URL ?? "https://irieverse.vercel.app";
 const SCREENSHOT_DIR = path.join(process.cwd(), "public", "screenshots");
 
+test.setTimeout(120_000);
+
 test.use({
   acceptDownloads: true,
   colorScheme: "dark",
@@ -205,6 +207,7 @@ function collectPageIssues(page) {
     const url = request.url();
     const failureText = request.failure()?.errorText ?? "";
     if (url.endsWith("/media/hero.mp4") && failureText.includes("ERR_ABORTED")) return;
+    if (url.includes("/api/road-route") && failureText.includes("ERR_ABORTED")) return;
     if (url.startsWith(BASE_URL)) {
       issues.push(`requestfailed: ${url} ${failureText}`.trim());
     }

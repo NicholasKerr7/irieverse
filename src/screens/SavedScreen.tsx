@@ -201,7 +201,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     const suggestion = analyzeImportLink(sharedIdea);
     setImportForm((prev) => ({
       ...prev,
-      title: suggestion.title || sharedIdea.title || prev.title,
+      title: sharedIdea.title || suggestion.title || prev.title,
       url: sharedIdea.url || prev.url,
       note: sharedIdea.note || prev.note,
       category: suggestion.category,
