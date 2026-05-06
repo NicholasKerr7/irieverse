@@ -260,6 +260,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                   onToggleRouteStopLock={app.toggleRouteStopLock}
                   onSetDayExperience={app.setDayExperience}
                   onClearDayExperience={app.clearDayExperience}
+                  onRefreshDayExperience={app.refreshDayExperience}
                   onSetDayNote={app.setDayNote}
                   onClearDayNote={app.clearDayNote}
                 />
@@ -1058,27 +1059,44 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
               </div>
             </div>
             {experienceOptions.length > 0 && (
-              <label className="mt-3 block">
-                <span className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">Swap add-on</span>
-                <select
-                  value={experienceOverrideId}
-                  onChange={(event) => {
-                    if (event.target.value) {
-                      app.setDayExperience(day.day, event.target.value);
-                    } else {
-                      app.clearDayExperience(day.day);
-                    }
-                  }}
-                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200"
+              <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <label className="min-w-0">
+                  <span className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">Swap add-on</span>
+                  <select
+                    value={experienceOverrideId}
+                    onChange={(event) => {
+                      if (event.target.value) {
+                        app.setDayExperience(day.day, event.target.value);
+                      } else {
+                        app.clearDayExperience(day.day);
+                      }
+                    }}
+                    className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-slate-200"
+                  >
+                    <option value="">Use best match</option>
+                    {experienceOptions.map((experience) => (
+                      <option key={experience.id} value={experience.id}>
+                        {experience.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => app.refreshDayExperience(day.day)}
+                  className="inline-flex min-h-10 items-center justify-center gap-1 self-end rounded-xl border border-cyan-300/40 px-3 py-2 text-xs font-semibold text-cyan-100"
                 >
-                  <option value="">Use best match</option>
-                  {experienceOptions.map((experience) => (
-                    <option key={experience.id} value={experience.id}>
-                      {experience.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <Sparkles className="h-3.5 w-3.5" /> Try another
+                </button>
+                <button
+                  type="button"
+                  onClick={() => app.clearDayExperience(day.day)}
+                  disabled={!experienceOverrideId}
+                  className="inline-flex min-h-10 items-center justify-center gap-1 self-end rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 disabled:opacity-40"
+                >
+                  <X className="h-3.5 w-3.5" /> Use auto
+                </button>
+              </div>
             )}
             </article>
           );

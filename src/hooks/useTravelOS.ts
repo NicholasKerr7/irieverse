@@ -51,6 +51,7 @@ import type {
   WeatherPlanDay,
 } from "../types/travel";
 import { formatDriveTime, formatLocalTimeForAirport } from "../utils/format";
+import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
 import {
   addDaysToISODate,
   arraysEqual,
@@ -1062,6 +1063,28 @@ export function useTravelOS() {
     });
   };
 
+  const refreshDayExperience = (day: number) => {
+    const safeDay = Math.round(day);
+    if (safeDay < 1 || safeDay > plannerDays) return;
+
+    const itineraryDay = itinerary.daysPlan[safeDay - 1];
+    if (!itineraryDay) return;
+
+    const options = getExperienceOptionsForDay(itineraryDay, EXPERIENCES.length, savedExperiences);
+    if (!options.length) return;
+
+    const currentExperienceId = dayExperienceOverrides[String(safeDay)] ?? itineraryDay.experience?.id;
+    const currentIndex = options.findIndex((experience) => experience.id === currentExperienceId);
+    const nextExperience = options[(currentIndex + 1) % options.length] ?? options[0];
+    if (!nextExperience || nextExperience.id === currentExperienceId) return;
+
+    saveExperience(nextExperience.id);
+    setDayExperienceOverrides((prev) => ({
+      ...prev,
+      [String(safeDay)]: nextExperience.id,
+    }));
+  };
+
   const setDayNote = (day: number, note: string) => {
     const safeDay = Math.round(day);
     if (safeDay < 1 || safeDay > plannerDays) return;
@@ -1241,6 +1264,7 @@ export function useTravelOS() {
     setRouteStopForDay,
     setDayExperience,
     clearDayExperience,
+    refreshDayExperience,
     setDayNote,
     clearDayNote,
     handleExportItinerary,

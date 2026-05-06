@@ -1,4 +1,4 @@
-import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, Lock, MapPin, Music2, PartyPopper, Route, StickyNote, Unlock, Utensils, WalletCards, X } from "lucide-react";
+import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, Lock, MapPin, Music2, PartyPopper, Route, Sparkles, StickyNote, Unlock, Utensils, WalletCards, X } from "lucide-react";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import type { ImportedIdea, ItineraryPlan } from "../types/travel";
 import { classNames } from "../utils/classNames";
@@ -20,6 +20,7 @@ interface ItineraryViewProps {
   onToggleRouteStopLock?: (destinationId: string) => void;
   onSetDayExperience?: (day: number, experienceId: string) => void;
   onClearDayExperience?: (day: number) => void;
+  onRefreshDayExperience?: (day: number) => void;
   onSetDayNote?: (day: number, note: string) => void;
   onClearDayNote?: (day: number) => void;
 }
@@ -36,11 +37,13 @@ export function ItineraryView({
   onToggleRouteStopLock,
   onSetDayExperience,
   onClearDayExperience,
+  onRefreshDayExperience,
   onSetDayNote,
   onClearDayNote,
 }: ItineraryViewProps) {
   const { base, days, plannerVibe, budgetPerDay, daysPlan, routeSummary } = itinerary;
   const canEditExperiences = Boolean(onSetDayExperience && onClearDayExperience);
+  const canRefreshExperiences = Boolean(onRefreshDayExperience);
   const canEditNotes = Boolean(onSetDayNote && onClearDayNote);
   const lockedDestinationIds = new Set(lockedRouteDestinationIds);
 
@@ -299,8 +302,8 @@ export function ItineraryView({
                     </p>
                   </div>
                 </div>
-                {canEditExperiences && experienceOptions.length > 0 && (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                {(canEditExperiences || canRefreshExperiences) && experienceOptions.length > 0 && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
                     <label className="min-w-0">
                       <span className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">Swap add-on</span>
                       <select
@@ -322,13 +325,22 @@ export function ItineraryView({
                         ))}
                       </select>
                     </label>
+                    {canRefreshExperiences && (
+                      <button
+                        type="button"
+                        onClick={() => onRefreshDayExperience?.(day.day)}
+                        className="inline-flex min-h-10 items-center justify-center gap-1 self-end rounded-xl border border-cyan-300/40 px-3 py-2 text-xs font-semibold text-cyan-100"
+                      >
+                        <Sparkles className="h-3.5 w-3.5" /> Try another
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => onClearDayExperience?.(day.day)}
                       disabled={!experienceOverrideId}
                       className="inline-flex min-h-10 items-center justify-center gap-1 self-end rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 disabled:opacity-40"
                     >
-                      <X className="h-3.5 w-3.5" /> Reset
+                      <X className="h-3.5 w-3.5" /> Use auto
                     </button>
                   </div>
                 )}
