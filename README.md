@@ -56,6 +56,7 @@ See `docs/production-env.md` for production platform setup, booking API response
 ## Launch checks
 - `npx tsc --noEmit`
 - `npm run build`
+- `npm run qa:local`
 - `npm run qa:production`
 - `npm audit --omit=dev --audit-level=high`
 

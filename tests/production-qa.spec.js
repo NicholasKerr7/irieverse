@@ -66,7 +66,7 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
   await screenshot(page, "mobile-saved-import.png");
 
   await page.getByRole("button", { name: /^Trip$/ }).first().click();
-  await expect(page.getByText("Build your Jamaica plan.")).toBeVisible();
+  await expect(page.getByText("Build your Jamaica trip.")).toBeVisible();
   await expect(page.getByText("Upcoming trip")).toBeVisible();
   await screenshot(page, "mobile-trips.png");
 

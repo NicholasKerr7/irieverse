@@ -45,6 +45,21 @@ Notes:
 - The Map screen now opens with the selected-place sheet compact by default so road routes stay visible on mobile and desktop.
 - If Supabase sharing is enabled, the share check creates a disposable test share row from the generated QA trip state and removes it with the local edit token before the test completes.
 
+## Local regression QA
+
+Run the local suite before production QA when changing Saved imports or Trips editing:
+
+```bash
+npm run qa:local
+```
+
+The local suite starts Vite automatically and checks:
+
+- duplicate imported links update the existing saved idea instead of creating another card
+- Google Maps imports keep their Jamaica map anchor
+- trip day cards can change a day area, lock/unlock the day, refresh one add-on, and return to the automatic match
+- the tested mobile view does not introduce horizontal overflow
+
 Screenshots:
 
 - `public/screenshots/mobile-home.png`

@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "qa:local": "playwright test --config=playwright.local.config.cjs --reporter=line",
     "qa:production": "playwright test tests/production-qa.spec.js --reporter=line"
   },
   "dependencies": {
