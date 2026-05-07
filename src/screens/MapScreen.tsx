@@ -4,10 +4,12 @@ import {
   CalendarDays,
   Clock3,
   Compass,
+  Globe2,
   Heart,
   Layers3,
   MapPin,
   Navigation,
+  Phone,
   Plus,
   Route,
   Search,
@@ -1231,6 +1233,14 @@ function PlaceDetailSheet({
   const liveFacts = buildLivePlaceFacts(liveDetails);
   const facts = liveFacts.length ? liveFacts : curatedFacts;
   const whatToExpect = isDestination ? target.destination.highlights.slice(0, 4) : target.experience.whatToExpect.slice(0, 4);
+  const liveVisitRows = buildLiveVisitRows(liveDetails);
+  const openStatusLabel = isLiveDetailsLoading
+    ? "Checking latest"
+    : liveDetails?.openNow === true
+      ? "Open now"
+      : liveDetails?.openNow === false
+        ? "Closed now"
+        : "";
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-950/35 p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-sm sm:p-5">
@@ -1267,6 +1277,37 @@ function PlaceDetailSheet({
             ))}
           </div>
 
+          {(isLiveDetailsLoading || liveVisitRows.length > 0) && (
+            <section className="mt-4 rounded-3xl border border-sky-100 bg-sky-50/80 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[0.65rem] font-black uppercase tracking-[0.16em] text-sky-600">Visit details</p>
+                  <p className="mt-1 text-lg font-black text-slate-950">{liveDetails?.name || title}</p>
+                </div>
+                {openStatusLabel && (
+                  <span
+                    className={classNames(
+                      "inline-flex min-h-8 items-center rounded-full px-3 py-1 text-xs font-black",
+                      isLiveDetailsLoading
+                        ? "bg-white text-sky-700"
+                        : liveDetails?.openNow
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-rose-100 text-rose-700"
+                    )}
+                  >
+                    {openStatusLabel}
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-3 grid gap-2">
+                {liveVisitRows.map((row) => (
+                  <LiveVisitRow key={row.label} {...row} />
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex items-start justify-between gap-3">
               <h3 className="text-lg font-black">About this place</h3>
@@ -1301,30 +1342,18 @@ function PlaceDetailSheet({
             ))}
           </div>
 
-          {(liveDetails?.weekdayDescriptions.length || liveDetails?.websiteUrl) && (
+          {!!liveDetails?.weekdayDescriptions.length && (
             <section className="mt-3 rounded-3xl border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">Latest Details</h3>
-                {liveDetails.websiteUrl && (
-                  <a
-                    href={liveDetails.websiteUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex min-h-9 items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-xs font-black text-slate-600 transition hover:border-sky-300 hover:text-sky-700"
-                  >
-                    Website <ArrowUpRight className="h-3.5 w-3.5" />
-                  </a>
-                )}
+                <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">Hours</h3>
               </div>
-              {!!liveDetails.weekdayDescriptions.length && (
-                <div className="mt-3 grid gap-1.5">
-                  {liveDetails.weekdayDescriptions.slice(0, 7).map((description) => (
-                    <p key={description} className="rounded-2xl bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-600">
-                      {description}
-                    </p>
-                  ))}
-                </div>
-              )}
+              <div className="mt-3 grid gap-1.5">
+                {liveDetails.weekdayDescriptions.slice(0, 7).map((description) => (
+                  <p key={description} className="rounded-2xl bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-600">
+                    {description}
+                  </p>
+                ))}
+              </div>
             </section>
           )}
 
@@ -1354,6 +1383,88 @@ function buildLivePlaceFacts(details: PlaceDetails | null): Array<{ label: strin
     { label: "Price", value: details.priceLevel },
     { label: "Status", value: details.businessStatus },
   ].filter((fact) => fact.value);
+}
+
+type LiveVisitRowProps = {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  href?: string;
+};
+
+function buildLiveVisitRows(details: PlaceDetails | null): LiveVisitRowProps[] {
+  if (!details) return [];
+
+  const address = details.shortAddress || details.address;
+  const phone = details.phone || details.internationalPhone;
+
+  return [
+    {
+      icon: MapPin,
+      label: "Address",
+      value: address,
+      href: details.mapsUrl || undefined,
+    },
+    {
+      icon: Phone,
+      label: "Phone",
+      value: phone,
+      href: phone ? `tel:${phone.replace(/[^\d+]/g, "")}` : undefined,
+    },
+    {
+      icon: Globe2,
+      label: "Website",
+      value: details.websiteUrl ? readableUrl(details.websiteUrl) : "",
+      href: details.websiteUrl || undefined,
+    },
+    {
+      icon: Navigation,
+      label: "Open in Maps",
+      value: details.mapsUrl ? "Google Maps listing" : "",
+      href: details.mapsUrl || undefined,
+    },
+  ].filter((row) => row.value);
+}
+
+function LiveVisitRow({ icon: Icon, label, value, href }: LiveVisitRowProps) {
+  const content = (
+    <>
+      <Icon className="h-4 w-4 shrink-0 text-sky-600" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[0.62rem] font-black uppercase tracking-[0.14em] text-slate-400">{label}</span>
+        <span className="mt-0.5 block truncate text-sm font-black text-slate-800">{value}</span>
+      </span>
+      {href && <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-400" />}
+    </>
+  );
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        target={href.startsWith("tel:") ? undefined : "_blank"}
+        rel={href.startsWith("tel:") ? undefined : "noreferrer"}
+        className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/80 bg-white px-3 py-2 text-left shadow-sm shadow-sky-100/60 transition hover:border-sky-200"
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/80 bg-white px-3 py-2 text-left shadow-sm shadow-sky-100/60">
+      {content}
+    </div>
+  );
+}
+
+function readableUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    return value;
+  }
 }
 
 function humanizePlaceType(value: string): string {

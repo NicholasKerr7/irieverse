@@ -160,6 +160,50 @@ test("map place details open with curated fallback content", async ({ page }) =>
   expect(issues).toEqual([]);
 });
 
+test("map place details surface live visit data when available", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await page.route("**/api/place-details**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          id: "places/negril-live",
+          name: "Negril",
+          address: "Norman Manley Boulevard, Negril, Jamaica",
+          shortAddress: "Norman Manley Boulevard, Negril",
+          mapsUrl: "https://maps.google.com/?cid=123",
+          websiteUrl: "https://visitnegril.example",
+          phone: "+1 876-555-0199",
+          rating: 4.7,
+          userRatingCount: 1240,
+          openNow: true,
+          weekdayDescriptions: ["Monday: 9:00 AM - 6:00 PM"],
+          primaryType: "Beach",
+          source: "google-places",
+        },
+        meta: { source: "google-places", providerConfigured: true },
+      }),
+    });
+  });
+
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await page.waitForTimeout(2500);
+  await page.getByRole("button", { name: /Day 2/ }).click();
+  await page.getByRole("button", { name: /Details/ }).first().click();
+
+  const detailSheet = page.getByTestId("place-detail-sheet");
+  await expect(detailSheet.getByText("Visit details")).toBeVisible();
+  await expect(detailSheet.getByText("Open now").first()).toBeVisible();
+  await expect(detailSheet.getByText("Norman Manley Boulevard, Negril").first()).toBeVisible();
+  await expect(detailSheet.getByRole("link", { name: /Website/ })).toBeVisible();
+  await expect(detailSheet.getByText("Monday: 9:00 AM - 6:00 PM")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 async function openCleanTab(page, tab, storageKeys) {
   await page.goto(`/?tab=${tab}`, { waitUntil: "domcontentloaded" });
   await page.evaluate((keys) => {
