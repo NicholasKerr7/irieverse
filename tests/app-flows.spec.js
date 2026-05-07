@@ -131,6 +131,7 @@ test("empty states give clear recovery actions", async ({ page }) => {
   await expect(page.getByText("No experiences matched")).toBeVisible();
 
   await openCleanTab(page, "map", []);
+  await page.getByLabel("Search and filters").click();
   await page.getByPlaceholder("Search beaches, food, music, culture...").fill("zzzz-no-match");
   await expect(page.getByText("No map pins match")).toBeVisible();
   await page.getByText("Clear search", { exact: true }).click();

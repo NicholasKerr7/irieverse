@@ -439,6 +439,9 @@ export const TravelMap = memo(function TravelMap({
         {routeSegments.map((segment, index) => {
           const opacity = getSegmentRevealOpacity(routeRevealProgress, index);
           const isSelectedRouteLeg = segment.id === selectedRouteLegId;
+          const shouldShowRouteLabel = selectedRouteLegId ? isSelectedRouteLeg : routeSegments.length <= 3;
+
+          if (!shouldShowRouteLabel) return null;
 
           return (
           <Marker

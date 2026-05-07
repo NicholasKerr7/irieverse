@@ -1,20 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  AlertTriangle,
   ArrowUpRight,
   CalendarDays,
-  ChevronDown,
-  ChevronUp,
   Clock3,
   Compass,
-  Gauge,
   Heart,
   Layers3,
   MapPin,
   Navigation,
-  Plane,
   Plus,
-  Radar,
   Route,
   Search,
   Sparkles,
@@ -34,7 +28,6 @@ import {
   buildDrivingGuideUrl,
   destinationMatchesCategory,
   getDestinationPinCategory,
-  getLegDistance,
   getLinkedExperiences,
   getNearbyExperiences,
   getRouteColor,
@@ -49,10 +42,12 @@ type MapScreenProps = {
   onNavigate: (tab: MobileTabId) => void;
 };
 
+type MapDrawerTab = "overview" | "unplanned" | `day-${number}`;
+
 export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const [activeCategory, setActiveCategory] = useState<MapCategoryId>("all");
   const [sheetExpanded, setSheetExpanded] = useState(false);
-  const [showRoutePreview, setShowRoutePreview] = useState(true);
+  const [activeDrawerTab, setActiveDrawerTab] = useState<MapDrawerTab>("overview");
   const [focusedDestinationId, setFocusedDestinationId] = useState(app.plannerBaseId);
   const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(null);
   const [routeStatus, setRouteStatus] = useState<RouteRenderStatus>({
@@ -102,8 +97,6 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
 
   const selectedDestination =
     DESTINATIONS.find((destination) => destination.id === focusedDestinationId) ?? visibleDestinations[0] ?? DESTINATIONS[0];
-  const selectedCategory = getDestinationPinCategory(selectedDestination);
-  const isSaved = app.savedPlaces.has(selectedDestination.id);
   const routeSummary = app.itinerary.routeSummary;
   const routeLegOptions = useMemo(
     () => routeSummary.legs.map((leg, index) => ({
@@ -118,21 +111,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     () => new Map(routeDetails.map((detail) => [detail.id, detail])),
     [routeDetails]
   );
-  const selectedRouteLeg = selectedRouteLegId
-    ? routeLegOptions.find((option) => option.id === selectedRouteLegId) ?? null
-    : null;
-  const selectedRouteDetail = selectedRouteLegId
-    ? routeDetails.find((detail) => detail.id === selectedRouteLegId) ?? null
-    : null;
-  const selectedRouteStop = routeSummary.stops.find((stop) => stop.destinationId === selectedDestination.id);
-  const nextRouteStop = selectedRouteStop
-    ? routeSummary.stops.find((stop) => stop.day === selectedRouteStop.day + 1)
-    : routeSummary.stops[1];
   const activeCategoryLabel = MAP_CATEGORIES.find((category) => category.id === activeCategory)?.label ?? "All";
-  const nearbyExperiences = useMemo(
-    () => getNearbyExperiences(selectedDestination).slice(0, 4),
-    [selectedDestination]
-  );
   const routeDestinations = useMemo(
     () =>
       routeSummary.stops
@@ -144,6 +123,28 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     () => mergeDestinations(visibleDestinations, routeDestinations),
     [routeDestinations, visibleDestinations]
   );
+  const routeDestinationIds = useMemo(
+    () => new Set(routeSummary.stops.map((stop) => stop.destinationId)),
+    [routeSummary.stops]
+  );
+  const unplannedDestinations = useMemo(
+    () => visibleDestinations.filter((destination) => !routeDestinationIds.has(destination.id)).slice(0, 6),
+    [routeDestinationIds, visibleDestinations]
+  );
+  const activeDrawerDay = getDrawerDay(activeDrawerTab);
+  const activeDrawerStop = activeDrawerDay
+    ? routeSummary.stops.find((stop) => stop.day === activeDrawerDay) ?? null
+    : null;
+  const activeDrawerDestination = activeDrawerStop
+    ? DESTINATIONS.find((destination) => destination.id === activeDrawerStop.destinationId) ?? null
+    : null;
+  const activeDrawerRouteLeg = activeDrawerDay
+    ? routeLegOptions.find((option) => option.day === activeDrawerDay) ?? null
+    : null;
+  const activeDrawerRouteDetail = activeDrawerRouteLeg
+    ? routeDetails.find((detail) => detail.id === activeDrawerRouteLeg.id) ?? null
+    : null;
+  const tripTitle = `${app.plannerDays}-day ${app.destination.region}`;
 
   useEffect(() => {
     if (!selectedRouteLegId) return;
@@ -154,21 +155,41 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const handleSelectDestination = (destinationId: string) => {
     setFocusedDestinationId(destinationId);
     const matchingLeg = routeLegOptions.find((option) => option.leg.toDestinationId === destinationId);
+    const matchingStop = routeSummary.stops.find((stop) => stop.destinationId === destinationId);
     setSelectedRouteLegId(matchingLeg?.id ?? null);
+    setActiveDrawerTab(matchingStop ? `day-${matchingStop.day}` : "overview");
     setSheetExpanded(true);
   };
 
   const handleSelectRouteLeg = (routeLegId: string | null) => {
     setSelectedRouteLegId(routeLegId);
     if (!routeLegId) {
+      setActiveDrawerTab("overview");
       setSheetExpanded(true);
       return;
     }
     const routeLeg = routeLegOptions.find((option) => option.id === routeLegId);
     if (routeLeg) {
       setFocusedDestinationId(routeLeg.leg.toDestinationId);
+      setActiveDrawerTab(`day-${routeLeg.day}`);
     }
     setSheetExpanded(true);
+  };
+
+  const handleSelectDrawerTab = (tab: MapDrawerTab) => {
+    setActiveDrawerTab(tab);
+    setSheetExpanded(true);
+
+    const day = getDrawerDay(tab);
+    if (!day) {
+      setSelectedRouteLegId(null);
+      return;
+    }
+
+    const stop = routeSummary.stops.find((routeStop) => routeStop.day === day);
+    const routeLeg = routeLegOptions.find((option) => option.day === day);
+    if (stop) setFocusedDestinationId(stop.destinationId);
+    setSelectedRouteLegId(routeLeg?.id ?? null);
   };
 
   const handleAddToTrip = () => {
@@ -217,106 +238,37 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       <div className="map-screen-right-fade pointer-events-none absolute inset-y-0 right-0 z-10 w-1/4" />
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 p-3 sm:p-5">
-        <div className="pointer-events-auto mx-auto grid max-w-7xl gap-3 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/78 shadow-2xl shadow-slate-950/50 backdrop-blur-2xl">
-            <div className="flex flex-col gap-3 border-b border-white/10 p-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/30 bg-cyan-300/12 text-cyan-200 shadow-lg shadow-cyan-950/40">
-                  <Compass className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[0.62rem] uppercase tracking-[0.28em] text-cyan-200/80">IrieVerse Map</p>
-                  <h1 className="truncate text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">
-                    Jamaica route preview
-                  </h1>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 text-center text-xs sm:w-[22rem]">
-                <HudMetric icon={Radar} label="Pins" value={visibleDestinations.length.toString()} />
-                <HudMetric icon={Gauge} label="Plan" value={routeSummary.routeTone.replace(" route", "")} />
-                <HudMetric icon={Clock3} label="Drive" value={formatDriveTime(routeSummary.totalDriveMinutes)} />
-              </div>
+        <div className="pointer-events-auto mx-auto flex max-w-7xl items-start justify-between gap-3">
+          <div className="min-w-0 rounded-full border border-white/20 bg-white/90 px-4 py-3 text-slate-950 shadow-2xl shadow-sky-950/20 backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-cyan-200">
+                <Compass className="h-4 w-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-black">IrieVerse Map</span>
+                <span className="block truncate text-xs text-slate-500">
+                  {activeCategoryLabel} layer · {visibleDestinations.length} pins
+                </span>
+              </span>
             </div>
+          </div>
 
-            <div className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-              <div className="flex min-h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 shadow-inner shadow-slate-950/40">
-                <Search className="h-4 w-4 shrink-0 text-cyan-200" />
-                <input
-                  type="search"
-                  value={app.search}
-                  onChange={(event) => app.setSearch(event.target.value)}
-                  placeholder="Search beaches, food, music, culture..."
-                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
-                />
-                {!!app.search && (
-                  <button
-                    type="button"
-                    onClick={() => app.setSearch("")}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-slate-400 hover:border-cyan-300/60 hover:text-cyan-100"
-                    aria-label="Clear search"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex gap-2 overflow-x-auto pb-1 lg:max-w-[34rem]">
-                {MAP_CATEGORIES.map((category) => (
-                  <button
-                    key={category.id}
-                    type="button"
-                    onClick={() => setActiveCategory(category.id)}
-                    className={classNames(
-                      "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-[0.68rem] font-bold uppercase tracking-[0.14em] transition duration-200",
-                      activeCategory === category.id
-                        ? `${category.border} bg-white text-slate-950 shadow-lg shadow-slate-950/40`
-                        : "border-white/10 bg-slate-950/72 text-slate-300 hover:border-cyan-300/50 hover:bg-slate-900/90"
-                    )}
-                  >
-                    <span className={classNames("h-2.5 w-2.5 rounded-full", category.color)} />
-                    {category.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <RouteDayChips
-              routeLegOptions={routeLegOptions}
-              routeDetailsById={routeDetailsById}
-              selectedRouteLegId={selectedRouteLegId}
-              routeStatus={routeStatus}
-              onSelectOverview={() => handleSelectRouteLeg(null)}
-              onSelectRouteLeg={(routeLegId) => handleSelectRouteLeg(routeLegId)}
+          <div className="flex shrink-0 gap-2">
+            <FloatingMapButton
+              icon={Search}
+              label="Search and filters"
+              onClick={() => {
+                setActiveDrawerTab("overview");
+                setSheetExpanded(true);
+              }}
             />
-          </div>
-
-          <RouteHud
-            stops={routeSummary.stops}
-            legs={routeSummary.legs}
-            selectedDestinationId={selectedDestination.id}
-            onSelectDestination={handleSelectDestination}
-            onOpenTrips={() => onNavigate("trips")}
-          />
-        </div>
-      </div>
-
-      <div className="pointer-events-none absolute bottom-[9rem] left-3 z-20 hidden max-w-xs lg:block">
-        <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/74 p-3 text-xs text-slate-300 shadow-2xl shadow-slate-950/50 backdrop-blur-2xl">
-          <div className="flex items-center gap-2">
-            <Layers3 className="h-4 w-4 text-cyan-200" />
-            <span className="font-semibold text-slate-100">{activeCategoryLabel}</span>
-            <span className="text-slate-500">layer</span>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <MiniSignal label="Selected" value={selectedDestination.name} />
-            <MiniSignal label="Next" value={nextRouteStop?.name ?? "Open route"} />
+            <FloatingMapButton icon={CalendarDays} label="Open Trips" onClick={() => onNavigate("trips")} />
           </div>
         </div>
       </div>
 
       {!visibleDestinations.length && (
-        <div className="absolute left-1/2 top-1/2 z-40 w-[min(90vw,28rem)] -translate-x-1/2 -translate-y-1/2 rounded-[2rem] border border-white/10 bg-slate-950/92 p-6 text-center shadow-2xl shadow-slate-950/70 backdrop-blur-2xl">
+        <div className="absolute left-1/2 top-1/2 z-50 w-[min(90vw,28rem)] -translate-x-1/2 -translate-y-1/2 rounded-[2rem] border border-white/10 bg-slate-950/92 p-6 text-center shadow-2xl shadow-slate-950/70 backdrop-blur-2xl">
           <MapPin className="mx-auto h-8 w-8 text-cyan-300" />
           <h2 className="mt-3 text-lg font-semibold">No map pins match</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">
@@ -346,245 +298,123 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       )}
 
       <aside
+        data-testid="map-trip-drawer"
         className={classNames(
-          "absolute inset-x-3 bottom-3 z-40 mx-auto max-w-6xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/92 shadow-2xl shadow-slate-950/80 backdrop-blur-2xl transition-[max-height,transform] duration-300 sm:inset-x-5",
-          sheetExpanded ? "max-h-[80vh]" : "max-h-[7.25rem]"
+          "absolute inset-x-2 bottom-3 z-40 mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-white/70 bg-white/95 text-slate-950 shadow-2xl shadow-sky-950/30 backdrop-blur-2xl transition-[max-height,transform] duration-300 sm:inset-x-5",
+          sheetExpanded ? "max-h-[82vh]" : "max-h-[18.5rem]"
         )}
       >
         <button
           type="button"
           onClick={() => setSheetExpanded((prev) => !prev)}
-          className="flex w-full items-center justify-center py-3 text-slate-500"
-          aria-label={sheetExpanded ? "Collapse selected place" : "Expand selected place"}
+          className="flex w-full items-center justify-center py-3 text-slate-400"
+          aria-label={sheetExpanded ? "Collapse trip drawer" : "Expand trip drawer"}
         >
-          <span className="h-1.5 w-14 rounded-full bg-white/20" />
+          <span className="h-1.5 w-14 rounded-full bg-slate-300" />
         </button>
 
-        <div className="px-3 pb-3 sm:px-4 sm:pb-4">
-          <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)_19rem]">
-            <div className="relative min-h-32 overflow-hidden rounded-[1.5rem] border border-white/10 lg:min-h-56">
-              <img
-                src={selectedDestination.heroImage}
-                alt={selectedDestination.name}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
-              <div className="media-overlay absolute bottom-3 left-3 right-3">
-                <p className="inline-flex items-center gap-1 rounded-full border border-white/15 bg-slate-950/70 px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.18em] text-cyan-100 backdrop-blur">
-                  <Plane className="h-3 w-3" /> {selectedDestination.airportCode}
-                </p>
-              </div>
-            </div>
-
-            <div className="min-w-0">
+        <div className="px-4 pb-4">
+          <div className="flex gap-3">
+            <img
+              src={app.destination.heroImage}
+              alt={app.destination.name}
+              className="h-20 w-20 shrink-0 rounded-2xl object-cover shadow-lg shadow-slate-300/60 sm:h-24 sm:w-24"
+            />
+            <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="flex items-center gap-1 text-xs uppercase tracking-[0.22em] text-cyan-300">
-                    <MapPin className="h-3 w-3" /> {selectedDestination.region}
-                  </p>
-                  <h2 className="mt-1 truncate text-2xl font-semibold tracking-tight text-slate-100 sm:text-3xl">
-                    {selectedDestination.name}
-                  </h2>
-                  <p className="mt-2 flex items-center gap-2 text-sm text-amber-200">
-                    <Star className="h-4 w-4 fill-current" />
-                    {selectedDestination.rating.toFixed(1)}
-                    <span className="text-slate-600">/</span>
-                    {"$".repeat(selectedDestination.priceLevel)}
-                    <span className="text-slate-600">/</span>
-                    <span className="capitalize text-slate-300">{selectedCategory}</span>
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-sky-600">Jamaica trip map</p>
+                  <h1 className="mt-1 truncate text-2xl font-black tracking-tight sm:text-3xl">{tripTitle}</h1>
+                  <p className="mt-2 truncate text-sm font-semibold text-slate-500">
+                    {app.plannerDays} days · {routeSummary.stops.length} stops · {formatDriveTime(routeSummary.totalDriveMinutes)}
                   </p>
                 </div>
-
                 <button
                   type="button"
-                  onClick={() => setSheetExpanded((prev) => !prev)}
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-slate-300 hover:border-cyan-300/60 hover:text-cyan-100"
-                  aria-label={sheetExpanded ? "Collapse sheet" : "Expand sheet"}
+                  onClick={() => onNavigate("trips")}
+                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-lg shadow-slate-200 transition hover:text-sky-600"
+                  aria-label="Open Trips"
                 >
-                  {sheetExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                  <ArrowUpRight className="h-5 w-5" />
                 </button>
               </div>
 
-              {sheetExpanded && (
-                <div className="mt-4 max-h-[calc(80vh-13rem)] overflow-y-auto pr-1">
-                  <p className="max-w-2xl text-sm leading-6 text-slate-300">{selectedDestination.description}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="inline-flex min-h-9 items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                  {getRouteStatusLabel(routeStatus)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onNavigate("trips")}
+                  className="inline-flex min-h-9 items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700"
+                >
+                  Choose dates
+                </button>
+              </div>
+            </div>
+          </div>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {selectedDestination.vibes.slice(0, 5).map((vibe) => (
-                      <span
-                        key={vibe}
-                        className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.14em] text-cyan-100"
-                      >
-                        {vibe}
-                      </span>
-                    ))}
-                  </div>
+          <TripDrawerTabs
+            activeTab={activeDrawerTab}
+            stops={routeSummary.stops}
+            routeLegOptions={routeLegOptions}
+            routeDetailsById={routeDetailsById}
+            onSelectTab={handleSelectDrawerTab}
+          />
 
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    <MapFact icon={Navigation} label="Stop" value={selectedRouteStop ? `Day ${selectedRouteStop.day}` : "Flex"} />
-                    <MapFact icon={Clock3} label="Transfer" value={selectedRouteStop?.driveMinutesFromPrevious ? formatDriveTime(selectedRouteStop.driveMinutesFromPrevious) : "Arrival"} />
-                    <MapFact icon={Sparkles} label="Nearby" value={`${nearbyExperiences.length} ideas`} />
-                  </div>
+          {sheetExpanded && (
+            <div className="mt-4 max-h-[calc(82vh-16.5rem)] overflow-y-auto pr-1">
+              {activeDrawerTab === "overview" && (
+                <TripOverviewPanel
+                  app={app}
+                  activeCategory={activeCategory}
+                  visiblePins={visibleDestinations.length}
+                  routeStatus={routeStatus}
+                  routeSummary={routeSummary}
+                  selectedDestinationId={selectedDestination.id}
+                  onCategoryChange={setActiveCategory}
+                  onSelectDestination={handleSelectDestination}
+                  onOpenTrips={() => onNavigate("trips")}
+                />
+              )}
 
-                  <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <MapAction
-                      icon={Heart}
-                      label={isSaved ? "Saved" : "Save"}
-                      onClick={() => app.toggleSavedPlace(selectedDestination.id)}
-                      active={isSaved}
-                    />
-                    <MapAction icon={Plus} label="Add trip" onClick={handleAddToTrip} primary />
-                    <MapAction icon={Navigation} label="Open in Maps" onClick={handleOpenDrivingGuide} />
-                    <MapAction
-                      icon={Route}
-                      label="Preview"
-                      onClick={() => {
-                        setShowRoutePreview((prev) => !prev);
-                        setSheetExpanded(true);
-                      }}
-                      active={showRoutePreview}
-                    />
-                  </div>
+              {activeDrawerTab === "unplanned" && (
+                <UnplannedPlacesPanel
+                  destinations={unplannedDestinations}
+                  onSelectDestination={handleSelectDestination}
+                  onOpenExplore={() => onNavigate("explore")}
+                />
+              )}
 
-                  {showRoutePreview && (
-                    <div className="mt-4 rounded-[1.5rem] border border-cyan-300/20 bg-cyan-300/10 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[0.65rem] uppercase tracking-[0.24em] text-cyan-200">Planning route</p>
-                          <h3 className="mt-1 font-semibold text-slate-100">
-                            {selectedRouteLeg
-                              ? `Day ${selectedRouteLeg.day}: ${selectedRouteLeg.leg.fromName} to ${selectedRouteLeg.leg.toName}`
-                              : routeSummary.routeTone}
-                          </h3>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => onNavigate("trips")}
-                          className="inline-flex items-center gap-1 rounded-full bg-cyan-300 px-3 py-2 text-xs font-bold text-slate-950"
-                        >
-                          Trips <ArrowUpRight className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-3 gap-2">
-                        <RoutePulseFact
-                          label="Distance"
-                          value={selectedRouteLeg ? formatMiles(selectedRouteDetail?.distanceKm ?? selectedRouteLeg.leg.distanceKm) : `${routeSummary.totalDistanceKm} km`}
-                        />
-                        <RoutePulseFact
-                          label="Drive"
-                          value={selectedRouteLeg ? formatDriveTime(selectedRouteDetail?.durationMinutes ?? selectedRouteLeg.leg.driveMinutes) : formatDriveTime(routeSummary.totalDriveMinutes)}
-                        />
-                        <RoutePulseFact
-                          label="Preview"
-                          value={getRouteStatusLabel(routeStatus)}
-                        />
-                      </div>
-
-                      <RouteDirectionsPanel
-                        selectedRouteLeg={selectedRouteLeg}
-                        selectedRouteDetail={selectedRouteDetail}
-                        routeStatus={routeStatus}
-                        onOpenDrivingGuide={handleOpenDrivingGuide}
-                      />
-
-                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                        {routeSummary.stops.slice(0, 4).map((stop) => (
-                          <button
-                            key={stop.destinationId}
-                            type="button"
-                            onClick={() => handleSelectDestination(stop.destinationId)}
-                            className={classNames(
-                              "flex items-center gap-3 rounded-2xl border px-3 py-2 text-left transition",
-                              stop.destinationId === selectedDestination.id
-                                ? "border-cyan-300 bg-cyan-300 text-slate-950"
-                                : "border-white/10 bg-slate-950/60 text-slate-300 hover:border-cyan-300/50"
-                            )}
-                          >
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-black text-cyan-200">
-                              {stop.day}
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-semibold">{stop.name}</span>
-                              <span className={classNames("block truncate text-xs", stop.destinationId === selectedDestination.id ? "text-slate-700" : "text-slate-500")}>
-                                {stop.driveMinutesFromPrevious ? `${formatDriveTime(stop.driveMinutesFromPrevious)} · ${formatMiles(stop.distanceFromPreviousKm)}` : "Arrival"} · {stop.region}
-                              </span>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-
-                      {!!routeSummary.warnings.length && (
-                        <div className="mt-3 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
-                          {routeSummary.warnings[0].title}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+              {activeDrawerDay && activeDrawerDestination && activeDrawerStop && (
+                <DayPlanPanel
+                  day={activeDrawerDay}
+                  destination={activeDrawerDestination}
+                  stop={activeDrawerStop}
+                  routeLeg={activeDrawerRouteLeg}
+                  routeDetail={activeDrawerRouteDetail}
+                  routeStatus={routeStatus}
+                  isSaved={app.savedPlaces.has(activeDrawerDestination.id)}
+                  nearbyExperiences={getNearbyExperiences(activeDrawerDestination).slice(0, 3)}
+                  onToggleSaved={() => app.toggleSavedPlace(activeDrawerDestination.id)}
+                  onAddToTrip={() => {
+                    app.savePlace(activeDrawerDestination.id);
+                    onNavigate("trips");
+                  }}
+                  onOpenMaps={handleOpenDrivingGuide}
+                  onNearbyExperience={handleNearbyExperience}
+                />
               )}
             </div>
-
-            {sheetExpanded && (
-              <div className="min-h-0 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-3">
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-[0.65rem] uppercase tracking-[0.25em] text-slate-500">Nearby</p>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate("explore")}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-300"
-                  >
-                    Explore <ArrowUpRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                <div className="grid max-h-[calc(80vh-14rem)] gap-2 overflow-y-auto">
-                  {nearbyExperiences.map((experience) => (
-                    <button
-                      key={experience.id}
-                      type="button"
-                      onClick={() => handleNearbyExperience(experience)}
-                      className="group overflow-hidden rounded-2xl border border-white/10 bg-slate-950/72 text-left transition hover:border-cyan-300/50"
-                    >
-                      <div className="flex gap-3 p-2">
-                        <img
-                          src={experience.imageUrl}
-                          alt={experience.title}
-                          className="h-16 w-16 shrink-0 rounded-xl object-cover"
-                        />
-                        <span className="min-w-0 flex-1 py-1">
-                          <span className="block truncate text-sm font-semibold text-slate-100 group-hover:text-cyan-100">
-                            {experience.title}
-                          </span>
-                          <span className="mt-1 block text-xs capitalize text-slate-500">
-                            {experience.type} · {experience.bestTime}
-                          </span>
-                          <span className="mt-1 inline-flex items-center gap-1 text-[0.68rem] text-emerald-300">
-                            <CalendarDays className="h-3 w-3" /> {experience.approxCost}
-                          </span>
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </aside>
     </section>
   );
 }
 
-function HudMetric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.05] px-2 py-2">
-      <Icon className="mx-auto h-3.5 w-3.5 text-cyan-200" />
-      <p className="mt-1 truncate text-[0.6rem] uppercase tracking-[0.14em] text-slate-500">{label}</p>
-      <p className="truncate text-xs font-bold text-slate-100">{value}</p>
-    </div>
-  );
-}
+type RouteSummary = TravelOS["itinerary"]["routeSummary"];
+type RouteStop = RouteSummary["stops"][number];
 
 type RouteLegOption = {
   id: string;
@@ -593,316 +423,497 @@ type RouteLegOption = {
   leg: RouteLeg;
 };
 
-function RouteDayChips({
+function getDrawerDay(tab: MapDrawerTab): number | null {
+  if (!tab.startsWith("day-")) return null;
+  const day = Number(tab.replace("day-", ""));
+  return Number.isFinite(day) ? day : null;
+}
+
+function FloatingMapButton({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/35 bg-white/90 text-slate-700 shadow-2xl shadow-sky-950/20 backdrop-blur-xl transition hover:text-sky-600"
+      aria-label={label}
+      title={label}
+    >
+      <Icon className="h-5 w-5" />
+    </button>
+  );
+}
+
+function TripDrawerTabs({
+  activeTab,
+  stops,
   routeLegOptions,
   routeDetailsById,
-  selectedRouteLegId,
-  routeStatus,
-  onSelectOverview,
-  onSelectRouteLeg,
+  onSelectTab,
 }: {
+  activeTab: MapDrawerTab;
+  stops: RouteStop[];
   routeLegOptions: RouteLegOption[];
   routeDetailsById: Map<string, RouteDetail>;
-  selectedRouteLegId: string | null;
-  routeStatus: RouteRenderStatus;
-  onSelectOverview: () => void;
-  onSelectRouteLeg: (routeLegId: string) => void;
+  onSelectTab: (tab: MapDrawerTab) => void;
 }) {
-  if (!routeLegOptions.length) return null;
-
   return (
-    <div className="border-t border-white/10 px-3 pb-3">
-      <div className="flex items-center gap-2 overflow-x-auto pt-3">
-        <button
-          type="button"
-          onClick={onSelectOverview}
-          className={classNames(
-            "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition",
-            selectedRouteLegId
-              ? "border-white/10 bg-white/[0.05] text-slate-300 hover:border-cyan-300/50 hover:text-cyan-100"
-              : "border-white bg-white text-slate-950 shadow-lg shadow-slate-950/30"
-          )}
-        >
-          <Route className="h-3.5 w-3.5" />
-          Overview
-        </button>
+    <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+      <TripDrawerTabButton active={activeTab === "overview"} icon={Route} label="Overview" onClick={() => onSelectTab("overview")} />
+      <TripDrawerTabButton active={activeTab === "unplanned"} icon={Layers3} label="Unplanned" onClick={() => onSelectTab("unplanned")} muted />
+      {stops.map((stop) => {
+        const tab: MapDrawerTab = `day-${stop.day}`;
+        const routeLeg = routeLegOptions.find((option) => option.day === stop.day);
+        const routeDetail = routeLeg ? routeDetailsById.get(routeLeg.id) : null;
+        const color = routeLeg ? getRouteColor(routeLeg.index) : "#0ea5e9";
+        const dotClass = routeLeg && !routeDetail
+          ? "animate-pulse bg-sky-400"
+          : routeDetail?.source === "fallback"
+            ? "bg-amber-400"
+            : "bg-emerald-400";
 
-        {routeLegOptions.map((option) => {
-          const color = getRouteColor(option.index);
-          const isSelected = option.id === selectedRouteLegId;
-          const routeDetail = routeDetailsById.get(option.id);
-          const isFallback = routeDetail?.source === "fallback";
-          const isSyncing = !routeDetail || routeDetail.fallbackReason === "loading";
-
-          return (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => onSelectRouteLeg(option.id)}
-              className={classNames(
-                "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition",
-                isSelected
-                  ? "bg-white text-slate-950 shadow-lg shadow-slate-950/30"
-                  : "bg-slate-950/68 text-slate-200 hover:bg-slate-900"
-              )}
-              style={{
-                borderColor: isSelected ? "#ffffff" : `${color}66`,
-                boxShadow: isSelected ? `0 10px 28px ${color}30` : undefined,
-              }}
+        return (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => onSelectTab(tab)}
+            className={classNames(
+              "inline-flex min-h-14 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition",
+              activeTab === tab
+                ? "border-slate-950 bg-slate-950 text-white shadow-lg shadow-slate-300"
+                : "border-slate-200 bg-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-800"
+            )}
+          >
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-black text-white"
+              style={{ backgroundColor: color }}
             >
-              <span
-                className="flex h-5 w-5 items-center justify-center rounded-full text-[0.62rem] font-black text-white"
-                style={{ backgroundColor: color }}
-              >
-                {option.day}
-              </span>
-              <span className="max-w-24 truncate sm:max-w-32">{option.leg.toName}</span>
-              <span className={classNames("text-[0.68rem]", isSelected ? "text-slate-600" : "text-slate-500")}>
-                {formatMiles(option.leg.distanceKm)}
-              </span>
-              <span
-                className={classNames(
-                  "h-2 w-2 rounded-full",
-                  isSyncing ? "animate-pulse bg-cyan-300" : isFallback ? "bg-amber-300" : "bg-emerald-300"
-                )}
-                title={isSyncing ? "Building road preview" : isFallback ? "Estimated planning preview" : "Road-following preview"}
-              />
-            </button>
-          );
-        })}
-
-        <RouteStatusPill routeStatus={routeStatus} />
-      </div>
+              {stop.day}
+            </span>
+            Day {stop.day}
+            <span className={classNames("h-2 w-2 rounded-full", dotClass)} />
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function RouteStatusPill({ routeStatus }: { routeStatus: RouteRenderStatus }) {
-  const label = getRouteStatusLabel(routeStatus);
-  const tone = routeStatus.isLoading
-    ? "loading"
-    : routeStatus.failedLegs > 0
-      ? "fallback"
-      : routeStatus.roadLegs > 0
-        ? "road"
-        : "fallback";
-
-  return (
-    <span
-      className={classNames(
-        "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold",
-        tone === "loading"
-          ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-100"
-          : tone === "road"
-            ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-100"
-            : "border-amber-300/40 bg-amber-300/10 text-amber-100"
-      )}
-    >
-      <span
-        className={classNames(
-          "h-2 w-2 rounded-full",
-          tone === "loading" ? "animate-pulse bg-cyan-300" : tone === "road" ? "bg-emerald-300" : "bg-amber-300"
-        )}
-      />
-      {label}
-      {!routeStatus.isLoading && routeStatus.fallbackLegs > 0 && (
-        <span className="text-[0.65rem] opacity-75">{routeStatus.fallbackLegs} estimated</span>
-      )}
-    </span>
-  );
-}
-
-function RoutePulseFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/54 px-3 py-2">
-      <p className="text-[0.58rem] uppercase tracking-[0.15em] text-cyan-200/70">{label}</p>
-      <p className="mt-1 truncate text-xs font-bold text-slate-100">{value}</p>
-    </div>
-  );
-}
-
-function RouteDirectionsPanel({
-  selectedRouteLeg,
-  selectedRouteDetail,
-  routeStatus,
-  onOpenDrivingGuide,
+function TripDrawerTabButton({
+  active,
+  icon: Icon,
+  label,
+  onClick,
+  muted,
 }: {
-  selectedRouteLeg: RouteLegOption | null;
-  selectedRouteDetail: RouteDetail | null;
-  routeStatus: RouteRenderStatus;
-  onOpenDrivingGuide: () => void;
+  active: boolean;
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+  muted?: boolean;
 }) {
-  if (!selectedRouteLeg) return null;
-
-  const hasRoadPreview = selectedRouteDetail?.source === "road";
-  const distanceKm = selectedRouteDetail?.distanceKm ?? selectedRouteLeg.leg.distanceKm;
-  const durationMinutes = selectedRouteDetail?.durationMinutes ?? selectedRouteLeg.leg.driveMinutes;
-  const panelTone = routeStatus.isLoading && !selectedRouteDetail
-    ? "loading"
-    : hasRoadPreview
-      ? "road"
-      : "fallback";
-  const statusText = hasRoadPreview
-    ? "Road-following planning line is ready. Use it to compare day flow, then open in Maps when you are ready to drive."
-    : selectedRouteDetail?.fallbackMessage ?? "Using a simple planning line for this leg.";
-
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
       className={classNames(
-        "mt-4 rounded-2xl border p-3",
-        panelTone === "road"
-          ? "border-emerald-300/20 bg-emerald-300/10"
-          : panelTone === "loading"
-            ? "border-cyan-300/20 bg-cyan-300/10"
-            : "border-amber-300/25 bg-amber-300/10"
+        "inline-flex min-h-14 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition",
+        active
+          ? "border-slate-950 bg-slate-950 text-white shadow-lg shadow-slate-300"
+          : muted
+            ? "border-slate-200 bg-slate-100 text-slate-400 hover:border-slate-300 hover:text-slate-800"
+            : "border-slate-200 bg-slate-100 text-slate-600 hover:border-slate-300 hover:text-slate-900"
       )}
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[0.6rem] uppercase tracking-[0.22em] text-cyan-200/75">
-            {hasRoadPreview ? "Route preview" : "Planning estimate"}
-          </p>
-          <h4 className="mt-1 text-sm font-semibold text-slate-100">
-            {selectedRouteLeg.leg.fromName} to {selectedRouteLeg.leg.toName}
-          </h4>
-          <p className="mt-1 text-xs leading-5 text-slate-400">{statusText}</p>
-        </div>
-        <button
-          type="button"
-          onClick={onOpenDrivingGuide}
-          className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-cyan-300/40 px-3 py-2 text-[0.68rem] font-bold text-cyan-100"
-        >
-          Open in Maps <ArrowUpRight className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      {routeStatus.isLoading && !selectedRouteDetail && (
-        <p className="mt-3 text-xs text-slate-300">Building the road preview...</p>
-      )}
-
-      {selectedRouteDetail && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <RoutePulseFact label="Distance" value={formatMiles(distanceKm)} />
-          <RoutePulseFact label="Drive time" value={formatDriveTime(durationMinutes)} />
-        </div>
-      )}
-
-      {hasRoadPreview && (
-        <p className="mt-3 rounded-xl border border-emerald-300/15 bg-slate-950/36 px-3 py-2 text-xs leading-5 text-emerald-50/85">
-          This is a trip-planning preview, not live navigation or traffic.
-        </p>
-      )}
-
-      {!hasRoadPreview && !routeStatus.isLoading && (
-        <div className="mt-3 flex gap-2 rounded-xl border border-amber-300/20 bg-slate-950/42 px-3 py-2 text-xs leading-5 text-amber-100">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>
-            Showing a simple planning line for this leg. Open in Maps when you are ready to drive.
-          </p>
-        </div>
-      )}
-    </div>
+      <Icon className="h-4 w-4" />
+      {label}
+    </button>
   );
 }
 
-function RouteHud({
-  stops,
-  legs,
+function TripOverviewPanel({
+  app,
+  activeCategory,
+  visiblePins,
+  routeStatus,
+  routeSummary,
   selectedDestinationId,
+  onCategoryChange,
   onSelectDestination,
   onOpenTrips,
 }: {
-  stops: Array<{
-    destinationId: string;
-    name: string;
-    region: string;
-    day: number;
-    distanceFromPreviousKm: number;
-    driveMinutesFromPrevious: number;
-  }>;
-  legs: Array<{
-    toDestinationId: string;
-    distanceKm: number;
-  }>;
+  app: TravelOS;
+  activeCategory: MapCategoryId;
+  visiblePins: number;
+  routeStatus: RouteRenderStatus;
+  routeSummary: RouteSummary;
   selectedDestinationId: string;
+  onCategoryChange: (category: MapCategoryId) => void;
   onSelectDestination: (destinationId: string) => void;
   onOpenTrips: () => void;
 }) {
   return (
-    <div className="hidden overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/78 shadow-2xl shadow-slate-950/50 backdrop-blur-2xl lg:block">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="min-w-0">
+        <div className="flex min-h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <Search className="h-4 w-4 shrink-0 text-sky-600" />
+          <input
+            type="search"
+            value={app.search}
+            onChange={(event) => app.setSearch(event.target.value)}
+            placeholder="Search beaches, food, music, culture..."
+            className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none"
+          />
+          {!!app.search && (
+            <button
+              type="button"
+              onClick={() => app.setSearch("")}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-400"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          {MAP_CATEGORIES.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => onCategoryChange(category.id)}
+              className={classNames(
+                "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-[0.68rem] font-black uppercase tracking-[0.12em] transition",
+                activeCategory === category.id
+                  ? "border-slate-950 bg-slate-950 text-white"
+                  : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-900"
+              )}
+            >
+              <span className={classNames("h-2.5 w-2.5 rounded-full", category.color)} />
+              {category.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <DrawerFact icon={Clock3} label="Drive" value={formatDriveTime(routeSummary.totalDriveMinutes)} />
+          <DrawerFact icon={MapPin} label="Stops" value={routeSummary.stops.length.toString()} />
+          <DrawerFact icon={Layers3} label="Pins" value={visiblePins.toString()} />
+        </div>
+
+        {!!routeSummary.warnings.length && (
+          <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-800">
+            {routeSummary.warnings[0].title}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-slate-400">Route Flow</p>
+            <h2 className="mt-1 text-lg font-black">{routeSummary.routeTone}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenTrips}
+            className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full bg-sky-500 px-3 py-2 text-xs font-black text-white"
+          >
+            Edit <ArrowUpRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="mt-3 max-h-60 space-y-2 overflow-y-auto">
+          {routeSummary.stops.map((stop, index) => (
+            <RouteStopRow
+              key={stop.destinationId}
+              stop={stop}
+              index={index}
+              selected={stop.destinationId === selectedDestinationId}
+              onSelect={() => onSelectDestination(stop.destinationId)}
+            />
+          ))}
+        </div>
+
+        <p className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold leading-5 text-emerald-800">
+          {getRouteStatusLabel(routeStatus)}. Use the map to compare the plan; open Maps when it is time to drive.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function UnplannedPlacesPanel({
+  destinations,
+  onSelectDestination,
+  onOpenExplore,
+}: {
+  destinations: Destination[];
+  onSelectDestination: (destinationId: string) => void;
+  onOpenExplore: () => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[0.62rem] uppercase tracking-[0.28em] text-cyan-200/80">Planning Route</p>
-          <h2 className="text-lg font-semibold text-slate-100">{stops.length} stop plan</h2>
+          <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-slate-400">Not In This Route</p>
+          <h2 className="mt-1 text-xl font-black">Good Jamaica ideas to add next.</h2>
         </div>
         <button
           type="button"
-          onClick={onOpenTrips}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-950/40"
-          aria-label="Open Trips"
+          onClick={onOpenExplore}
+          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white"
         >
-          <ArrowUpRight className="h-4 w-4" />
+          Explore <ArrowUpRight className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      <div className="max-h-72 space-y-2 overflow-y-auto p-3">
-        {stops.map((stop, index) => (
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {destinations.map((destination) => (
           <button
-            key={stop.destinationId}
+            key={destination.id}
             type="button"
-            onClick={() => onSelectDestination(stop.destinationId)}
-            className={classNames(
-              "relative flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition",
-              stop.destinationId === selectedDestinationId
-                ? "border-cyan-300 bg-cyan-300 text-slate-950"
-                : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-cyan-300/50 hover:bg-white/[0.08]"
-            )}
+            onClick={() => onSelectDestination(destination.id)}
+            className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 text-left transition hover:border-sky-300"
           >
-            {index < stops.length - 1 && (
-              <span
-                className="absolute left-[1.55rem] top-[2.8rem] h-5 w-1 rounded-full"
-                style={{ backgroundColor: getRouteColor(index) }}
-              />
-            )}
-            <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 bg-[color:var(--app-text)] text-xs font-black text-[color:var(--app-bg)]"
-              style={{ borderColor: getRouteColor(Math.max(0, index - 1)) }}
-            >
-              {stop.day}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold">{stop.name}</span>
-              <span className={classNames("block truncate text-xs", stop.destinationId === selectedDestinationId ? "text-slate-700" : "text-slate-500")}>
-                {stop.driveMinutesFromPrevious ? `${formatDriveTime(stop.driveMinutesFromPrevious)} · ${formatMiles(getLegDistance(legs, stop.destinationId, stop.distanceFromPreviousKm))}` : "Start"} · {stop.region}
-              </span>
+            <img src={destination.heroImage} alt={destination.name} className="h-28 w-full object-cover" />
+            <span className="block p-3">
+              <span className="block truncate text-sm font-black">{destination.name}</span>
+              <span className="mt-1 block truncate text-xs font-semibold text-slate-500">{destination.region}</span>
             </span>
           </button>
         ))}
       </div>
+
+      {!destinations.length && (
+        <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center">
+          <Sparkles className="mx-auto h-6 w-6 text-sky-500" />
+          <p className="mt-2 text-sm font-black">Every visible pin is already part of this route.</p>
+          <p className="mt-1 text-xs font-semibold text-slate-500">Change the layer or search to discover more ideas.</p>
+        </div>
+      )}
     </div>
   );
 }
 
-function MiniSignal({ label, value }: { label: string; value: string }) {
+function DayPlanPanel({
+  day,
+  destination,
+  stop,
+  routeLeg,
+  routeDetail,
+  routeStatus,
+  isSaved,
+  nearbyExperiences,
+  onToggleSaved,
+  onAddToTrip,
+  onOpenMaps,
+  onNearbyExperience,
+}: {
+  day: number;
+  destination: Destination;
+  stop: RouteStop;
+  routeLeg: RouteLegOption | null;
+  routeDetail: RouteDetail | null;
+  routeStatus: RouteRenderStatus;
+  isSaved: boolean;
+  nearbyExperiences: Experience[];
+  onToggleSaved: () => void;
+  onAddToTrip: () => void;
+  onOpenMaps: () => void;
+  onNearbyExperience: (experience: Experience) => void;
+}) {
   return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-2">
-      <p className="text-[0.6rem] uppercase tracking-[0.16em] text-slate-500">{label}</p>
-      <p className="truncate text-xs font-semibold text-slate-100">{value}</p>
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="min-w-0">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50">
+          <div className="relative h-40">
+            <img src={destination.heroImage} alt={destination.name} className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/72 to-transparent" />
+            <span className="absolute bottom-3 left-3 rounded-full bg-white px-3 py-1 text-xs font-black text-slate-950">
+              Day {day}
+            </span>
+          </div>
+          <div className="p-4">
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-sky-600">{destination.region}</p>
+            <h2 className="mt-1 text-2xl font-black">{destination.name}</h2>
+            <p className="mt-2 flex items-center gap-2 text-sm font-bold text-slate-500">
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+              {destination.rating.toFixed(1)} · {"$".repeat(destination.priceLevel)} · {destination.airportCode}
+            </p>
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{destination.description}</p>
+
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <DrawerFact icon={Clock3} label="Transfer" value={stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"} />
+              <DrawerFact icon={Route} label="Distance" value={stop.distanceFromPreviousKm ? formatMiles(stop.distanceFromPreviousKm) : "Base"} />
+              <DrawerFact icon={Sparkles} label="Nearby" value={`${nearbyExperiences.length} ideas`} />
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <DrawerAction icon={Heart} label={isSaved ? "Saved" : "Save"} onClick={onToggleSaved} active={isSaved} />
+              <DrawerAction icon={Plus} label="Trip" onClick={onAddToTrip} primary />
+              <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
+            </div>
+          </div>
+        </div>
+
+        <RoutePreviewCard routeLeg={routeLeg} routeDetail={routeDetail} routeStatus={routeStatus} onOpenMaps={onOpenMaps} />
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-slate-400">Nearby</p>
+            <h3 className="mt-1 text-base font-black">Add-ons for Day {day}</h3>
+          </div>
+        </div>
+
+        <div className="mt-3 grid gap-2">
+          {nearbyExperiences.map((experience) => (
+            <button
+              key={experience.id}
+              type="button"
+              onClick={() => onNearbyExperience(experience)}
+              className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2 text-left transition hover:border-sky-300"
+            >
+              <img src={experience.imageUrl} alt={experience.title} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
+              <span className="min-w-0 flex-1 py-1">
+                <span className="block truncate text-sm font-black">{experience.title}</span>
+                <span className="mt-1 block text-xs font-semibold capitalize text-slate-500">
+                  {experience.type} · {experience.bestTime}
+                </span>
+                <span className="mt-1 block text-xs font-bold text-emerald-600">{experience.approxCost}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-function MapFact({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+function RoutePreviewCard({
+  routeLeg,
+  routeDetail,
+  routeStatus,
+  onOpenMaps,
+}: {
+  routeLeg: RouteLegOption | null;
+  routeDetail: RouteDetail | null;
+  routeStatus: RouteRenderStatus;
+  onOpenMaps: () => void;
+}) {
+  if (!routeLeg) {
+    return (
+      <div className="mt-4 rounded-3xl border border-sky-200 bg-sky-50 p-4">
+        <p className="text-sm font-black text-sky-900">Start day</p>
+        <p className="mt-1 text-xs font-semibold leading-5 text-sky-700">
+          This is the route anchor. Pick another day tab to inspect drive time between stops.
+        </p>
+      </div>
+    );
+  }
+
+  const hasRoadPreview = routeDetail?.source === "road";
+  const distanceKm = routeDetail?.distanceKm ?? routeLeg.leg.distanceKm;
+  const durationMinutes = routeDetail?.durationMinutes ?? routeLeg.leg.driveMinutes;
+
   return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/60 p-3 text-left">
-      <Icon className="h-4 w-4 text-cyan-200" />
-      <p className="mt-2 text-[0.6rem] uppercase tracking-[0.16em] text-slate-500">{label}</p>
-      <p className="truncate text-sm font-semibold capitalize text-slate-100">{value}</p>
+    <div className={classNames(
+      "mt-4 rounded-3xl border p-4",
+      hasRoadPreview ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"
+    )}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-slate-500">
+            {hasRoadPreview ? "Road-following preview" : "Planning estimate"}
+          </p>
+          <h3 className="mt-1 text-base font-black">
+            {routeLeg.leg.fromName} to {routeLeg.leg.toName}
+          </h3>
+          <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+            {hasRoadPreview
+              ? "Use this to compare day flow. It is not live navigation or traffic."
+              : routeDetail?.fallbackMessage ?? "Using an estimated planning line for this leg."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenMaps}
+          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white"
+        >
+          Maps <ArrowUpRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {routeStatus.isLoading && !routeDetail && (
+        <p className="mt-3 text-xs font-semibold text-slate-600">Building the road preview...</p>
+      )}
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <DrawerFact icon={Route} label="Distance" value={formatMiles(distanceKm)} />
+        <DrawerFact icon={Clock3} label="Drive time" value={formatDriveTime(durationMinutes)} />
+      </div>
     </div>
   );
 }
 
-function MapAction({
+function RouteStopRow({
+  stop,
+  index,
+  selected,
+  onSelect,
+}: {
+  stop: RouteStop;
+  index: number;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={classNames(
+        "flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left transition",
+        selected
+          ? "border-sky-400 bg-white text-slate-950 shadow-sm"
+          : "border-slate-200 bg-white text-slate-600 hover:border-sky-300"
+      )}
+    >
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black text-white"
+        style={{ backgroundColor: getRouteColor(Math.max(0, index - 1)) }}
+      >
+        {stop.day}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-black">{stop.name}</span>
+        <span className="mt-0.5 block truncate text-xs font-semibold text-slate-500">
+          {stop.driveMinutesFromPrevious ? `${formatDriveTime(stop.driveMinutesFromPrevious)} · ${formatMiles(stop.distanceFromPreviousKm)}` : "Start"} · {stop.region}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function DrawerFact({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+      <Icon className="h-4 w-4 text-sky-600" />
+      <p className="mt-2 truncate text-[0.62rem] font-black uppercase tracking-[0.14em] text-slate-400">{label}</p>
+      <p className="mt-1 truncate text-sm font-black text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function DrawerAction({
   icon: Icon,
   label,
   onClick,
@@ -920,12 +931,12 @@ function MapAction({
       type="button"
       onClick={onClick}
       className={classNames(
-        "inline-flex min-h-12 items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm font-bold transition",
+        "inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm font-black transition",
         primary
-          ? "border-cyan-300 bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-950/40"
+          ? "border-sky-500 bg-sky-500 text-white shadow-lg shadow-sky-200"
           : active
-            ? "border-rose-300/50 bg-rose-300/10 text-rose-100"
-            : "border-white/10 bg-white/[0.05] text-slate-100 hover:border-cyan-300/50 hover:text-cyan-100"
+            ? "border-rose-200 bg-rose-50 text-rose-700"
+            : "border-slate-200 bg-white text-slate-600 hover:border-sky-300 hover:text-sky-700"
       )}
     >
       <Icon className={classNames("h-4 w-4", active && label === "Saved" ? "fill-current" : "")} />
