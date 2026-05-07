@@ -20,7 +20,7 @@ import { TravelMap, type RouteDetail, type RouteRenderStatus } from "../componen
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
-import type { Destination, Experience, RouteLeg } from "../types/travel";
+import type { Destination, Experience, PlannerDay, RouteLeg } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { formatDriveTime, formatMiles } from "../utils/format";
 import {
@@ -43,11 +43,15 @@ type MapScreenProps = {
 };
 
 type MapDrawerTab = "overview" | "unplanned" | `day-${number}`;
+type PlaceDetailTarget =
+  | { type: "destination"; destination: Destination; day?: number }
+  | { type: "experience"; experience: Experience; day?: number; linkedDestination?: Destination };
 
 export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const [activeCategory, setActiveCategory] = useState<MapCategoryId>("all");
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [activeDrawerTab, setActiveDrawerTab] = useState<MapDrawerTab>("overview");
+  const [placeDetail, setPlaceDetail] = useState<PlaceDetailTarget | null>(null);
   const [focusedDestinationId, setFocusedDestinationId] = useState(app.plannerBaseId);
   const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(null);
   const [routeStatus, setRouteStatus] = useState<RouteRenderStatus>({
@@ -144,6 +148,19 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const activeDrawerRouteDetail = activeDrawerRouteLeg
     ? routeDetails.find((detail) => detail.id === activeDrawerRouteLeg.id) ?? null
     : null;
+  const activePlannerDay = activeDrawerDay
+    ? app.itinerary.daysPlan.find((day) => day.day === activeDrawerDay) ?? null
+    : null;
+  const focusDestinations = useMemo(() => {
+    if (activeDrawerTab === "overview") return routeDestinations;
+    if (activeDrawerTab === "unplanned") return unplannedDestinations.length ? unplannedDestinations : visibleDestinations;
+    if (activeDrawerRouteLeg) {
+      const from = DESTINATIONS.find((destination) => destination.id === activeDrawerRouteLeg.leg.fromDestinationId);
+      const to = DESTINATIONS.find((destination) => destination.id === activeDrawerRouteLeg.leg.toDestinationId);
+      return [from, to].filter((destination): destination is Destination => Boolean(destination));
+    }
+    return activeDrawerDestination ? [activeDrawerDestination] : routeDestinations;
+  }, [activeDrawerDestination, activeDrawerRouteLeg, activeDrawerTab, routeDestinations, unplannedDestinations, visibleDestinations]);
   const tripTitle = `${app.plannerDays}-day ${app.destination.region}`;
 
   useEffect(() => {
@@ -210,8 +227,50 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     window.open(buildDrivingGuideUrl(routeDestinations), "_blank", "noreferrer");
   };
 
+  const handleOpenDestinationMaps = (destination: Destination) => {
+    window.open(buildDestinationMapsUrl(destination), "_blank", "noreferrer");
+  };
+
+  const handleOpenExperienceMaps = (experience: Experience) => {
+    window.open(buildExperienceMapsUrl(experience), "_blank", "noreferrer");
+  };
+
+  const handleOpenPlaceDetailMaps = (target: PlaceDetailTarget) => {
+    if (target.type === "destination") {
+      handleOpenDestinationMaps(target.destination);
+    } else {
+      handleOpenExperienceMaps(target.experience);
+    }
+  };
+
+  const handleSavePlaceDetail = (target: PlaceDetailTarget) => {
+    if (target.type === "destination") {
+      app.toggleSavedPlace(target.destination.id);
+    } else {
+      app.toggleSavedExperience(target.experience.id);
+    }
+  };
+
+  const handleAddPlaceDetailToTrip = (target: PlaceDetailTarget) => {
+    if (target.type === "destination") {
+      app.savePlace(target.destination.id);
+    } else {
+      handleNearbyExperience(target.experience);
+      setPlaceDetail(null);
+      return;
+    }
+
+    setPlaceDetail(null);
+    onNavigate("trips");
+  };
+
   return (
-    <section className="relative isolate h-[calc(100svh-5.5rem)] min-h-[560px] overflow-hidden bg-slate-950 sm:h-[calc(100vh-7rem)] sm:min-h-[700px]">
+    <section
+      className={classNames(
+        "relative isolate h-[calc(100svh-5.5rem)] min-h-[560px] overflow-hidden bg-slate-950 sm:h-[calc(100vh-7rem)] sm:min-h-[700px]",
+        placeDetail ? "z-[60]" : "z-0"
+      )}
+    >
       <TravelMap
         destinations={mapDestinations}
         selectedDestinationId={selectedDestination.id}
@@ -224,6 +283,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         getMarkerCategory={getDestinationPinCategory}
         routeDestinations={routeDestinations}
         routeLegs={routeSummary.legs}
+        focusDestinations={focusDestinations}
         selectedRouteLegId={selectedRouteLegId}
         onSelectRouteLeg={(routeLegId) => handleSelectRouteLeg(routeLegId)}
         onRouteStatusChange={setRouteStatus}
@@ -301,7 +361,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         data-testid="map-trip-drawer"
         className={classNames(
           "absolute inset-x-2 bottom-3 z-40 mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-white/70 bg-white/95 text-slate-950 shadow-2xl shadow-sky-950/30 backdrop-blur-2xl transition-[max-height,transform] duration-300 sm:inset-x-5",
-          sheetExpanded ? "max-h-[82vh]" : "max-h-[18.5rem]"
+          sheetExpanded ? "max-h-[82vh]" : "max-h-[21.5rem]"
         )}
       >
         <button
@@ -394,21 +454,48 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                   routeLeg={activeDrawerRouteLeg}
                   routeDetail={activeDrawerRouteDetail}
                   routeStatus={routeStatus}
+                  plannerDay={activePlannerDay}
+                  dayNote={app.dayNotes[String(activeDrawerDay)] ?? ""}
                   isSaved={app.savedPlaces.has(activeDrawerDestination.id)}
                   nearbyExperiences={getNearbyExperiences(activeDrawerDestination).slice(0, 3)}
+                  onSetDayNote={(note) => app.setDayNote(activeDrawerDay, note)}
                   onToggleSaved={() => app.toggleSavedPlace(activeDrawerDestination.id)}
                   onAddToTrip={() => {
                     app.savePlace(activeDrawerDestination.id);
                     onNavigate("trips");
                   }}
+                  onOpenDestinationMaps={() => handleOpenDestinationMaps(activeDrawerDestination)}
                   onOpenMaps={handleOpenDrivingGuide}
                   onNearbyExperience={handleNearbyExperience}
+                  onOpenDestinationDetail={() => setPlaceDetail({ type: "destination", destination: activeDrawerDestination, day: activeDrawerDay })}
+                  onOpenExperienceDetail={(experience) =>
+                    setPlaceDetail({ type: "experience", experience, day: activeDrawerDay, linkedDestination: activeDrawerDestination })
+                  }
                 />
               )}
             </div>
           )}
         </div>
       </aside>
+
+      {placeDetail && (
+        <PlaceDetailSheet
+          target={placeDetail}
+          dayNote={placeDetail.day ? app.dayNotes[String(placeDetail.day)] ?? "" : ""}
+          isSaved={
+            placeDetail.type === "destination"
+              ? app.savedPlaces.has(placeDetail.destination.id)
+              : app.savedExperiences.has(placeDetail.experience.id)
+          }
+          onSetDayNote={(note) => {
+            if (placeDetail.day) app.setDayNote(placeDetail.day, note);
+          }}
+          onClose={() => setPlaceDetail(null)}
+          onSave={() => handleSavePlaceDetail(placeDetail)}
+          onAddToTrip={() => handleAddPlaceDetailToTrip(placeDetail)}
+          onOpenMaps={() => handleOpenPlaceDetailMaps(placeDetail)}
+        />
+      )}
     </section>
   );
 }
@@ -427,6 +514,22 @@ function getDrawerDay(tab: MapDrawerTab): number | null {
   if (!tab.startsWith("day-")) return null;
   const day = Number(tab.replace("day-", ""));
   return Number.isFinite(day) ? day : null;
+}
+
+function buildDestinationMapsUrl(destination: Destination): string {
+  const params = new URLSearchParams({
+    api: "1",
+    query: `${destination.name}, ${destination.region}, Jamaica`,
+  });
+  return `https://www.google.com/maps/search/?${params.toString()}`;
+}
+
+function buildExperienceMapsUrl(experience: Experience): string {
+  const params = new URLSearchParams({
+    api: "1",
+    query: `${experience.title}, ${experience.location}, ${experience.region}, Jamaica`,
+  });
+  return `https://www.google.com/maps/search/?${params.toString()}`;
 }
 
 function FloatingMapButton({
@@ -487,7 +590,7 @@ function TripDrawerTabs({
             className={classNames(
               "inline-flex min-h-14 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition",
               activeTab === tab
-                ? "border-slate-950 bg-slate-950 text-white shadow-lg shadow-slate-300"
+                ? "border-[#020617] bg-[#020617] text-white shadow-lg shadow-slate-300"
                 : "border-slate-200 bg-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-800"
             )}
           >
@@ -526,7 +629,7 @@ function TripDrawerTabButton({
       className={classNames(
         "inline-flex min-h-14 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition",
         active
-          ? "border-slate-950 bg-slate-950 text-white shadow-lg shadow-slate-300"
+          ? "border-[#020617] bg-[#020617] text-white shadow-lg shadow-slate-300"
           : muted
             ? "border-slate-200 bg-slate-100 text-slate-400 hover:border-slate-300 hover:text-slate-800"
             : "border-slate-200 bg-slate-100 text-slate-600 hover:border-slate-300 hover:text-slate-900"
@@ -592,7 +695,7 @@ function TripOverviewPanel({
               className={classNames(
                 "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-[0.68rem] font-black uppercase tracking-[0.12em] transition",
                 activeCategory === category.id
-                  ? "border-slate-950 bg-slate-950 text-white"
+                  ? "border-[#020617] bg-[#020617] text-white"
                   : "border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-900"
               )}
             >
@@ -669,7 +772,7 @@ function UnplannedPlacesPanel({
         <button
           type="button"
           onClick={onOpenExplore}
-          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white"
+          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full bg-[#020617] px-3 py-2 text-xs font-black text-white"
         >
           Explore <ArrowUpRight className="h-3.5 w-3.5" />
         </button>
@@ -710,12 +813,18 @@ function DayPlanPanel({
   routeLeg,
   routeDetail,
   routeStatus,
+  plannerDay,
+  dayNote,
   isSaved,
   nearbyExperiences,
+  onSetDayNote,
   onToggleSaved,
   onAddToTrip,
+  onOpenDestinationMaps,
   onOpenMaps,
   onNearbyExperience,
+  onOpenDestinationDetail,
+  onOpenExperienceDetail,
 }: {
   day: number;
   destination: Destination;
@@ -723,45 +832,77 @@ function DayPlanPanel({
   routeLeg: RouteLegOption | null;
   routeDetail: RouteDetail | null;
   routeStatus: RouteRenderStatus;
+  plannerDay: PlannerDay | null;
+  dayNote: string;
   isSaved: boolean;
   nearbyExperiences: Experience[];
+  onSetDayNote: (note: string) => void;
   onToggleSaved: () => void;
   onAddToTrip: () => void;
+  onOpenDestinationMaps: () => void;
   onOpenMaps: () => void;
   onNearbyExperience: (experience: Experience) => void;
+  onOpenDestinationDetail: () => void;
+  onOpenExperienceDetail: (experience: Experience) => void;
 }) {
+  const dayExperience = plannerDay?.experience ?? null;
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="min-w-0">
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50">
-          <div className="relative h-40">
-            <img src={destination.heroImage} alt={destination.name} className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/72 to-transparent" />
-            <span className="absolute bottom-3 left-3 rounded-full bg-white px-3 py-1 text-xs font-black text-slate-950">
-              Day {day}
-            </span>
-          </div>
-          <div className="p-4">
-            <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-sky-600">{destination.region}</p>
-            <h2 className="mt-1 text-2xl font-black">{destination.name}</h2>
-            <p className="mt-2 flex items-center gap-2 text-sm font-bold text-slate-500">
-              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-              {destination.rating.toFixed(1)} · {"$".repeat(destination.priceLevel)} · {destination.airportCode}
-            </p>
-            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">{destination.description}</p>
-
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <DrawerFact icon={Clock3} label="Transfer" value={stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"} />
-              <DrawerFact icon={Route} label="Distance" value={stop.distanceFromPreviousKm ? formatMiles(stop.distanceFromPreviousKm) : "Base"} />
-              <DrawerFact icon={Sparkles} label="Nearby" value={`${nearbyExperiences.length} ideas`} />
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-sky-600">Day {day} Plan</p>
+              <h2 className="mt-1 text-2xl font-black tracking-tight">{destination.name}</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">{destination.region} · {plannerDay?.energyLevel ?? "balanced"} pace</p>
             </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <DrawerAction icon={Heart} label={isSaved ? "Saved" : "Save"} onClick={onToggleSaved} active={isSaved} />
-              <DrawerAction icon={Plus} label="Trip" onClick={onAddToTrip} primary />
-              <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
-            </div>
+            <button
+              type="button"
+              onClick={onOpenDestinationDetail}
+              className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm transition hover:border-sky-300 hover:text-sky-700"
+            >
+              Details <ArrowUpRight className="h-3.5 w-3.5" />
+            </button>
           </div>
+
+          {(plannerDay?.weatherNote || plannerDay?.routeNote) && (
+            <div className="mt-3 rounded-2xl border border-sky-200 bg-white px-3 py-2 text-xs font-semibold leading-5 text-slate-600">
+              {plannerDay.weatherNote && <p>{plannerDay.weatherNote}</p>}
+              {plannerDay.routeNote && <p className={plannerDay.weatherNote ? "mt-1" : ""}>{plannerDay.routeNote}</p>}
+            </div>
+          )}
+
+          <div className="relative mt-4 pl-9">
+            <span className="absolute bottom-4 left-4 top-4 w-px border-l border-dashed border-slate-300" />
+            <TimelineDestinationCard
+              day={day}
+              destination={destination}
+              plannerDay={plannerDay}
+              isSaved={isSaved}
+              onOpenDetail={onOpenDestinationDetail}
+              onToggleSaved={onToggleSaved}
+              onAddToTrip={onAddToTrip}
+              onOpenMaps={onOpenDestinationMaps}
+            />
+
+            <TimelineDriveChip stop={stop} routeLeg={routeLeg} routeDetail={routeDetail} />
+
+            {dayExperience ? (
+              <TimelineExperienceCard
+                experience={dayExperience}
+                onOpenDetail={() => onOpenExperienceDetail(dayExperience)}
+                onAddToTrip={() => onNearbyExperience(dayExperience)}
+              />
+            ) : (
+              <div className="relative mt-3 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-4 text-sm font-semibold text-slate-500">
+                <TimelineDot label="+" tone="muted" />
+                Pick a nearby add-on from the side panel when you want this day to feel fuller.
+              </div>
+            )}
+          </div>
+
+          <DayNoteEditor day={day} note={dayNote} onSetNote={onSetDayNote} />
         </div>
 
         <RoutePreviewCard routeLeg={routeLeg} routeDetail={routeDetail} routeStatus={routeStatus} onOpenMaps={onOpenMaps} />
@@ -777,11 +918,9 @@ function DayPlanPanel({
 
         <div className="mt-3 grid gap-2">
           {nearbyExperiences.map((experience) => (
-            <button
+            <article
               key={experience.id}
-              type="button"
-              onClick={() => onNearbyExperience(experience)}
-              className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2 text-left transition hover:border-sky-300"
+              className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2 text-left"
             >
               <img src={experience.imageUrl} alt={experience.title} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
               <span className="min-w-0 flex-1 py-1">
@@ -791,10 +930,325 @@ function DayPlanPanel({
                 </span>
                 <span className="mt-1 block text-xs font-bold text-emerald-600">{experience.approxCost}</span>
               </span>
-            </button>
+              <span className="flex shrink-0 flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => onOpenExperienceDetail(experience)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-sky-300 hover:text-sky-700"
+                  aria-label={`Open ${experience.title}`}
+                >
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNearbyExperience(experience)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-sky-500 text-white"
+                  aria-label={`Add ${experience.title} to trip`}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            </article>
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function TimelineDestinationCard({
+  day,
+  destination,
+  plannerDay,
+  isSaved,
+  onOpenDetail,
+  onToggleSaved,
+  onAddToTrip,
+  onOpenMaps,
+}: {
+  day: number;
+  destination: Destination;
+  plannerDay: PlannerDay | null;
+  isSaved: boolean;
+  onOpenDetail: () => void;
+  onToggleSaved: () => void;
+  onAddToTrip: () => void;
+  onOpenMaps: () => void;
+}) {
+  return (
+    <article className="relative rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+      <TimelineDot label={String(day)} />
+      <div className="flex gap-3">
+        <img src={destination.heroImage} alt={destination.name} className="h-24 w-24 shrink-0 rounded-2xl object-cover" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-sky-600">Main stop</p>
+              <h3 className="mt-1 truncate text-lg font-black">{destination.name}</h3>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenDetail}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-sky-300 hover:text-sky-700"
+              aria-label={`Open ${destination.name}`}
+            >
+              <ArrowUpRight className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-slate-500">
+            {plannerDay?.highlight ?? destination.headline}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <MiniPill>{`${destination.rating.toFixed(1)} rating`}</MiniPill>
+            <MiniPill>{"$".repeat(destination.priceLevel)}</MiniPill>
+            <MiniPill>{plannerDay?.vibe ?? destination.vibes[0]}</MiniPill>
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <DrawerAction icon={Heart} label={isSaved ? "Saved" : "Save"} onClick={onToggleSaved} active={isSaved} />
+        <DrawerAction icon={Plus} label="Trip" onClick={onAddToTrip} primary />
+        <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
+      </div>
+    </article>
+  );
+}
+
+function TimelineDriveChip({
+  stop,
+  routeLeg,
+  routeDetail,
+}: {
+  stop: RouteStop;
+  routeLeg: RouteLegOption | null;
+  routeDetail: RouteDetail | null;
+}) {
+  const distanceKm = routeDetail?.distanceKm ?? routeLeg?.leg.distanceKm ?? stop.distanceFromPreviousKm;
+  const durationMinutes = routeDetail?.durationMinutes ?? routeLeg?.leg.driveMinutes ?? stop.driveMinutesFromPrevious;
+
+  return (
+    <div className="relative mt-3 flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-black text-slate-700 shadow-sm">
+      <TimelineDot label="" tone="route" />
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-50 text-sky-600">
+        <Route className="h-4 w-4" />
+      </span>
+      <span className="min-w-0 flex-1 truncate">
+        {durationMinutes ? `${formatDriveTime(durationMinutes)} drive` : "Start in this area"}
+      </span>
+      <span className="shrink-0 text-slate-400">{distanceKm ? formatMiles(distanceKm) : "Base"}</span>
+    </div>
+  );
+}
+
+function TimelineExperienceCard({
+  experience,
+  onOpenDetail,
+  onAddToTrip,
+}: {
+  experience: Experience;
+  onOpenDetail: () => void;
+  onAddToTrip: () => void;
+}) {
+  return (
+    <article className="relative mt-3 rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+      <TimelineDot label="2" tone="experience" />
+      <div className="flex gap-3">
+        <img src={experience.imageUrl} alt={experience.title} className="h-20 w-20 shrink-0 rounded-2xl object-cover" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-emerald-600">Suggested add-on</p>
+              <h3 className="mt-1 truncate text-base font-black">{experience.title}</h3>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenDetail}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-sky-300 hover:text-sky-700"
+              aria-label={`Open ${experience.title}`}
+            >
+              <ArrowUpRight className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-slate-500">{experience.description}</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <MiniPill>{experience.type}</MiniPill>
+            <MiniPill>{experience.bestTime}</MiniPill>
+            <MiniPill>{experience.approxCost}</MiniPill>
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onAddToTrip}
+        className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-[#020617] px-3 py-2 text-sm font-black text-white"
+      >
+        <Plus className="h-4 w-4" />
+        Add this idea
+      </button>
+    </article>
+  );
+}
+
+function TimelineDot({ label, tone = "main" }: { label: string; tone?: "main" | "route" | "experience" | "muted" }) {
+  const toneClass = {
+    main: "bg-sky-500 text-white",
+    route: "bg-[#020617] text-white",
+    experience: "bg-emerald-500 text-white",
+    muted: "bg-slate-200 text-slate-500",
+  }[tone];
+
+  return (
+    <span className={classNames("absolute -left-9 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full border-4 border-slate-50 text-xs font-black", toneClass)}>
+      {label}
+    </span>
+  );
+}
+
+function MiniPill({ children }: { children: string }) {
+  return (
+    <span className="inline-flex min-h-7 items-center rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-black capitalize text-slate-500">
+      {children}
+    </span>
+  );
+}
+
+function DayNoteEditor({
+  day,
+  note,
+  onSetNote,
+}: {
+  day: number;
+  note: string;
+  onSetNote: (note: string) => void;
+}) {
+  return (
+    <label className="mt-4 block rounded-3xl border border-slate-200 bg-white p-3">
+      <span className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-slate-400">Day {day} Notes</span>
+      <textarea
+        value={note}
+        onChange={(event) => onSetNote(event.target.value)}
+        maxLength={280}
+        rows={2}
+        placeholder="Reservation times, pickup notes, reminders..."
+        className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold leading-5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-200"
+      />
+      <span className="mt-1 block text-right text-[0.68rem] font-semibold text-slate-400">{note.length}/280</span>
+    </label>
+  );
+}
+
+function PlaceDetailSheet({
+  target,
+  dayNote,
+  isSaved,
+  onSetDayNote,
+  onClose,
+  onSave,
+  onAddToTrip,
+  onOpenMaps,
+}: {
+  target: PlaceDetailTarget;
+  dayNote: string;
+  isSaved: boolean;
+  onSetDayNote: (note: string) => void;
+  onClose: () => void;
+  onSave: () => void;
+  onAddToTrip: () => void;
+  onOpenMaps: () => void;
+}) {
+  const isDestination = target.type === "destination";
+  const title = isDestination ? target.destination.name : target.experience.title;
+  const region = isDestination ? target.destination.region : target.experience.region;
+  const imageUrl = isDestination ? target.destination.heroImage : target.experience.imageUrl;
+  const description = isDestination ? target.destination.description : target.experience.description;
+  const rating = isDestination ? target.destination.rating : target.experience.rating;
+  const kicker = isDestination ? "Jamaica stop" : `${target.experience.type} idea`;
+  const pills = isDestination
+    ? target.destination.vibes.slice(0, 4)
+    : [target.experience.type, target.experience.energy, target.experience.bestTime, target.experience.approxCost];
+  const facts = isDestination
+    ? [
+        { label: "Region", value: target.destination.region },
+        { label: "Budget", value: "$".repeat(target.destination.priceLevel) },
+        { label: "Airport", value: target.destination.airportCode },
+      ]
+    : [
+        { label: "Location", value: target.experience.location },
+        { label: "Best time", value: target.experience.bestTime },
+        { label: "Cost", value: target.experience.approxCost },
+      ];
+  const whatToExpect = isDestination ? target.destination.highlights.slice(0, 4) : target.experience.whatToExpect.slice(0, 4);
+
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-950/35 p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-sm sm:p-5">
+      <article className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border border-white/80 bg-white text-slate-950 shadow-2xl shadow-slate-950/35">
+        <div className="flex items-start gap-3 p-4 sm:p-5">
+          <img src={imageUrl} alt={title} className="h-24 w-24 shrink-0 rounded-3xl object-cover shadow-lg shadow-slate-200 sm:h-28 sm:w-28" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-sky-600">{kicker}</p>
+            <h2 className="mt-1 text-3xl font-black leading-tight tracking-tight">{title}</h2>
+            <p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-500">
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+              {rating.toFixed(1)} · {region}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-950"
+            aria-label="Close place details"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-5 sm:pb-5">
+          <img src={imageUrl} alt="" className="h-56 w-full rounded-3xl object-cover shadow-xl shadow-slate-200" />
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {pills.map((pill) => (
+              <MiniPill key={pill}>{pill}</MiniPill>
+            ))}
+          </div>
+
+          <section className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            <h3 className="text-lg font-black">About this place</h3>
+            <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{description}</p>
+          </section>
+
+          {!!whatToExpect.length && (
+            <section className="mt-3 rounded-3xl border border-slate-200 bg-white p-4">
+              <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">Good to know</h3>
+              <div className="mt-3 grid gap-2">
+                {whatToExpect.map((item) => (
+                  <div key={item} className="rounded-2xl bg-slate-50 px-3 py-2 text-sm font-semibold leading-5 text-slate-600">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {facts.map((fact) => (
+              <div key={fact.label} className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
+                <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-slate-400">{fact.label}</p>
+                <p className="mt-1 truncate text-sm font-black text-slate-800">{fact.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {target.day && (
+            <DayNoteEditor day={target.day} note={dayNote} onSetNote={onSetDayNote} />
+          )}
+        </div>
+
+        <div className="grid shrink-0 grid-cols-3 gap-2 border-t border-slate-200 bg-white/95 p-4">
+          <DrawerAction icon={Heart} label={isSaved ? "Saved" : "Save"} onClick={onSave} active={isSaved} />
+          <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
+          <DrawerAction icon={Plus} label="Trip" onClick={onAddToTrip} primary />
+        </div>
+      </article>
     </div>
   );
 }
@@ -847,7 +1301,7 @@ function RoutePreviewCard({
         <button
           type="button"
           onClick={onOpenMaps}
-          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white"
+          className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full bg-[#020617] px-3 py-2 text-xs font-black text-white"
         >
           Maps <ArrowUpRight className="h-3.5 w-3.5" />
         </button>

@@ -44,6 +44,7 @@ interface TravelMapProps {
   getMarkerCategory?: (destination: Destination) => MapPinCategory;
   routeDestinations?: Destination[];
   routeLegs?: RouteLeg[];
+  focusDestinations?: Destination[];
   selectedRouteLegId?: string | null;
   onSelectRouteLeg?: (routeLegId: string) => void;
   onRouteStatusChange?: (status: RouteRenderStatus) => void;
@@ -109,6 +110,7 @@ export const TravelMap = memo(function TravelMap({
   getMarkerCategory = () => "default",
   routeDestinations = [],
   routeLegs = [],
+  focusDestinations = [],
   selectedRouteLegId = null,
   onSelectRouteLeg,
   onRouteStatusChange,
@@ -181,13 +183,16 @@ export const TravelMap = memo(function TravelMap({
   const routeIndexByDestination = new globalThis.Map(
     routeDestinations.map((destination, index) => [destination.id, index + 1])
   );
-  const fitTargets = selectedRouteSegment
+  const fitTargets = focusDestinations.length
+    ? focusDestinations
+    : selectedRouteSegment
     ? [selectedRouteSegment.from, selectedRouteSegment.to]
     : routeDestinations.length > 1 ? routeDestinations : destinations;
   const fitKey = [
     autoFitKey,
     bottomInset,
     selectedRouteLegId ?? "overview",
+    focusDestinations.map((destination) => destination.id).join("|"),
     fitTargets.map((destination) => destination.id).join("|"),
   ].join(":");
   const shouldFillParent = height === "100%";
@@ -308,7 +313,16 @@ export const TravelMap = memo(function TravelMap({
   }, [onRouteDetailsChange, routeDetails]);
 
   const fitMapToTargets = useCallback(() => {
-    if (!mapReady || fitTargets.length < 2 || !mapRef.current) return;
+    if (!mapReady || !fitTargets.length || !mapRef.current) return;
+    if (fitTargets.length === 1) {
+      const destination = fitTargets[0];
+      mapRef.current.easeTo({
+        center: [destination.longitude, destination.latitude],
+        zoom: 11.4,
+        duration: 850,
+      });
+      return;
+    }
     const bounds = getDestinationBounds(fitTargets);
     mapRef.current.fitBounds(bounds, {
       padding: getFitPadding(containerRef.current, bottomInset),
