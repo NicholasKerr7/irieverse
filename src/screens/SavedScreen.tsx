@@ -15,6 +15,7 @@ import {
   Route,
   Share2,
   Sparkles,
+  Star,
   StickyNote,
   Trash2,
   UploadCloud,
@@ -613,6 +614,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       imageUrl: importMetadata?.imageUrl || undefined,
       siteName: importMetadata?.siteName || importMetadata?.sourceLabel || undefined,
       canonicalUrl: importMetadata?.finalUrl || undefined,
+      place: importMetadata?.place,
     };
     const existingImport = findExistingImportedIdea(app.importedIdeas, importedIdeaPayload);
     if (existingImport) {
@@ -932,6 +934,7 @@ function ImportIntelligenceSummary({
   const previewTitle = metadata?.title || suggestion.title;
   const previewDescription = metadata?.description ?? "";
   const previewSite = metadata?.siteName || metadata?.sourceLabel || suggestion.sourceLabel;
+  const metadataPlace = metadata?.place;
 
   return (
     <div className={classNames("mt-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-3", glassControlMuted)}>
@@ -969,6 +972,22 @@ function ImportIntelligenceSummary({
       )}
       {error && <p className="mt-2 text-xs text-amber-200">{error}</p>}
       <div className="mt-2 flex flex-wrap gap-2">
+        {(metadataPlace?.shortAddress || metadataPlace?.address) && (
+          <span className="rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1 text-[0.68rem] text-slate-200">
+            {metadataPlace.shortAddress || metadataPlace.address}
+          </span>
+        )}
+        {metadataPlace?.primaryType && (
+          <span className="rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1 text-[0.68rem] text-slate-200">
+            {metadataPlace.primaryType}
+          </span>
+        )}
+        {typeof metadataPlace?.rating === "number" && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1 text-[0.68rem] text-slate-200">
+            <Star className="h-3 w-3 fill-amber-300 text-amber-300" />
+            {formatImportedPlaceRating(metadataPlace.rating, metadataPlace.userRatingCount)}
+          </span>
+        )}
         {suggestion.extractedPlaceName && (
           <span className="rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1 text-[0.68rem] text-slate-200">
             {suggestion.extractedPlaceName}
@@ -1396,6 +1415,7 @@ function SavedCard({
     savedItem.kind === "import" && savedItem.item.linkedDestinationId
       ? DESTINATIONS.find((destination) => destination.id === savedItem.item.linkedDestinationId)
       : null;
+  const importedPlace = savedItem.kind === "import" ? savedItem.item.place : undefined;
   const region =
     savedItem.kind === "place"
       ? savedItem.item.region
@@ -1403,7 +1423,11 @@ function SavedCard({
         ? `${savedItem.item.region} · ${savedItem.item.location}`
         : [
             savedItem.item.siteName || savedItem.item.sourceLabel || formatImportedCategory(savedItem.item.category),
-            savedItem.item.extractedPlaceName || linkedDestination?.name || "Attach map later",
+            importedPlace?.shortAddress ||
+              importedPlace?.address ||
+              savedItem.item.extractedPlaceName ||
+              linkedDestination?.name ||
+              "Attach map later",
           ].join(" · ");
   const image =
     savedItem.kind === "place"
@@ -1416,7 +1440,12 @@ function SavedCard({
       ? savedItem.item.headline
       : savedItem.kind === "experience"
         ? savedItem.item.description
-        : savedItem.item.note || savedItem.item.description || savedItem.item.extractedPlaceName || savedItem.item.url || "Manual Jamaica idea";
+        : savedItem.item.note ||
+          savedItem.item.description ||
+          formatImportedPlaceSummary(importedPlace) ||
+          savedItem.item.extractedPlaceName ||
+          savedItem.item.url ||
+          "Manual Jamaica idea";
   const sourceUrl = savedItem.kind === "import" ? (savedItem.item.canonicalUrl || savedItem.item.url) : "";
 
   return (
@@ -1448,6 +1477,28 @@ function SavedCard({
           >
             <ExternalLink className="h-3.5 w-3.5" /> Open source
           </a>
+        )}
+
+        {savedItem.kind === "import" && importedPlace && (
+          <div className="mt-3 grid gap-2 rounded-2xl border border-cyan-300/15 bg-cyan-300/10 p-3 text-xs text-slate-300">
+            {(importedPlace.shortAddress || importedPlace.address) && (
+              <span className="inline-flex items-center gap-2">
+                <MapPinned className="h-3.5 w-3.5 text-cyan-200" />
+                <span className="line-clamp-1">{importedPlace.shortAddress || importedPlace.address}</span>
+              </span>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {importedPlace.primaryType && (
+                <span className="rounded-full border border-white/10 bg-slate-950/50 px-2.5 py-1">{importedPlace.primaryType}</span>
+              )}
+              {typeof importedPlace.rating === "number" && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-slate-950/50 px-2.5 py-1">
+                  <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
+                  {formatImportedPlaceRating(importedPlace.rating, importedPlace.userRatingCount)}
+                </span>
+              )}
+            </div>
+          </div>
         )}
 
         <label className={classNames("mt-4 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs text-slate-400", glassControlMuted)}>
@@ -1675,6 +1726,7 @@ function mergeImportedIdeaPayload(
     imageUrl: nextIdea.imageUrl || existingIdea.imageUrl,
     siteName: nextIdea.siteName || existingIdea.siteName,
     canonicalUrl: nextIdea.canonicalUrl || existingIdea.canonicalUrl,
+    place: nextIdea.place ?? existingIdea.place,
   };
 }
 
@@ -1736,6 +1788,30 @@ function categoryToCollection(category: ImportedIdeaCategory): CollectionId {
 
 function formatImportedCategory(category: ImportedIdeaCategory): string {
   return IMPORT_CATEGORIES.find((item) => item.id === category)?.label ?? "Idea";
+}
+
+function formatImportedPlaceSummary(place: ImportedIdea["place"]): string {
+  if (!place) return "";
+  const rating = typeof place.rating === "number" ? formatImportedPlaceRating(place.rating, place.userRatingCount) : "";
+  return [
+    place.shortAddress || place.address,
+    place.primaryType,
+    rating ? `${rating} rating` : "",
+  ].filter(Boolean).join(" · ");
+}
+
+function formatImportedPlaceRating(rating: number, count?: number): string {
+  const ratingLabel = rating.toFixed(1);
+  return typeof count === "number" && Number.isFinite(count)
+    ? `${ratingLabel} (${formatCompactCount(count)})`
+    : ratingLabel;
+}
+
+function formatCompactCount(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 function formatCloudBoardDate(value: string): string {

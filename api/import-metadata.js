@@ -10,7 +10,11 @@ const GOOGLE_PLACES_IMPORT_FIELD_MASK = [
   "places.displayName",
   "places.formattedAddress",
   "places.shortFormattedAddress",
+  "places.location",
   "places.googleMapsUri",
+  "places.websiteUri",
+  "places.nationalPhoneNumber",
+  "places.internationalPhoneNumber",
   "places.rating",
   "places.userRatingCount",
   "places.primaryTypeDisplayName",
@@ -169,6 +173,11 @@ async function resolveGoogleMapsMetadata(url, sourceUrl = url) {
   const address = firstNonEmpty(asString(place.shortFormattedAddress), asString(place.formattedAddress));
   const mapsUrl = asString(place.googleMapsUri);
   const description = buildGooglePlaceDescription(place);
+  const importPlace = buildGoogleImportPlace(place, {
+    name: displayName,
+    address,
+    mapsUrl,
+  });
 
   return buildBaseMetadata(url, {
     sourceUrl: sourceUrl.toString(),
@@ -176,6 +185,7 @@ async function resolveGoogleMapsMetadata(url, sourceUrl = url) {
     title: displayName,
     description: description || address,
     siteName: "Google Maps",
+    place: importPlace,
     confidence: displayName ? "high" : "medium",
   });
 }
@@ -233,6 +243,7 @@ function buildBaseMetadata(url, overrides = {}) {
     description: cleanText(overrides.description ?? ""),
     imageUrl: overrides.imageUrl || "",
     siteName: cleanText(overrides.siteName ?? ""),
+    place: normalizeMetadataPlace(overrides.place),
     confidence: overrides.confidence || "low",
     reason: overrides.reason,
     cached: false,
@@ -450,6 +461,44 @@ function buildGooglePlaceDescription(place) {
   return [address, primaryType, ratingLabel].filter(Boolean).join(" · ");
 }
 
+function buildGoogleImportPlace(place, fallback = {}) {
+  const location = isRecord(place.location) ? place.location : {};
+  return stripEmptyValues({
+    name: fallback.name || localizedText(place.displayName),
+    address: fallback.address || asString(place.formattedAddress),
+    shortAddress: asString(place.shortFormattedAddress),
+    latitude: asNumber(location.latitude),
+    longitude: asNumber(location.longitude),
+    mapsUrl: fallback.mapsUrl || asString(place.googleMapsUri),
+    websiteUrl: asString(place.websiteUri),
+    phone: firstNonEmpty(asString(place.nationalPhoneNumber), asString(place.internationalPhoneNumber)),
+    rating: asNumber(place.rating),
+    userRatingCount: asNumber(place.userRatingCount),
+    primaryType: localizedText(place.primaryTypeDisplayName),
+    types: Array.isArray(place.types) ? place.types.filter((type) => typeof type === "string").slice(0, 6) : [],
+  });
+}
+
+function normalizeMetadataPlace(value) {
+  if (!isRecord(value)) return undefined;
+  const place = stripEmptyValues({
+    name: asString(value.name),
+    address: asString(value.address),
+    shortAddress: asString(value.shortAddress),
+    latitude: asNumber(value.latitude),
+    longitude: asNumber(value.longitude),
+    mapsUrl: asString(value.mapsUrl),
+    websiteUrl: asString(value.websiteUrl),
+    phone: asString(value.phone),
+    rating: asNumber(value.rating),
+    userRatingCount: asNumber(value.userRatingCount),
+    primaryType: asString(value.primaryType),
+    types: Array.isArray(value.types) ? value.types.filter((type) => typeof type === "string").slice(0, 6) : [],
+  });
+
+  return Object.keys(place).length ? place : undefined;
+}
+
 function localizedText(value) {
   if (typeof value === "string") return cleanText(value);
   if (value && typeof value === "object" && typeof value.text === "string") return cleanText(value.text);
@@ -545,6 +594,20 @@ function asString(value) {
 function asNumber(value) {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) ? number : undefined;
+}
+
+function stripEmptyValues(value) {
+  const next = {};
+  Object.entries(value).forEach(([key, entryValue]) => {
+    if (entryValue === undefined || entryValue === null || entryValue === "") return;
+    if (Array.isArray(entryValue) && !entryValue.length) return;
+    next[key] = entryValue;
+  });
+  return next;
+}
+
+function isRecord(value) {
+  return typeof value === "object" && value !== null;
 }
 
 function formatCompactCount(value) {

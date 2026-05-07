@@ -180,13 +180,13 @@ The flight proxy also protects the AviationStack quota:
 
 ## Import Metadata API
 
-Saved imports call `api/import-metadata.js` after a user pastes a URL. The endpoint fetches public Open Graph metadata for normal articles, uses YouTube oEmbed for YouTube links, and follows safe public redirects so shortened links can keep a cleaner final URL. Google Maps links use the server-only `GOOGLE_PLACES_API_KEY` when available to improve the saved title, address-style description, and canonical Maps URL. TikTok and Instagram stay heuristic-first because those platforms commonly restrict metadata access.
+Saved imports call `api/import-metadata.js` after a user pastes a URL. The endpoint fetches public Open Graph metadata for normal articles, uses YouTube oEmbed for YouTube links, and follows safe public redirects so shortened links can keep a cleaner final URL. Google Maps links use the server-only `GOOGLE_PLACES_API_KEY` when available to improve the saved title, address-style description, canonical Maps URL, and structured place facts such as address, coordinates, rating, type, phone, and website. TikTok and Instagram stay heuristic-first because those platforms commonly restrict metadata access.
 
 ```text
 GET /api/import-metadata?url={encodedPublicUrl}
 ```
 
-The endpoint accepts public `http`/`https` URLs only, blocks localhost/private-network targets, caches metadata in memory for 24 hours, and returns a low-confidence fallback object if metadata is unavailable. The client keeps the existing parser active either way and stores available preview title, description, image, site name, and final URL with the imported idea.
+The endpoint accepts public `http`/`https` URLs only, blocks localhost/private-network targets, caches metadata in memory for 24 hours, and returns a low-confidence fallback object if metadata is unavailable. The client keeps the existing parser active either way and stores available preview title, description, image, site name, final URL, and Google place facts with the imported idea.
 
 ## Road Routing
 

@@ -1438,7 +1438,27 @@ function isImportedIdea(value: unknown): value is ImportedIdea {
     (idea.description === undefined || typeof idea.description === "string") &&
     (idea.imageUrl === undefined || typeof idea.imageUrl === "string") &&
     (idea.siteName === undefined || typeof idea.siteName === "string") &&
-    (idea.canonicalUrl === undefined || typeof idea.canonicalUrl === "string")
+    (idea.canonicalUrl === undefined || typeof idea.canonicalUrl === "string") &&
+    (idea.place === undefined || isImportedIdeaPlaceMetadata(idea.place))
+  );
+}
+
+function isImportedIdeaPlaceMetadata(value: unknown): value is ImportedIdea["place"] {
+  if (typeof value !== "object" || value === null) return false;
+  const place = value as Partial<Record<keyof NonNullable<ImportedIdea["place"]>, unknown>>;
+  return (
+    (place.name === undefined || typeof place.name === "string") &&
+    (place.address === undefined || typeof place.address === "string") &&
+    (place.shortAddress === undefined || typeof place.shortAddress === "string") &&
+    (place.latitude === undefined || typeof place.latitude === "number") &&
+    (place.longitude === undefined || typeof place.longitude === "number") &&
+    (place.mapsUrl === undefined || typeof place.mapsUrl === "string") &&
+    (place.websiteUrl === undefined || typeof place.websiteUrl === "string") &&
+    (place.phone === undefined || typeof place.phone === "string") &&
+    (place.rating === undefined || typeof place.rating === "number") &&
+    (place.userRatingCount === undefined || typeof place.userRatingCount === "number") &&
+    (place.primaryType === undefined || typeof place.primaryType === "string") &&
+    (place.types === undefined || (Array.isArray(place.types) && place.types.every((type) => typeof type === "string")))
   );
 }
 

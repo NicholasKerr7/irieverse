@@ -3,6 +3,34 @@ const { test, expect } = require("@playwright/test");
 test("saved import updates duplicate links instead of adding clutter", async ({ page }) => {
   const issues = collectPageIssues(page);
 
+  await page.route("**/api/import-metadata**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          url: "https://www.google.com/maps/place/Devon+House,+Kingston,+Jamaica",
+          finalUrl: "https://maps.google.com/?cid=devon-house",
+          sourcePlatform: "google-maps",
+          sourceLabel: "Google Maps",
+          title: "Devon House",
+          description: "26 Hope Road, Kingston · Restaurant · 4.6 rating from 248 reviews",
+          siteName: "Google Maps",
+          confidence: "high",
+          place: {
+            name: "Devon House",
+            address: "26 Hope Road, Kingston, Jamaica",
+            shortAddress: "26 Hope Road, Kingston",
+            mapsUrl: "https://maps.google.com/?cid=devon-house",
+            rating: 4.6,
+            userRatingCount: 248,
+            primaryType: "Restaurant",
+          },
+        },
+      }),
+    });
+  });
+
   await openCleanTab(page, "saved", [
     "irieverse_imported_ideas",
     "irieverse_saved_collections",
@@ -14,6 +42,7 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   const saveButton = page.getByRole("button", { name: "Save to Irieverse" });
 
   await urlInput.fill("https://www.google.com/maps/place/Devon+House,+Kingston,+Jamaica?utm_source=qa#details");
+  await expect(page.getByText("26 Hope Road, Kingston").first()).toBeVisible();
   await titleInput.fill("Devon House ice cream");
   await noteInput.fill("First note.");
   await saveButton.click();
@@ -33,6 +62,11 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
     expect.objectContaining({
       sourcePlatform: "google-maps",
       linkedDestinationId: "kingston",
+      place: expect.objectContaining({
+        shortAddress: "26 Hope Road, Kingston",
+        primaryType: "Restaurant",
+        rating: 4.6,
+      }),
     })
   );
   expect(ideas[0].extractedPlaceName.toLowerCase()).toContain("devon house");

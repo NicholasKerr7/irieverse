@@ -1,5 +1,20 @@
 import type { ImportedIdeaSourcePlatform } from "../types/travel";
 
+export type ImportMetadataPlace = {
+  name: string;
+  address: string;
+  shortAddress: string;
+  latitude?: number;
+  longitude?: number;
+  mapsUrl: string;
+  websiteUrl: string;
+  phone: string;
+  rating?: number;
+  userRatingCount?: number;
+  primaryType: string;
+  types: string[];
+};
+
 export type ImportMetadata = {
   url: string;
   finalUrl: string;
@@ -9,6 +24,7 @@ export type ImportMetadata = {
   description: string;
   imageUrl: string;
   siteName: string;
+  place?: ImportMetadataPlace;
   confidence: "high" | "medium" | "low";
   reason?: string;
   cached?: boolean;
@@ -42,6 +58,7 @@ function normalizeImportMetadata(data: Record<string, unknown>, fallbackUrl: str
     description: asString(data.description),
     imageUrl: asString(data.imageUrl),
     siteName: asString(data.siteName),
+    place: normalizeImportMetadataPlace(data.place),
     confidence: normalizeConfidence(data.confidence),
     reason: asString(data.reason) || undefined,
     cached: data.cached === true,
@@ -80,8 +97,51 @@ function normalizeConfidence(value: unknown): ImportMetadata["confidence"] {
   return value === "high" || value === "medium" || value === "low" ? value : "low";
 }
 
+function normalizeImportMetadataPlace(value: unknown): ImportMetadataPlace | undefined {
+  if (!isRecord(value)) return undefined;
+  const place: ImportMetadataPlace = {
+    name: asString(value.name),
+    address: asString(value.address),
+    shortAddress: asString(value.shortAddress),
+    latitude: asNumber(value.latitude),
+    longitude: asNumber(value.longitude),
+    mapsUrl: asString(value.mapsUrl),
+    websiteUrl: asString(value.websiteUrl),
+    phone: asString(value.phone),
+    rating: asNumber(value.rating),
+    userRatingCount: asNumber(value.userRatingCount),
+    primaryType: asString(value.primaryType),
+    types: asStringArray(value.types),
+  };
+
+  const hasUsefulPlaceData = Boolean(
+    place.name ||
+      place.address ||
+      place.shortAddress ||
+      place.mapsUrl ||
+      place.websiteUrl ||
+      place.phone ||
+      place.primaryType ||
+      place.types.length ||
+      place.rating !== undefined ||
+      place.latitude !== undefined ||
+      place.longitude !== undefined
+  );
+
+  return hasUsefulPlaceData ? place : undefined;
+}
+
 function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function asNumber(value: unknown): number | undefined {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

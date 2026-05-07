@@ -428,6 +428,13 @@ async function verifyImportMetadataApi(request) {
       title: expect.any(String),
     })
   );
+  if (payload.data?.confidence === "high") {
+    expect(payload.data.place).toEqual(
+      expect.objectContaining({
+        mapsUrl: expect.any(String),
+      })
+    );
+  }
   expect(["high", "medium", "low"]).toContain(payload.data?.confidence);
 }
 

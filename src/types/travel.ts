@@ -123,6 +123,22 @@ export interface ImportedIdea {
   imageUrl?: string;
   siteName?: string;
   canonicalUrl?: string;
+  place?: ImportedIdeaPlaceMetadata;
+}
+
+export interface ImportedIdeaPlaceMetadata {
+  name?: string;
+  address?: string;
+  shortAddress?: string;
+  latitude?: number;
+  longitude?: number;
+  mapsUrl?: string;
+  websiteUrl?: string;
+  phone?: string;
+  rating?: number;
+  userRatingCount?: number;
+  primaryType?: string;
+  types?: string[];
 }
 
 export interface WeatherPlanDay {
