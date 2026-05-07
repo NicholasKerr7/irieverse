@@ -732,25 +732,18 @@ function RouteDirectionsPanel({
   routeStatus: RouteRenderStatus;
   onOpenDrivingGuide: () => void;
 }) {
-  const [showStepPreview, setShowStepPreview] = useState(false);
-
-  useEffect(() => {
-    setShowStepPreview(false);
-  }, [selectedRouteLeg?.id]);
-
   if (!selectedRouteLeg) return null;
 
-  const steps = selectedRouteDetail?.steps ?? [];
-  const hasRoadSteps = selectedRouteDetail?.source === "road" && steps.length > 0;
-  const visibleSteps = steps.slice(0, 5);
-  const hiddenStepCount = Math.max(0, steps.length - visibleSteps.length);
+  const hasRoadPreview = selectedRouteDetail?.source === "road";
+  const distanceKm = selectedRouteDetail?.distanceKm ?? selectedRouteLeg.leg.distanceKm;
+  const durationMinutes = selectedRouteDetail?.durationMinutes ?? selectedRouteLeg.leg.driveMinutes;
   const panelTone = routeStatus.isLoading && !selectedRouteDetail
     ? "loading"
-    : hasRoadSteps
+    : hasRoadPreview
       ? "road"
       : "fallback";
-  const statusText = hasRoadSteps
-    ? "Route line follows roads where available. Open in Maps when you are ready to drive."
+  const statusText = hasRoadPreview
+    ? "Road-following planning line is ready. Use it to compare day flow, then open in Maps when you are ready to drive."
     : selectedRouteDetail?.fallbackMessage ?? "Using a simple planning line for this leg.";
 
   return (
@@ -767,7 +760,7 @@ function RouteDirectionsPanel({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[0.6rem] uppercase tracking-[0.22em] text-cyan-200/75">
-            {hasRoadSteps ? "Road line" : "Planning estimate"}
+            {hasRoadPreview ? "Route preview" : "Planning estimate"}
           </p>
           <h4 className="mt-1 text-sm font-semibold text-slate-100">
             {selectedRouteLeg.leg.fromName} to {selectedRouteLeg.leg.toName}
@@ -787,60 +780,20 @@ function RouteDirectionsPanel({
         <p className="mt-3 text-xs text-slate-300">Building the road preview...</p>
       )}
 
-      {hasRoadSteps && (
-        <button
-          type="button"
-          onClick={() => setShowStepPreview((prev) => !prev)}
-          className="mt-3 flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-950/36 px-3 py-2 text-left text-xs font-bold text-slate-100 transition hover:border-cyan-300/40"
-        >
-          <span className="inline-flex items-center gap-2">
-            <Route className="h-3.5 w-3.5 text-cyan-200" />
-            {showStepPreview ? "Hide route notes" : `Show ${steps.length} route note${steps.length === 1 ? "" : "s"}`}
-          </span>
-          {showStepPreview ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
-        </button>
+      {selectedRouteDetail && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <RoutePulseFact label="Distance" value={formatMiles(distanceKm)} />
+          <RoutePulseFact label="Drive time" value={formatDriveTime(durationMinutes)} />
+        </div>
       )}
 
-      {hasRoadSteps && showStepPreview && (
-        <ol className="mt-3 grid gap-2">
-          {visibleSteps.map((step, index) => {
-            const StepIcon = getManeuverIcon(step.maneuverType, step.modifier);
-
-            return (
-              <li
-                key={`${step.id}-${index}`}
-                className="grid grid-cols-[1.8rem_minmax(0,1fr)_auto] items-start gap-2 rounded-xl border border-white/10 bg-slate-950/42 px-2.5 py-2"
-              >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-300 text-slate-950">
-                  <StepIcon className="h-3.5 w-3.5" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-xs font-semibold leading-5 text-slate-100">{step.instruction}</span>
-                  <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.68rem] text-slate-500">
-                    <span>{step.direction}</span>
-                    {!!step.roadName && <span className="max-w-full truncate">{step.roadName}</span>}
-                    {!!step.ref && step.ref !== step.roadName && <span>{step.ref}</span>}
-                  </span>
-                </span>
-                <span className="text-right text-[0.68rem] font-semibold text-slate-400">
-                  <span className="block">{formatMiles(step.distanceKm)}</span>
-                  {!!step.durationMinutes && (
-                    <span className="block text-slate-500">{formatDriveTime(step.durationMinutes)}</span>
-                  )}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-
-      {showStepPreview && hiddenStepCount > 0 && (
-        <p className="mt-3 text-xs text-slate-400">
-          {hiddenStepCount} more route note{hiddenStepCount === 1 ? "" : "s"} available for this route. Open in Maps for the full drive.
+      {hasRoadPreview && (
+        <p className="mt-3 rounded-xl border border-emerald-300/15 bg-slate-950/36 px-3 py-2 text-xs leading-5 text-emerald-50/85">
+          This is a trip-planning preview, not live navigation or traffic.
         </p>
       )}
 
-      {!hasRoadSteps && !routeStatus.isLoading && (
+      {!hasRoadPreview && !routeStatus.isLoading && (
         <div className="mt-3 flex gap-2 rounded-xl border border-amber-300/20 bg-slate-950/42 px-3 py-2 text-xs leading-5 text-amber-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
@@ -850,15 +803,6 @@ function RouteDirectionsPanel({
       )}
     </div>
   );
-}
-
-function getManeuverIcon(maneuverType: string, modifier: string): LucideIcon {
-  if (maneuverType === "arrive") return MapPin;
-  if (maneuverType === "depart") return Navigation;
-  if (maneuverType === "roundabout" || maneuverType === "rotary") return Route;
-  if (maneuverType === "merge" || maneuverType === "fork") return Route;
-  if (modifier.includes("left") || modifier.includes("right")) return Navigation;
-  return Compass;
 }
 
 function RouteHud({
