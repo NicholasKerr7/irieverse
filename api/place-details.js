@@ -19,7 +19,6 @@ const PLACE_DETAILS_FIELD_MASK = [
   "places.businessStatus",
   "places.primaryTypeDisplayName",
   "places.types",
-  "places.searchUri",
 ].join(",");
 
 module.exports = async function placeDetailsHandler(req, res) {
@@ -172,7 +171,7 @@ function normalizeGooglePlace(place) {
     shortAddress: asString(place.shortFormattedAddress),
     latitude: asNumber(location.latitude),
     longitude: asNumber(location.longitude),
-    mapsUrl: asString(place.googleMapsUri) || asString(place.searchUri),
+    mapsUrl: asString(place.googleMapsUri),
     websiteUrl: asString(place.websiteUri),
     phone: asString(place.nationalPhoneNumber),
     internationalPhone: asString(place.internationalPhoneNumber),
