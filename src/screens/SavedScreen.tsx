@@ -494,7 +494,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
 
           setImportForm((prev) => {
             if (prev.url.trim() !== url) return prev;
-            const shouldUseMetadataTitle = metadata.title && (!prev.title.trim() || prev.title === importAutoTitle);
+            const shouldUseMetadataTitle = metadata.title && !prev.title.trim();
             return {
               ...prev,
               title: shouldUseMetadataTitle ? metadata.title : prev.title,

@@ -54,7 +54,7 @@ test("share-target imports preserve provided titles", async ({ page }) => {
   await page.goto(`/?${params}`, { waitUntil: "domcontentloaded" });
   await expect(page.getByText("Shared idea ready to save")).toBeVisible();
   await expect(page.getByPlaceholder("Jerk stop in Port Antonio")).toHaveValue("QA Blue Mountain coffee stop");
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(6000);
   await expect(page.getByPlaceholder("Jerk stop in Port Antonio")).toHaveValue("QA Blue Mountain coffee stop");
   await expect(page.locator("textarea")).toHaveValue("Production QA import idea attached to a Jamaica board.");
 
