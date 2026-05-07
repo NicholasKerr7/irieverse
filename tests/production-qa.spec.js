@@ -25,6 +25,7 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
 
   await verifyProductionAssets(request);
   await verifyFlightApi(request);
+  await verifyPlaceDetailsApi(request);
   await verifyRoadRouteApi(request);
 
   await openTab(page, "");
@@ -393,6 +394,24 @@ async function verifyRoadRouteApi(request) {
     })
   );
   expect(payload.meta?.stepCount).toBeGreaterThan(1);
+}
+
+async function verifyPlaceDetailsApi(request) {
+  const response = await request.get(
+    `${BASE_URL}/api/place-details?kind=destination&name=Negril&region=West%20Coast&latitude=18.2728&longitude=-78.3488`
+  );
+  expect(response.ok()).toBe(true);
+  const payload = await response.json();
+  expect(["google-places", "curated"]).toContain(payload.meta?.source);
+  expect(typeof payload.meta?.providerConfigured).toBe("boolean");
+  if (payload.data) {
+    expect(payload.data).toEqual(
+      expect.objectContaining({
+        source: "google-places",
+        mapsUrl: expect.any(String),
+      })
+    );
+  }
 }
 
 async function verifyFlightApi(request) {

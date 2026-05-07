@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const flightsHandler = require("./api/flights.js");
 const importMetadataHandler = require("./api/import-metadata.js");
+const placeDetailsHandler = require("./api/place-details.js");
 const roadRouteHandler = require("./api/road-route.js");
 
 export default defineConfig(({ mode }) => {
@@ -46,6 +47,9 @@ function localApiRoutes() {
       });
       server.middlewares.use("/api/import-metadata", async (req, res) => {
         await runLocalApiHandler(importMetadataHandler, req, res);
+      });
+      server.middlewares.use("/api/place-details", async (req, res) => {
+        await runLocalApiHandler(placeDetailsHandler, req, res);
       });
       server.middlewares.use("/api/road-route", async (req, res) => {
         await runLocalApiHandler(roadRouteHandler, req, res);

@@ -20,6 +20,7 @@ import { TravelMap, type RouteDetail, type RouteRenderStatus } from "../componen
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
+import { fetchPlaceDetails, type PlaceDetails } from "../services/placeDetails";
 import type { Destination, Experience, PlannerDay, RouteLeg } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { formatDriveTime, formatMiles } from "../utils/format";
@@ -52,6 +53,8 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [activeDrawerTab, setActiveDrawerTab] = useState<MapDrawerTab>("overview");
   const [placeDetail, setPlaceDetail] = useState<PlaceDetailTarget | null>(null);
+  const [livePlaceDetails, setLivePlaceDetails] = useState<PlaceDetails | null>(null);
+  const [isPlaceDetailsLoading, setIsPlaceDetailsLoading] = useState(false);
   const [focusedDestinationId, setFocusedDestinationId] = useState(app.plannerBaseId);
   const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(null);
   const [routeStatus, setRouteStatus] = useState<RouteRenderStatus>({
@@ -98,6 +101,39 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       setFocusedDestinationId(app.plannerBaseId);
     }
   }, [app.plannerBaseId]);
+
+  useEffect(() => {
+    if (!placeDetail) {
+      setLivePlaceDetails(null);
+      setIsPlaceDetailsLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setLivePlaceDetails(null);
+    setIsPlaceDetailsLoading(true);
+
+    const lookup = placeDetail.type === "destination"
+      ? { kind: "destination" as const, destination: placeDetail.destination }
+      : {
+          kind: "experience" as const,
+          experience: placeDetail.experience,
+          linkedDestination: placeDetail.linkedDestination,
+        };
+
+    fetchPlaceDetails(lookup, controller.signal)
+      .then((details) => setLivePlaceDetails(details))
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.warn("Place details unavailable", error);
+        setLivePlaceDetails(null);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsPlaceDetailsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [placeDetail]);
 
   const selectedDestination =
     DESTINATIONS.find((destination) => destination.id === focusedDestinationId) ?? visibleDestinations[0] ?? DESTINATIONS[0];
@@ -235,7 +271,12 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     window.open(buildExperienceMapsUrl(experience), "_blank", "noreferrer");
   };
 
-  const handleOpenPlaceDetailMaps = (target: PlaceDetailTarget) => {
+  const handleOpenPlaceDetailMaps = (target: PlaceDetailTarget, details: PlaceDetails | null) => {
+    if (details?.mapsUrl) {
+      window.open(details.mapsUrl, "_blank", "noreferrer");
+      return;
+    }
+
     if (target.type === "destination") {
       handleOpenDestinationMaps(target.destination);
     } else {
@@ -481,6 +522,8 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       {placeDetail && (
         <PlaceDetailSheet
           target={placeDetail}
+          liveDetails={livePlaceDetails}
+          isLiveDetailsLoading={isPlaceDetailsLoading}
           dayNote={placeDetail.day ? app.dayNotes[String(placeDetail.day)] ?? "" : ""}
           isSaved={
             placeDetail.type === "destination"
@@ -493,7 +536,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
           onClose={() => setPlaceDetail(null)}
           onSave={() => handleSavePlaceDetail(placeDetail)}
           onAddToTrip={() => handleAddPlaceDetailToTrip(placeDetail)}
-          onOpenMaps={() => handleOpenPlaceDetailMaps(placeDetail)}
+          onOpenMaps={() => handleOpenPlaceDetailMaps(placeDetail, livePlaceDetails)}
         />
       )}
     </section>
@@ -1139,6 +1182,8 @@ function DayNoteEditor({
 
 function PlaceDetailSheet({
   target,
+  liveDetails,
+  isLiveDetailsLoading,
   dayNote,
   isSaved,
   onSetDayNote,
@@ -1148,6 +1193,8 @@ function PlaceDetailSheet({
   onOpenMaps,
 }: {
   target: PlaceDetailTarget;
+  liveDetails: PlaceDetails | null;
+  isLiveDetailsLoading: boolean;
   dayNote: string;
   isSaved: boolean;
   onSetDayNote: (note: string) => void;
@@ -1161,12 +1208,16 @@ function PlaceDetailSheet({
   const region = isDestination ? target.destination.region : target.experience.region;
   const imageUrl = isDestination ? target.destination.heroImage : target.experience.imageUrl;
   const description = isDestination ? target.destination.description : target.experience.description;
-  const rating = isDestination ? target.destination.rating : target.experience.rating;
+  const rating = liveDetails?.rating ?? (isDestination ? target.destination.rating : target.experience.rating);
+  const ratingText = liveDetails?.userRatingCount
+    ? `${rating.toFixed(1)} (${formatCompactCount(liveDetails.userRatingCount)})`
+    : rating.toFixed(1);
   const kicker = isDestination ? "Jamaica stop" : `${target.experience.type} idea`;
+  const liveTypePill = liveDetails?.primaryType || humanizePlaceType(liveDetails?.types[0] ?? "");
   const pills = isDestination
-    ? target.destination.vibes.slice(0, 4)
-    : [target.experience.type, target.experience.energy, target.experience.bestTime, target.experience.approxCost];
-  const facts = isDestination
+    ? uniqueStrings([liveTypePill, ...target.destination.vibes]).slice(0, 4)
+    : uniqueStrings([liveTypePill, target.experience.type, target.experience.energy, target.experience.bestTime, target.experience.approxCost]).slice(0, 4);
+  const curatedFacts = isDestination
     ? [
         { label: "Region", value: target.destination.region },
         { label: "Budget", value: "$".repeat(target.destination.priceLevel) },
@@ -1177,11 +1228,16 @@ function PlaceDetailSheet({
         { label: "Best time", value: target.experience.bestTime },
         { label: "Cost", value: target.experience.approxCost },
       ];
+  const liveFacts = buildLivePlaceFacts(liveDetails);
+  const facts = liveFacts.length ? liveFacts : curatedFacts;
   const whatToExpect = isDestination ? target.destination.highlights.slice(0, 4) : target.experience.whatToExpect.slice(0, 4);
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-950/35 p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-sm sm:p-5">
-      <article className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border border-white/80 bg-white text-slate-950 shadow-2xl shadow-slate-950/35">
+      <article
+        data-testid="place-detail-sheet"
+        className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border border-white/80 bg-white text-slate-950 shadow-2xl shadow-slate-950/35"
+      >
         <div className="flex items-start gap-3 p-4 sm:p-5">
           <img src={imageUrl} alt={title} className="h-24 w-24 shrink-0 rounded-3xl object-cover shadow-lg shadow-slate-200 sm:h-28 sm:w-28" />
           <div className="min-w-0 flex-1">
@@ -1189,7 +1245,7 @@ function PlaceDetailSheet({
             <h2 className="mt-1 text-3xl font-black leading-tight tracking-tight">{title}</h2>
             <p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-500">
               <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-              {rating.toFixed(1)} · {region}
+              {ratingText} · {region}
             </p>
           </div>
           <button
@@ -1212,7 +1268,14 @@ function PlaceDetailSheet({
           </div>
 
           <section className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <h3 className="text-lg font-black">About this place</h3>
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-lg font-black">About this place</h3>
+              {isLiveDetailsLoading && (
+                <span className="inline-flex shrink-0 items-center rounded-full bg-sky-50 px-2.5 py-1 text-[0.62rem] font-black text-sky-700">
+                  Checking latest
+                </span>
+              )}
+            </div>
             <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{description}</p>
           </section>
 
@@ -1238,6 +1301,33 @@ function PlaceDetailSheet({
             ))}
           </div>
 
+          {(liveDetails?.weekdayDescriptions.length || liveDetails?.websiteUrl) && (
+            <section className="mt-3 rounded-3xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">Latest Details</h3>
+                {liveDetails.websiteUrl && (
+                  <a
+                    href={liveDetails.websiteUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex min-h-9 items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-xs font-black text-slate-600 transition hover:border-sky-300 hover:text-sky-700"
+                  >
+                    Website <ArrowUpRight className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+              {!!liveDetails.weekdayDescriptions.length && (
+                <div className="mt-3 grid gap-1.5">
+                  {liveDetails.weekdayDescriptions.slice(0, 7).map((description) => (
+                    <p key={description} className="rounded-2xl bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-600">
+                      {description}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
           {target.day && (
             <DayNoteEditor day={target.day} note={dayNote} onSetNote={onSetDayNote} />
           )}
@@ -1251,6 +1341,46 @@ function PlaceDetailSheet({
       </article>
     </div>
   );
+}
+
+function buildLivePlaceFacts(details: PlaceDetails | null): Array<{ label: string; value: string }> {
+  if (!details) return [];
+
+  return [
+    { label: "Location", value: details.shortAddress || details.address },
+    { label: "Hours", value: details.openNow === undefined ? "" : details.openNow ? "Open now" : "Closed now" },
+    { label: "Phone", value: details.phone || details.internationalPhone },
+    { label: "Type", value: details.primaryType || humanizePlaceType(details.types[0] ?? "") },
+    { label: "Price", value: details.priceLevel },
+    { label: "Status", value: details.businessStatus },
+  ].filter((fact) => fact.value);
+}
+
+function humanizePlaceType(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function uniqueStrings(values: string[]): string[] {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    const normalizedValue = value.trim();
+    if (!normalizedValue) return false;
+    const key = normalizedValue.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function formatCompactCount(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 function RoutePreviewCard({

@@ -141,6 +141,25 @@ test("empty states give clear recovery actions", async ({ page }) => {
   expect(issues).toEqual([]);
 });
 
+test("map place details open with curated fallback content", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await page.waitForTimeout(2500);
+  await page.getByRole("button", { name: /Day 2/ }).click();
+  await expect(page.getByText("Day 2 Plan")).toBeVisible();
+  await page.getByRole("button", { name: /Details/ }).first().click();
+
+  const detailSheet = page.getByTestId("place-detail-sheet");
+  await expect(detailSheet.getByRole("heading", { name: "Negril" })).toBeVisible();
+  await expect(detailSheet.getByText("About this place")).toBeVisible();
+  await expect(detailSheet.getByText("Good to know")).toBeVisible();
+  await expect(detailSheet.getByRole("button", { name: "Maps" })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 async function openCleanTab(page, tab, storageKeys) {
   await page.goto(`/?tab=${tab}`, { waitUntil: "domcontentloaded" });
   await page.evaluate((keys) => {
