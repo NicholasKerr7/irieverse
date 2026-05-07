@@ -5,6 +5,17 @@ const MAX_URL_LENGTH = 2048;
 const MAX_HTML_BYTES = 300_000;
 const METADATA_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const METADATA_CACHE = new Map();
+const GOOGLE_PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
+const GOOGLE_PLACES_IMPORT_FIELD_MASK = [
+  "places.displayName",
+  "places.formattedAddress",
+  "places.shortFormattedAddress",
+  "places.googleMapsUri",
+  "places.rating",
+  "places.userRatingCount",
+  "places.primaryTypeDisplayName",
+  "places.types",
+].join(",");
 
 module.exports = async function importMetadataHandler(req, res) {
   setResponseHeaders(res);
@@ -69,12 +80,28 @@ async function resolveMetadata(url) {
     return resolveYouTubeMetadata(metadataUrl, url);
   }
 
-  if (sourcePlatform === "google-maps" || sourcePlatform === "tiktok" || sourcePlatform === "instagram") {
+  if (sourcePlatform === "google-maps") {
+    const googleMapsMetadata = await resolveGoogleMapsMetadata(metadataUrl, url).catch((error) => {
+      console.warn("Google Maps import metadata lookup failed", error);
+      return null;
+    });
+    if (googleMapsMetadata) return googleMapsMetadata;
+
     return buildBaseMetadata(metadataUrl, {
       sourceUrl: url.toString(),
       finalUrl: metadataUrl.toString(),
       title: titleFromUrl(metadataUrl, sourcePlatform),
-      confidence: sourcePlatform === "google-maps" ? "medium" : "low",
+      confidence: "medium",
+      reason: "platform-restricted",
+    });
+  }
+
+  if (sourcePlatform === "tiktok" || sourcePlatform === "instagram") {
+    return buildBaseMetadata(metadataUrl, {
+      sourceUrl: url.toString(),
+      finalUrl: metadataUrl.toString(),
+      title: titleFromUrl(metadataUrl, sourcePlatform),
+      confidence: "low",
       reason: "platform-restricted",
     });
   }
@@ -107,6 +134,49 @@ async function resolveYouTubeMetadata(url, sourceUrl = url) {
     imageUrl: asString(payload.thumbnail_url),
     siteName: "YouTube",
     confidence: asString(payload.title) ? "high" : "medium",
+  });
+}
+
+async function resolveGoogleMapsMetadata(url, sourceUrl = url) {
+  const apiKey = getGooglePlacesApiKey();
+  const placeQuery = extractGoogleMapsPlaceName(url);
+  if (!apiKey || !placeQuery) return null;
+
+  const response = await fetchWithTimeout(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": GOOGLE_PLACES_IMPORT_FIELD_MASK,
+    },
+    body: JSON.stringify({
+      textQuery: `${placeQuery}, Jamaica`,
+      languageCode: "en",
+      regionCode: "JM",
+      pageSize: 1,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google Places import lookup failed: ${response.status}`);
+  }
+
+  const payload = await response.json();
+  const place = Array.isArray(payload.places) ? payload.places[0] : null;
+  if (!place) return null;
+
+  const displayName = localizedText(place.displayName) || placeQuery;
+  const address = firstNonEmpty(asString(place.shortFormattedAddress), asString(place.formattedAddress));
+  const mapsUrl = asString(place.googleMapsUri);
+  const description = buildGooglePlaceDescription(place);
+
+  return buildBaseMetadata(url, {
+    sourceUrl: sourceUrl.toString(),
+    finalUrl: mapsUrl || url.toString(),
+    title: displayName,
+    description: description || address,
+    siteName: "Google Maps",
+    confidence: displayName ? "high" : "medium",
   });
 }
 
@@ -317,12 +387,7 @@ function getSourceLabel(source, url) {
 
 function titleFromUrl(url, sourcePlatform) {
   if (sourcePlatform === "google-maps") {
-    const query = firstNonEmpty(
-      url.searchParams.get("query") ?? "",
-      url.searchParams.get("q") ?? "",
-      url.searchParams.get("daddr") ?? "",
-      url.searchParams.get("destination") ?? ""
-    );
+    const query = extractGoogleMapsPlaceName(url);
     if (query) return titleCase(cleanText(query));
   }
 
@@ -333,6 +398,62 @@ function titleFromUrl(url, sourcePlatform) {
     .find((segment) => segment && !/^\d+$/.test(segment) && !/^amp$/i.test(segment));
 
   return titleCase(cleanText(pathTitle || readableHost(url.hostname)));
+}
+
+function extractGoogleMapsPlaceName(url) {
+  const queryValue = firstNonEmpty(
+    url.searchParams.get("query") ?? "",
+    url.searchParams.get("q") ?? "",
+    url.searchParams.get("daddr") ?? "",
+    url.searchParams.get("destination") ?? ""
+  );
+  if (queryValue) return cleanGoogleMapsPlaceName(queryValue);
+
+  const segments = url.pathname
+    .split("/")
+    .map(decodeUrlPart)
+    .filter(Boolean);
+  const placeIndex = segments.findIndex((segment) => {
+    const normalizedSegment = segment.toLowerCase();
+    return normalizedSegment === "place" || normalizedSegment === "search";
+  });
+  if (placeIndex >= 0 && segments[placeIndex + 1]) {
+    return cleanGoogleMapsPlaceName(segments[placeIndex + 1]);
+  }
+
+  const candidate = segments
+    .filter((segment) => !/^(maps|dir|@|data|search|place)$/i.test(segment))
+    .find((segment) => /jamaica|beach|restaurant|hotel|bar|museum|falls|bay|cafe|coffee|house/i.test(segment));
+
+  return cleanGoogleMapsPlaceName(candidate ?? "");
+}
+
+function cleanGoogleMapsPlaceName(value) {
+  return cleanText(decodeUrlPart(value))
+    .replace(/\s*-\s*google maps$/i, "")
+    .replace(/\s*\|\s*google maps$/i, "")
+    .replace(/\b(jamaica|google maps|maps)\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/^[,.\-\s]+|[,.\-\s]+$/g, "")
+    .trim();
+}
+
+function buildGooglePlaceDescription(place) {
+  const address = firstNonEmpty(asString(place.shortFormattedAddress), asString(place.formattedAddress));
+  const primaryType = localizedText(place.primaryTypeDisplayName);
+  const rating = asNumber(place.rating);
+  const ratingCount = asNumber(place.userRatingCount);
+  const ratingLabel = rating
+    ? `${rating.toFixed(1)} rating${ratingCount ? ` from ${formatCompactCount(ratingCount)} reviews` : ""}`
+    : "";
+
+  return [address, primaryType, ratingLabel].filter(Boolean).join(" · ");
+}
+
+function localizedText(value) {
+  if (typeof value === "string") return cleanText(value);
+  if (value && typeof value === "object" && typeof value.text === "string") return cleanText(value.text);
+  return "";
 }
 
 function normalizeImageUrl(value, baseUrl) {
@@ -406,6 +527,31 @@ function readableHost(host) {
 
 function titleCase(value) {
   return cleanText(value).replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getGooglePlacesApiKey() {
+  return (
+    process.env.GOOGLE_PLACES_API_KEY ||
+    process.env.GOOGLE_MAPS_API_KEY ||
+    process.env.PLACES_API_KEY ||
+    ""
+  ).trim();
+}
+
+function asString(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function asNumber(value) {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function formatCompactCount(value) {
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 function escapeRegExp(value) {

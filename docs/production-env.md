@@ -180,7 +180,7 @@ The flight proxy also protects the AviationStack quota:
 
 ## Import Metadata API
 
-Saved imports call `api/import-metadata.js` after a user pastes a URL. The endpoint fetches public Open Graph metadata for normal articles, uses YouTube oEmbed for YouTube links, and follows safe public redirects so shortened links can keep a cleaner final URL. Google Maps, TikTok, and Instagram stay heuristic-first because those platforms commonly restrict metadata access.
+Saved imports call `api/import-metadata.js` after a user pastes a URL. The endpoint fetches public Open Graph metadata for normal articles, uses YouTube oEmbed for YouTube links, and follows safe public redirects so shortened links can keep a cleaner final URL. Google Maps links use the server-only `GOOGLE_PLACES_API_KEY` when available to improve the saved title, address-style description, and canonical Maps URL. TikTok and Instagram stay heuristic-first because those platforms commonly restrict metadata access.
 
 ```text
 GET /api/import-metadata?url={encodedPublicUrl}

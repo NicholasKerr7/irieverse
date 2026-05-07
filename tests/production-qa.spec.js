@@ -25,6 +25,7 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
 
   await verifyProductionAssets(request);
   await verifyFlightApi(request);
+  await verifyImportMetadataApi(request);
   await verifyPlaceDetailsApi(request);
   await verifyRoadRouteApi(request);
 
@@ -412,6 +413,22 @@ async function verifyPlaceDetailsApi(request) {
       })
     );
   }
+}
+
+async function verifyImportMetadataApi(request) {
+  const response = await request.get(
+    `${BASE_URL}/api/import-metadata?url=${encodeURIComponent("https://www.google.com/maps/place/Devon+House,+Kingston,+Jamaica")}`
+  );
+  expect(response.ok()).toBe(true);
+  const payload = await response.json();
+  expect(payload.data).toEqual(
+    expect.objectContaining({
+      sourcePlatform: "google-maps",
+      sourceLabel: "Google Maps",
+      title: expect.any(String),
+    })
+  );
+  expect(["high", "medium", "low"]).toContain(payload.data?.confidence);
 }
 
 async function verifyFlightApi(request) {
