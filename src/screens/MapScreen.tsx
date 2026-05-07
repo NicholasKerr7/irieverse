@@ -197,7 +197,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         onSelectDestination={handleSelectDestination}
         viewState={app.mapViewState}
         onMove={app.handleMapMove}
-        className="absolute inset-0 rounded-none border-0"
+        className="rounded-none border-0"
         height="100%"
         scrollZoom
         getMarkerCategory={getDestinationPinCategory}

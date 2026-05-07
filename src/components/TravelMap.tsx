@@ -9,9 +9,14 @@ import { formatMiles } from "../utils/format";
 import { getRouteColor, type MapPinCategory } from "../utils/mapRoutes";
 
 const MAP_STYLES: Record<ThemeMode, string> = {
-  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-  light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+  dark: "https://tiles.openfreemap.org/styles/dark",
+  light: "https://tiles.openfreemap.org/styles/positron",
 };
+
+const JAMAICA_MAP_BOUNDS: [[number, number], [number, number]] = [
+  [-81.2, 15.8],
+  [-73.8, 21.1],
+];
 
 const CATEGORY_COLORS: Record<MapPinCategory, string> = {
   beaches: "#22d3ee",
@@ -185,6 +190,7 @@ export const TravelMap = memo(function TravelMap({
     selectedRouteLegId ?? "overview",
     fitTargets.map((destination) => destination.id).join("|"),
   ].join(":");
+  const shouldFillParent = height === "100%";
 
   useEffect(() => {
     if (!routeRequests.length) {
@@ -338,17 +344,23 @@ export const TravelMap = memo(function TravelMap({
     <div
       ref={containerRef}
       className={classNames(
-        "relative rounded-3xl border border-slate-800 overflow-hidden bg-slate-950/60",
+        shouldFillParent ? "absolute inset-0" : "relative rounded-3xl border border-slate-800",
+        "overflow-hidden bg-slate-950/60",
         className
       )}
+      style={shouldFillParent ? undefined : { height }}
     >
       <Map
         ref={mapRef}
         reuseMaps
         scrollZoom={scrollZoom}
         dragRotate={false}
+        maxBounds={JAMAICA_MAP_BOUNDS}
+        minZoom={6}
+        maxZoom={14.5}
+        renderWorldCopies={false}
         mapStyle={MAP_STYLES[theme]}
-        style={{ width: "100%", height }}
+        style={{ width: "100%", height: "100%" }}
         {...viewState}
         onMove={onMove}
         onLoad={() => setMapReady(true)}
