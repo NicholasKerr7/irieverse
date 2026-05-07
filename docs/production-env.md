@@ -186,7 +186,7 @@ Saved imports call `api/import-metadata.js` after a user pastes a URL. The endpo
 GET /api/import-metadata?url={encodedPublicUrl}
 ```
 
-The endpoint accepts public `http`/`https` URLs only, blocks localhost/private-network targets, caches metadata in memory for 24 hours, and returns a low-confidence fallback object if metadata is unavailable. The client keeps the existing parser active either way and stores available preview title, description, image, site name, final URL, and Google place facts with the imported idea.
+The endpoint accepts public `http`/`https` URLs only, blocks localhost/private-network targets, caches metadata in memory for 24 hours, and returns a low-confidence fallback object if metadata is unavailable. The client keeps the existing parser active either way and stores available preview title, description, image, site name, final URL, and Google place facts with the imported idea. When Google place coordinates are available, saved imports also appear as dedicated map pins in the Map screen.
 
 ## Road Routing
 

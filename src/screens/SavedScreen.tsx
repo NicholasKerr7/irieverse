@@ -334,6 +334,13 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       app.setPlannerBaseId(savedItem.item.id);
     } else if (savedItem.item.linkedDestinationId) {
       app.setPlannerBaseId(savedItem.item.linkedDestinationId);
+    } else if (
+      savedItem.kind === "import" &&
+      typeof savedItem.item.place?.latitude === "number" &&
+      typeof savedItem.item.place?.longitude === "number"
+    ) {
+      onNavigate("map");
+      return;
     } else if (savedItem.kind === "import") {
       setStatusMessage("Attach a Jamaica map location to view this import on the map.");
       return;

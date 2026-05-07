@@ -21,6 +21,8 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
             name: "Devon House",
             address: "26 Hope Road, Kingston, Jamaica",
             shortAddress: "26 Hope Road, Kingston",
+            latitude: 18.0179,
+            longitude: -76.7875,
             mapsUrl: "https://maps.google.com/?cid=devon-house",
             rating: 4.6,
             userRatingCount: 248,
@@ -71,6 +73,13 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   );
   expect(ideas[0].extractedPlaceName.toLowerCase()).toContain("devon house");
   await expect(page.getByText("Imported idea updated")).toBeVisible();
+
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await expect(page.getByRole("button", { name: "Open saved idea Devon House" })).toBeVisible();
+  await page.getByRole("button", { name: "Open saved idea Devon House" }).click();
+  await expect(page.getByTestId("imported-place-detail-sheet").getByText("26 Hope Road, Kingston").first()).toBeVisible();
+
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
 });

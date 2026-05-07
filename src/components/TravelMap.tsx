@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Map, { Layer, Marker, Source, type MapRef, type ViewStateChangeEvent } from "react-map-gl/maplibre";
 import type { Destination, RouteLeg } from "../types/travel";
 import type { ThemeMode } from "../hooks/useTravelOS";
-import { MapPin } from "lucide-react";
+import { MapPin, Sparkles } from "lucide-react";
 import { MapCanvasSkeleton } from "./LoadingStates";
 import { classNames } from "../utils/classNames";
 import { formatMiles } from "../utils/format";
@@ -52,6 +52,10 @@ interface TravelMapProps {
   autoFitKey?: string;
   bottomInset?: "compact" | "expanded";
   theme?: ThemeMode;
+  extraMarkers?: MapExtraMarker[];
+  selectedExtraMarkerId?: string | null;
+  focusExtraMarkers?: MapExtraMarker[];
+  onSelectExtraMarker?: (markerId: string) => void;
 }
 
 export type RouteRenderStatus = {
@@ -98,6 +102,22 @@ export type RouteDetail = {
   steps: RouteStep[];
 };
 
+export type MapExtraMarker = {
+  id: string;
+  name: string;
+  subtitle: string;
+  latitude: number;
+  longitude: number;
+  category: MapPinCategory;
+};
+
+type MapFitTarget = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+};
+
 export const TravelMap = memo(function TravelMap({
   destinations,
   selectedDestinationId,
@@ -118,6 +138,10 @@ export const TravelMap = memo(function TravelMap({
   autoFitKey = "",
   bottomInset = "compact",
   theme = "dark",
+  extraMarkers = [],
+  selectedExtraMarkerId = null,
+  focusExtraMarkers = [],
+  onSelectExtraMarker,
 }: TravelMapProps) {
   const mapRef = useRef<MapRef | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -183,8 +207,9 @@ export const TravelMap = memo(function TravelMap({
   const routeIndexByDestination = new globalThis.Map(
     routeDestinations.map((destination, index) => [destination.id, index + 1])
   );
-  const fitTargets = focusDestinations.length
-    ? focusDestinations
+  const explicitFocusTargets: MapFitTarget[] = [...focusDestinations, ...focusExtraMarkers];
+  const fitTargets: MapFitTarget[] = explicitFocusTargets.length
+    ? explicitFocusTargets
     : selectedRouteSegment
     ? [selectedRouteSegment.from, selectedRouteSegment.to]
     : routeDestinations.length > 1 ? routeDestinations : destinations;
@@ -193,6 +218,7 @@ export const TravelMap = memo(function TravelMap({
     bottomInset,
     selectedRouteLegId ?? "overview",
     focusDestinations.map((destination) => destination.id).join("|"),
+    focusExtraMarkers.map((marker) => marker.id).join("|"),
     fitTargets.map((destination) => destination.id).join("|"),
   ].join(":");
   const shouldFillParent = height === "100%";
@@ -323,7 +349,7 @@ export const TravelMap = memo(function TravelMap({
       });
       return;
     }
-    const bounds = getDestinationBounds(fitTargets);
+    const bounds = getMapTargetBounds(fitTargets);
     mapRef.current.fitBounds(bounds, {
       padding: getFitPadding(containerRef.current, bottomInset),
       duration: 850,
@@ -575,6 +601,52 @@ export const TravelMap = memo(function TravelMap({
                 {isSelected && (
                   <span className="pointer-events-none absolute left-1/2 top-11 hidden -translate-x-1/2 whitespace-nowrap rounded-full border border-white/15 bg-slate-950/90 px-2.5 py-1 text-[0.62rem] font-semibold text-cyan-100 shadow-xl shadow-slate-950/50 backdrop-blur md:block">
                     {destination.name}
+                  </span>
+                )}
+              </button>
+            </Marker>
+          );
+        })}
+
+        {extraMarkers.map((marker) => {
+          const isSelected = selectedExtraMarkerId === marker.id;
+          const color = CATEGORY_COLORS[marker.category];
+
+          return (
+            <Marker
+              key={marker.id}
+              longitude={marker.longitude}
+              latitude={marker.latitude}
+              anchor="center"
+              style={{ cursor: "pointer" }}
+              onClick={(event) => {
+                event.originalEvent.stopPropagation();
+                onSelectExtraMarker?.(marker.id);
+              }}
+            >
+              <button
+                type="button"
+                aria-label={`Open saved idea ${marker.name}`}
+                className={classNames(
+                  "group relative flex h-9 w-9 items-center justify-center rounded-2xl border shadow-2xl transition duration-200",
+                  isSelected
+                    ? "scale-125 border-white bg-white text-slate-950 shadow-cyan-950/80"
+                    : "border-white/80 bg-slate-950/90 text-white opacity-95 hover:scale-110"
+                )}
+                style={{
+                  boxShadow: isSelected ? `0 0 0 6px ${color}33, 0 0 28px ${color}` : `0 0 18px ${color}55`,
+                }}
+              >
+                {isSelected && (
+                  <span
+                    className="absolute inset-0 -z-10 animate-ping rounded-2xl opacity-25"
+                    style={{ backgroundColor: color }}
+                  />
+                )}
+                <Sparkles className="h-4 w-4" fill={color} color={color} />
+                {isSelected && (
+                  <span className="pointer-events-none absolute left-1/2 top-10 hidden -translate-x-1/2 whitespace-nowrap rounded-full border border-white/15 bg-slate-950/90 px-2.5 py-1 text-[0.62rem] font-semibold text-cyan-100 shadow-xl shadow-slate-950/50 backdrop-blur md:block">
+                    {marker.name}
                   </span>
                 )}
               </button>
@@ -910,9 +982,9 @@ function buildDirectRouteCoordinates(from: Destination, to: Destination): Array<
   ];
 }
 
-function getDestinationBounds(destinations: Destination[]): [[number, number], [number, number]] {
-  const longitudes = destinations.map((destination) => destination.longitude);
-  const latitudes = destinations.map((destination) => destination.latitude);
+function getMapTargetBounds(targets: MapFitTarget[]): [[number, number], [number, number]] {
+  const longitudes = targets.map((target) => target.longitude);
+  const latitudes = targets.map((target) => target.latitude);
   const minLng = Math.min(...longitudes);
   const maxLng = Math.max(...longitudes);
   const minLat = Math.min(...latitudes);

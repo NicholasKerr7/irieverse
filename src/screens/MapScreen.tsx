@@ -18,12 +18,12 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { TravelMap, type RouteDetail, type RouteRenderStatus } from "../components/TravelMap";
+import { TravelMap, type MapExtraMarker, type RouteDetail, type RouteRenderStatus } from "../components/TravelMap";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
 import { fetchPlaceDetails, type PlaceDetails } from "../services/placeDetails";
-import type { Destination, Experience, PlannerDay, RouteLeg } from "../types/travel";
+import type { Destination, Experience, ImportedIdea, PlannerDay, RouteLeg } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { formatDriveTime, formatMiles } from "../utils/format";
 import {
@@ -38,6 +38,7 @@ import {
   getRouteStatusLabel,
   mergeDestinations,
   type MapCategoryId,
+  type MapPinCategory,
 } from "../utils/mapRoutes";
 
 type MapScreenProps = {
@@ -49,12 +50,24 @@ type MapDrawerTab = "overview" | "unplanned" | `day-${number}`;
 type PlaceDetailTarget =
   | { type: "destination"; destination: Destination; day?: number }
   | { type: "experience"; experience: Experience; day?: number; linkedDestination?: Destination };
+type ImportedPlacePin = MapExtraMarker & {
+  idea: ImportedIdea;
+  address: string;
+  mapsUrl: string;
+  websiteUrl: string;
+  phone: string;
+  rating?: number;
+  userRatingCount?: number;
+  primaryType: string;
+  linkedDestination?: Destination;
+};
 
 export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const [activeCategory, setActiveCategory] = useState<MapCategoryId>("all");
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [activeDrawerTab, setActiveDrawerTab] = useState<MapDrawerTab>("overview");
   const [placeDetail, setPlaceDetail] = useState<PlaceDetailTarget | null>(null);
+  const [selectedImportedPlaceId, setSelectedImportedPlaceId] = useState<string | null>(null);
   const [livePlaceDetails, setLivePlaceDetails] = useState<PlaceDetails | null>(null);
   const [isPlaceDetailsLoading, setIsPlaceDetailsLoading] = useState(false);
   const [focusedDestinationId, setFocusedDestinationId] = useState(app.plannerBaseId);
@@ -91,12 +104,26 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       );
     });
   }, [activeCategory, app.search]);
+  const importedPlacePins = useMemo(
+    () => buildImportedPlacePins(app.importedIdeas, app.search, activeCategory),
+    [activeCategory, app.importedIdeas, app.search]
+  );
+  const selectedImportedPlacePin = selectedImportedPlaceId
+    ? importedPlacePins.find((pin) => pin.id === selectedImportedPlaceId) ?? null
+    : null;
+  const visiblePinCount = visibleDestinations.length + importedPlacePins.length;
 
   useEffect(() => {
     if (!visibleDestinations.length) return;
     if (visibleDestinations.some((destination) => destination.id === focusedDestinationId)) return;
     setFocusedDestinationId(visibleDestinations[0].id);
   }, [focusedDestinationId, visibleDestinations]);
+
+  useEffect(() => {
+    if (!selectedImportedPlaceId) return;
+    if (importedPlacePins.some((pin) => pin.id === selectedImportedPlaceId)) return;
+    setSelectedImportedPlaceId(null);
+  }, [importedPlacePins, selectedImportedPlaceId]);
 
   useEffect(() => {
     if (DESTINATIONS.some((destination) => destination.id === app.plannerBaseId)) {
@@ -199,6 +226,11 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     }
     return activeDrawerDestination ? [activeDrawerDestination] : routeDestinations;
   }, [activeDrawerDestination, activeDrawerRouteLeg, activeDrawerTab, routeDestinations, unplannedDestinations, visibleDestinations]);
+  const focusImportedPlacePins = useMemo(() => {
+    if (selectedImportedPlacePin) return [selectedImportedPlacePin];
+    if (activeDrawerTab === "unplanned") return importedPlacePins.slice(0, 6);
+    return [];
+  }, [activeDrawerTab, importedPlacePins, selectedImportedPlacePin]);
   const tripTitle = `${app.plannerDays}-day ${app.destination.region}`;
 
   useEffect(() => {
@@ -208,11 +240,20 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   }, [routeLegOptions, selectedRouteLegId]);
 
   const handleSelectDestination = (destinationId: string) => {
+    setSelectedImportedPlaceId(null);
     setFocusedDestinationId(destinationId);
     const matchingLeg = routeLegOptions.find((option) => option.leg.toDestinationId === destinationId);
     const matchingStop = routeSummary.stops.find((stop) => stop.destinationId === destinationId);
     setSelectedRouteLegId(matchingLeg?.id ?? null);
     setActiveDrawerTab(matchingStop ? `day-${matchingStop.day}` : "overview");
+    setSheetExpanded(true);
+  };
+
+  const handleSelectImportedPlace = (placeId: string) => {
+    setSelectedImportedPlaceId(placeId);
+    setPlaceDetail(null);
+    setSelectedRouteLegId(null);
+    setActiveDrawerTab("unplanned");
     setSheetExpanded(true);
   };
 
@@ -273,6 +314,10 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     window.open(buildExperienceMapsUrl(experience), "_blank", "noreferrer");
   };
 
+  const handleOpenImportedPlaceMaps = (pin: ImportedPlacePin) => {
+    window.open(pin.mapsUrl || buildImportedPlaceMapsUrl(pin), "_blank", "noreferrer");
+  };
+
   const handleOpenPlaceDetailMaps = (target: PlaceDetailTarget, details: PlaceDetails | null) => {
     if (details?.mapsUrl) {
       window.open(details.mapsUrl, "_blank", "noreferrer");
@@ -307,16 +352,24 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     onNavigate("trips");
   };
 
+  const handleAddImportedPlaceToTrip = (pin: ImportedPlacePin) => {
+    if (pin.idea.linkedDestinationId) {
+      app.buildTripFromDestinations([pin.idea.linkedDestinationId]);
+    }
+    setSelectedImportedPlaceId(null);
+    onNavigate(pin.idea.linkedDestinationId ? "trips" : "saved");
+  };
+
   return (
     <section
       className={classNames(
         "relative isolate h-[calc(100svh-5.5rem)] min-h-[560px] overflow-hidden bg-slate-950 sm:h-[calc(100vh-7rem)] sm:min-h-[700px]",
-        placeDetail ? "z-[60]" : "z-0"
+        placeDetail || selectedImportedPlacePin ? "z-[60]" : "z-0"
       )}
     >
       <TravelMap
         destinations={mapDestinations}
-        selectedDestinationId={selectedDestination.id}
+        selectedDestinationId={selectedImportedPlacePin ? "" : selectedDestination.id}
         onSelectDestination={handleSelectDestination}
         viewState={app.mapViewState}
         onMove={app.handleMapMove}
@@ -327,11 +380,15 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         routeDestinations={routeDestinations}
         routeLegs={routeSummary.legs}
         focusDestinations={focusDestinations}
+        extraMarkers={importedPlacePins}
+        selectedExtraMarkerId={selectedImportedPlacePin?.id ?? null}
+        focusExtraMarkers={focusImportedPlacePins}
+        onSelectExtraMarker={handleSelectImportedPlace}
         selectedRouteLegId={selectedRouteLegId}
         onSelectRouteLeg={(routeLegId) => handleSelectRouteLeg(routeLegId)}
         onRouteStatusChange={setRouteStatus}
         onRouteDetailsChange={setRouteDetails}
-        autoFitKey={`${activeCategory}-${app.search}-${selectedDestination.id}-${sheetExpanded}-${routeSummary.stops.length}`}
+        autoFitKey={`${activeCategory}-${app.search}-${selectedDestination.id}-${selectedImportedPlacePin?.id ?? ""}-${sheetExpanded}-${routeSummary.stops.length}-${importedPlacePins.length}`}
         bottomInset={sheetExpanded ? "expanded" : "compact"}
         theme={app.theme}
       />
@@ -350,7 +407,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
               <span className="min-w-0">
                 <span className="block truncate text-sm font-black">IrieVerse Map</span>
                 <span className="block truncate text-xs text-slate-500">
-                  {activeCategoryLabel} layer · {visibleDestinations.length} pins
+                  {activeCategoryLabel} layer · {visiblePinCount} pins
                 </span>
               </span>
             </div>
@@ -370,7 +427,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         </div>
       </div>
 
-      {!visibleDestinations.length && (
+      {!visiblePinCount && (
         <div className="absolute left-1/2 top-1/2 z-50 w-[min(90vw,28rem)] -translate-x-1/2 -translate-y-1/2 rounded-[2rem] border border-white/10 bg-slate-950/92 p-6 text-center shadow-2xl shadow-slate-950/70 backdrop-blur-2xl">
           <MapPin className="mx-auto h-8 w-8 text-cyan-300" />
           <h2 className="mt-3 text-lg font-semibold">No map pins match</h2>
@@ -471,7 +528,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                 <TripOverviewPanel
                   app={app}
                   activeCategory={activeCategory}
-                  visiblePins={visibleDestinations.length}
+                  visiblePins={visiblePinCount}
                   routeStatus={routeStatus}
                   routeSummary={routeSummary}
                   selectedDestinationId={selectedDestination.id}
@@ -484,7 +541,9 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
               {activeDrawerTab === "unplanned" && (
                 <UnplannedPlacesPanel
                   destinations={unplannedDestinations}
+                  importedPlaces={importedPlacePins}
                   onSelectDestination={handleSelectDestination}
+                  onSelectImportedPlace={handleSelectImportedPlace}
                   onOpenExplore={() => onNavigate("explore")}
                 />
               )}
@@ -541,6 +600,16 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
           onOpenMaps={() => handleOpenPlaceDetailMaps(placeDetail, livePlaceDetails)}
         />
       )}
+
+      {selectedImportedPlacePin && (
+        <ImportedPlaceDetailSheet
+          pin={selectedImportedPlacePin}
+          onClose={() => setSelectedImportedPlaceId(null)}
+          onOpenMaps={() => handleOpenImportedPlaceMaps(selectedImportedPlacePin)}
+          onAddToTrip={() => handleAddImportedPlaceToTrip(selectedImportedPlacePin)}
+          onOpenSaved={() => onNavigate("saved")}
+        />
+      )}
     </section>
   );
 }
@@ -575,6 +644,113 @@ function buildExperienceMapsUrl(experience: Experience): string {
     query: `${experience.title}, ${experience.location}, ${experience.region}, Jamaica`,
   });
   return `https://www.google.com/maps/search/?${params.toString()}`;
+}
+
+function buildImportedPlaceMapsUrl(pin: ImportedPlacePin): string {
+  const params = new URLSearchParams({
+    api: "1",
+    query: `${pin.latitude},${pin.longitude}`,
+  });
+  return `https://www.google.com/maps/search/?${params.toString()}`;
+}
+
+function buildImportedPlacePins(
+  importedIdeas: ImportedIdea[],
+  search: string,
+  activeCategory: MapCategoryId
+): ImportedPlacePin[] {
+  const query = search.trim().toLowerCase();
+
+  return importedIdeas
+    .map((idea): ImportedPlacePin | null => {
+      const place = idea.place;
+      if (!place) return null;
+      const latitude = asFiniteNumber(place.latitude);
+      const longitude = asFiniteNumber(place.longitude);
+      if (latitude === undefined || longitude === undefined) return null;
+
+      const linkedDestination = idea.linkedDestinationId
+        ? DESTINATIONS.find((destination) => destination.id === idea.linkedDestinationId)
+        : undefined;
+      const name = firstNonEmpty(place.name, idea.extractedPlaceName, idea.title);
+      const address = firstNonEmpty(place.shortAddress, place.address);
+      const category = getImportedPlacePinCategory(idea);
+      const searchableText = [
+        idea.title,
+        idea.note,
+        idea.description,
+        idea.category,
+        idea.sourceLabel,
+        idea.siteName,
+        place.name,
+        place.address,
+        place.shortAddress,
+        place.primaryType,
+        place.types?.join(" "),
+        linkedDestination?.name,
+      ].join(" ").toLowerCase();
+
+      if (query && !searchableText.includes(query)) return null;
+      if (!importedPlaceMatchesCategory(category, activeCategory)) return null;
+
+      return {
+        id: `import-${idea.id}`,
+        name,
+        subtitle: firstNonEmpty(address, linkedDestination?.name, formatImportedCategoryLabel(idea.category), "Saved Jamaica idea"),
+        latitude,
+        longitude,
+        category,
+        idea,
+        address,
+        mapsUrl: firstNonEmpty(place.mapsUrl, idea.canonicalUrl, idea.url),
+        websiteUrl: place.websiteUrl ?? "",
+        phone: place.phone ?? "",
+        rating: place.rating,
+        userRatingCount: place.userRatingCount,
+        primaryType: firstNonEmpty(place.primaryType, humanizePlaceType(place.types?.[0] ?? "")),
+        linkedDestination,
+      } satisfies ImportedPlacePin;
+    })
+    .filter((pin): pin is ImportedPlacePin => Boolean(pin));
+}
+
+function getImportedPlacePinCategory(idea: ImportedIdea): MapPinCategory {
+  const text = [
+    idea.category,
+    idea.title,
+    idea.note,
+    idea.description,
+    idea.place?.primaryType,
+    idea.place?.types?.join(" "),
+  ].join(" ").toLowerCase();
+
+  if (idea.category === "food" || /restaurant|food|cafe|barbecue|jerk|dining/.test(text)) return "food";
+  if (idea.category === "beach" || /beach|cove|falls|waterfall|river|lagoon|reef/.test(text)) return "beaches";
+  if (idea.category === "music" || /music|reggae|dancehall|sound/.test(text)) return "music";
+  if (idea.category === "culture" || /museum|culture|history|heritage|gallery|market/.test(text)) return "culture";
+  if (idea.category === "nightlife" || /nightlife|club|bar|lounge|party/.test(text)) return "nightlife";
+  return "default";
+}
+
+function importedPlaceMatchesCategory(category: MapPinCategory, activeCategory: MapCategoryId): boolean {
+  if (activeCategory === "all") return true;
+  if (activeCategory === "beaches") return category === "beaches";
+  return category === activeCategory;
+}
+
+function formatImportedCategoryLabel(category: ImportedIdea["category"]): string {
+  return category
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function asFiniteNumber(value: unknown): number | undefined {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function firstNonEmpty(...values: Array<string | undefined>): string {
+  return values.find((value) => typeof value === "string" && value.trim())?.trim() ?? "";
 }
 
 function FloatingMapButton({
@@ -800,11 +976,15 @@ function TripOverviewPanel({
 
 function UnplannedPlacesPanel({
   destinations,
+  importedPlaces,
   onSelectDestination,
+  onSelectImportedPlace,
   onOpenExplore,
 }: {
   destinations: Destination[];
+  importedPlaces: ImportedPlacePin[];
   onSelectDestination: (destinationId: string) => void;
+  onSelectImportedPlace: (placeId: string) => void;
   onOpenExplore: () => void;
 }) {
   return (
@@ -824,6 +1004,24 @@ function UnplannedPlacesPanel({
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {importedPlaces.map((pin) => (
+          <button
+            key={pin.id}
+            type="button"
+            onClick={() => onSelectImportedPlace(pin.id)}
+            className="overflow-hidden rounded-3xl border border-cyan-200 bg-cyan-50 text-left transition hover:border-sky-300"
+          >
+            <span className="flex h-28 w-full items-center justify-center bg-gradient-to-br from-cyan-100 via-white to-emerald-100">
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-cyan-200 shadow-xl">
+                <Sparkles className="h-6 w-6" />
+              </span>
+            </span>
+            <span className="block p-3">
+              <span className="block truncate text-sm font-black">{pin.name}</span>
+              <span className="mt-1 block truncate text-xs font-semibold text-slate-500">{pin.subtitle}</span>
+            </span>
+          </button>
+        ))}
         {destinations.map((destination) => (
           <button
             key={destination.id}
@@ -840,7 +1038,7 @@ function UnplannedPlacesPanel({
         ))}
       </div>
 
-      {!destinations.length && (
+      {!destinations.length && !importedPlaces.length && (
         <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center">
           <Sparkles className="mx-auto h-6 w-6 text-sky-500" />
           <p className="mt-2 text-sm font-black">Every visible pin is already part of this route.</p>
@@ -1179,6 +1377,118 @@ function DayNoteEditor({
       />
       <span className="mt-1 block text-right text-[0.68rem] font-semibold text-slate-400">{note.length}/280</span>
     </label>
+  );
+}
+
+function ImportedPlaceDetailSheet({
+  pin,
+  onClose,
+  onOpenMaps,
+  onAddToTrip,
+  onOpenSaved,
+}: {
+  pin: ImportedPlacePin;
+  onClose: () => void;
+  onOpenMaps: () => void;
+  onAddToTrip: () => void;
+  onOpenSaved: () => void;
+}) {
+  const ratingText = typeof pin.rating === "number"
+    ? pin.userRatingCount
+      ? `${pin.rating.toFixed(1)} (${formatCompactCount(pin.userRatingCount)})`
+      : pin.rating.toFixed(1)
+    : "";
+  const pills = uniqueStrings([
+    pin.primaryType,
+    formatImportedCategoryLabel(pin.idea.category),
+    pin.idea.sourceLabel ?? "",
+    pin.linkedDestination?.name ?? "",
+  ]).slice(0, 4);
+
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-950/35 p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-sm sm:p-5">
+      <article
+        data-testid="imported-place-detail-sheet"
+        className="flex max-h-[84vh] w-full max-w-xl flex-col overflow-hidden rounded-[2rem] border border-white/80 bg-white text-slate-950 shadow-2xl shadow-slate-950/35"
+      >
+        <div className="flex items-start gap-3 p-4 sm:p-5">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-cyan-100 via-white to-emerald-100 shadow-lg shadow-slate-200">
+            <Sparkles className="h-8 w-8 text-sky-600" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-sky-600">Saved map idea</p>
+            <h2 className="mt-1 text-3xl font-black leading-tight tracking-tight">{pin.name}</h2>
+            <p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-500">
+              {ratingText && (
+                <>
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  {ratingText} ·
+                </>
+              )}
+              {pin.subtitle}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-950"
+            aria-label="Close saved idea details"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-5 sm:pb-5">
+          <div className="flex flex-wrap gap-2">
+            {pills.map((pill) => (
+              <MiniPill key={pill}>{pill}</MiniPill>
+            ))}
+          </div>
+
+          <section className="mt-4 rounded-3xl border border-cyan-100 bg-cyan-50/80 p-4">
+            <p className="text-[0.65rem] font-black uppercase tracking-[0.16em] text-sky-600">Place facts</p>
+            <div className="mt-3 grid gap-2">
+              <ImportedPlaceFact icon={MapPin} label="Address" value={pin.address || pin.subtitle} />
+              {pin.phone && <ImportedPlaceFact icon={Phone} label="Phone" value={pin.phone} />}
+              {pin.websiteUrl && <ImportedPlaceFact icon={Globe2} label="Website" value={readableUrl(pin.websiteUrl)} />}
+            </div>
+          </section>
+
+          {(pin.idea.note || pin.idea.description) && (
+            <section className="mt-3 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <h3 className="text-lg font-black">Why you saved it</h3>
+              <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                {pin.idea.note || pin.idea.description}
+              </p>
+            </section>
+          )}
+
+          {!pin.idea.linkedDestinationId && (
+            <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-800">
+              Attach this saved idea to a Jamaica area in Saved before turning it into a full trip day.
+            </p>
+          )}
+        </div>
+
+        <div className="grid shrink-0 grid-cols-3 gap-2 border-t border-slate-200 bg-white/95 p-4">
+          <DrawerAction icon={Heart} label="Saved" onClick={onOpenSaved} active />
+          <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
+          <DrawerAction icon={Plus} label="Trip" onClick={onAddToTrip} primary />
+        </div>
+      </article>
+    </div>
+  );
+}
+
+function ImportedPlaceFact({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return (
+    <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/80 bg-white px-3 py-2 shadow-sm shadow-sky-100/60">
+      <Icon className="h-4 w-4 shrink-0 text-sky-600" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[0.62rem] font-black uppercase tracking-[0.14em] text-slate-400">{label}</span>
+        <span className="mt-0.5 block truncate text-sm font-black text-slate-800">{value}</span>
+      </span>
+    </div>
   );
 }
 
