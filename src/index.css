@@ -35,13 +35,26 @@ html.dark {
   --app-toggle-text: #cffafe;
   --app-map-scrim: linear-gradient(
     180deg,
-    rgba(2, 6, 23, 0.92) 0%,
-    rgba(2, 6, 23, 0.34) 24%,
-    rgba(2, 6, 23, 0.08) 50%,
-    rgba(2, 6, 23, 0.78) 100%
+    rgba(2, 6, 23, 0.78) 0%,
+    rgba(2, 6, 23, 0.22) 25%,
+    rgba(2, 6, 23, 0.06) 52%,
+    rgba(2, 6, 23, 0.68) 100%
   );
-  --app-map-left-fade: linear-gradient(90deg, rgba(2, 6, 23, 0.82), rgba(2, 6, 23, 0));
-  --app-map-right-fade: linear-gradient(270deg, rgba(2, 6, 23, 0.66), rgba(2, 6, 23, 0));
+  --app-map-left-fade: linear-gradient(90deg, rgba(2, 6, 23, 0.72), rgba(8, 145, 178, 0.08), rgba(2, 6, 23, 0));
+  --app-map-right-fade: linear-gradient(270deg, rgba(2, 6, 23, 0.58), rgba(16, 185, 129, 0.08), rgba(2, 6, 23, 0));
+  --map-glass-text: #f8fafc;
+  --map-glass-muted: #cbd5e1;
+  --map-glass-subtle: #94a3b8;
+  --map-glass-surface: rgba(2, 6, 23, 0.64);
+  --map-glass-surface-strong: rgba(2, 6, 23, 0.82);
+  --map-glass-card: rgba(15, 23, 42, 0.56);
+  --map-glass-card-strong: rgba(15, 23, 42, 0.72);
+  --map-glass-control: rgba(8, 13, 24, 0.68);
+  --map-glass-field: rgba(2, 6, 23, 0.42);
+  --map-glass-border: rgba(255, 255, 255, 0.16);
+  --map-glass-border-strong: rgba(103, 232, 249, 0.34);
+  --map-glass-shadow: rgba(2, 6, 23, 0.58);
+  --map-glass-accent-shadow: rgba(8, 145, 178, 0.24);
 }
 
 html.light {
@@ -82,6 +95,19 @@ html.light {
   );
   --app-map-left-fade: linear-gradient(90deg, rgba(248, 250, 252, 0.58), rgba(248, 250, 252, 0));
   --app-map-right-fade: linear-gradient(270deg, rgba(248, 250, 252, 0.48), rgba(248, 250, 252, 0));
+  --map-glass-text: #0f172a;
+  --map-glass-muted: #475569;
+  --map-glass-subtle: #64748b;
+  --map-glass-surface: rgba(255, 255, 255, 0.7);
+  --map-glass-surface-strong: rgba(255, 255, 255, 0.86);
+  --map-glass-card: rgba(255, 255, 255, 0.72);
+  --map-glass-card-strong: rgba(255, 255, 255, 0.88);
+  --map-glass-control: rgba(255, 255, 255, 0.76);
+  --map-glass-field: rgba(248, 250, 252, 0.72);
+  --map-glass-border: rgba(15, 23, 42, 0.12);
+  --map-glass-border-strong: rgba(14, 165, 233, 0.24);
+  --map-glass-shadow: rgba(15, 23, 42, 0.16);
+  --map-glass-accent-shadow: rgba(14, 165, 233, 0.14);
 }
 
 body {
@@ -197,6 +223,141 @@ a {
 
 .map-screen-right-fade {
   background: var(--app-map-right-fade);
+}
+
+.map-glass-toolbar,
+.map-glass-control,
+.map-glass-drawer,
+.map-glass-sheet {
+  border-color: var(--map-glass-border) !important;
+  color: var(--map-glass-text) !important;
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+}
+
+.map-glass-toolbar {
+  background: var(--map-glass-surface) !important;
+  box-shadow: 0 18px 55px var(--map-glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.map-glass-control {
+  background: var(--map-glass-control) !important;
+  box-shadow: 0 18px 50px var(--map-glass-shadow), 0 0 28px var(--map-glass-accent-shadow);
+}
+
+.map-glass-drawer,
+.map-glass-sheet {
+  background: var(--map-glass-surface-strong) !important;
+  box-shadow: 0 24px 88px var(--map-glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.map-glass-drawer [class*="bg-white"],
+.map-glass-sheet [class*="bg-white"],
+.map-glass-drawer [class*="bg-slate-50"],
+.map-glass-sheet [class*="bg-slate-50"],
+.map-glass-drawer [class*="bg-slate-100"],
+.map-glass-sheet [class*="bg-slate-100"] {
+  background-color: var(--map-glass-card) !important;
+  backdrop-filter: blur(18px) saturate(1.12);
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.map-glass-drawer [class*="bg-cyan-50"],
+.map-glass-sheet [class*="bg-cyan-50"],
+.map-glass-drawer [class*="bg-sky-50"],
+.map-glass-sheet [class*="bg-sky-50"] {
+  background-color: rgba(14, 165, 233, 0.14) !important;
+}
+
+.map-glass-drawer [class*="bg-emerald-50"],
+.map-glass-sheet [class*="bg-emerald-50"] {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+}
+
+.map-glass-drawer [class*="bg-amber-50"],
+.map-glass-sheet [class*="bg-amber-50"] {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+
+.map-glass-drawer [class*="bg-rose-50"],
+.map-glass-sheet [class*="bg-rose-50"] {
+  background-color: rgba(244, 63, 94, 0.14) !important;
+}
+
+.map-glass-drawer [class*="border-slate"],
+.map-glass-sheet [class*="border-slate"],
+.map-glass-drawer [class*="border-white"],
+.map-glass-sheet [class*="border-white"] {
+  border-color: var(--map-glass-border) !important;
+}
+
+.map-glass-drawer .text-slate-950,
+.map-glass-drawer .text-slate-900,
+.map-glass-drawer .text-slate-800,
+.map-glass-drawer .text-slate-700,
+.map-glass-sheet .text-slate-950,
+.map-glass-sheet .text-slate-900,
+.map-glass-sheet .text-slate-800,
+.map-glass-sheet .text-slate-700 {
+  color: var(--map-glass-text) !important;
+}
+
+.map-glass-drawer .text-slate-600,
+.map-glass-drawer .text-slate-500,
+.map-glass-drawer .text-slate-400,
+.map-glass-sheet .text-slate-600,
+.map-glass-sheet .text-slate-500,
+.map-glass-sheet .text-slate-400,
+.map-glass-toolbar .text-slate-600,
+.map-glass-toolbar .text-slate-500,
+.map-glass-toolbar .text-slate-400 {
+  color: var(--map-glass-muted) !important;
+}
+
+.map-glass-drawer input,
+.map-glass-drawer textarea,
+.map-glass-drawer select,
+.map-glass-sheet input,
+.map-glass-sheet textarea,
+.map-glass-sheet select {
+  color: var(--map-glass-text);
+}
+
+.map-glass-drawer input::placeholder,
+.map-glass-drawer textarea::placeholder,
+.map-glass-sheet input::placeholder,
+.map-glass-sheet textarea::placeholder {
+  color: var(--map-glass-subtle);
+}
+
+html.dark .map-glass-drawer .text-sky-900,
+html.dark .map-glass-sheet .text-sky-900,
+html.dark .map-glass-drawer .text-sky-800,
+html.dark .map-glass-sheet .text-sky-800,
+html.dark .map-glass-drawer .text-sky-700,
+html.dark .map-glass-sheet .text-sky-700 {
+  color: #bae6fd !important;
+}
+
+html.dark .map-glass-drawer .text-emerald-800,
+html.dark .map-glass-sheet .text-emerald-800,
+html.dark .map-glass-drawer .text-emerald-700,
+html.dark .map-glass-sheet .text-emerald-700 {
+  color: #a7f3d0 !important;
+}
+
+html.dark .map-glass-drawer .text-amber-800,
+html.dark .map-glass-sheet .text-amber-800,
+html.dark .map-glass-drawer .text-amber-700,
+html.dark .map-glass-sheet .text-amber-700 {
+  color: #fde68a !important;
+}
+
+html.dark .map-glass-drawer .text-rose-800,
+html.dark .map-glass-sheet .text-rose-800,
+html.dark .map-glass-drawer .text-rose-700,
+html.dark .map-glass-sheet .text-rose-700 {
+  color: #fecdd3 !important;
 }
 
 html.light .bg-slate-950 {

@@ -416,9 +416,9 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 p-3 sm:p-5">
         <div className="pointer-events-auto mx-auto flex max-w-7xl items-start justify-between gap-3">
-          <div className="min-w-0 rounded-full border border-white/20 bg-white/90 px-4 py-3 text-slate-950 shadow-2xl shadow-sky-950/20 backdrop-blur-xl">
+          <div className="map-glass-toolbar min-w-0 rounded-full border px-4 py-3">
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-950 text-cyan-200">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-950/30">
                 <Compass className="h-4 w-4" />
               </span>
               <span className="min-w-0">
@@ -477,7 +477,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       <aside
         data-testid="map-trip-drawer"
         className={classNames(
-          "absolute inset-x-2 bottom-3 z-40 mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-white/70 bg-white/95 text-slate-950 shadow-2xl shadow-sky-950/30 backdrop-blur-2xl transition-[max-height,transform] duration-300 sm:inset-x-5",
+          "map-glass-drawer absolute inset-x-2 bottom-3 z-40 mx-auto max-w-5xl overflow-hidden rounded-[2rem] border transition-[max-height,transform] duration-300 sm:inset-x-5",
           sheetExpanded ? "max-h-[82vh]" : "max-h-[21.5rem]"
         )}
       >
@@ -509,7 +509,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                 <button
                   type="button"
                   onClick={() => onNavigate("trips")}
-                  className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-lg shadow-slate-200 transition hover:text-sky-600"
+                  className="map-glass-control inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition hover:text-sky-300"
                   aria-label="Open Trips"
                 >
                   <ArrowUpRight className="h-5 w-5" />
@@ -812,7 +812,7 @@ function FloatingMapButton({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/35 bg-white/90 text-slate-700 shadow-2xl shadow-sky-950/20 backdrop-blur-xl transition hover:text-sky-600"
+      className="map-glass-control inline-flex h-14 w-14 items-center justify-center rounded-full border transition hover:text-cyan-300"
       aria-label={label}
       title={label}
     >
@@ -1584,10 +1584,10 @@ function ImportedPlaceDetailSheet({
   ]).slice(0, 4);
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-950/35 p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-sm sm:p-5">
+    <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-950/55 p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-md sm:p-5">
       <article
         data-testid="imported-place-detail-sheet"
-        className="flex max-h-[84vh] w-full max-w-xl flex-col overflow-hidden rounded-[2rem] border border-white/80 bg-white text-slate-950 shadow-2xl shadow-slate-950/35"
+        className="map-glass-sheet flex max-h-[84vh] w-full max-w-xl flex-col overflow-hidden rounded-[2rem] border"
       >
         <div className="flex items-start gap-3 p-4 sm:p-5">
           <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-cyan-100 via-white to-emerald-100 shadow-lg shadow-slate-200">
@@ -1729,10 +1729,10 @@ function PlaceDetailSheet({
         : "";
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-950/35 p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-sm sm:p-5">
+    <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-950/55 p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-md sm:p-5">
       <article
         data-testid="place-detail-sheet"
-        className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border border-white/80 bg-white text-slate-950 shadow-2xl shadow-slate-950/35"
+        className="map-glass-sheet flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border"
       >
         <div className="flex items-start gap-3 p-4 sm:p-5">
           <img src={imageUrl} alt={title} className="h-24 w-24 shrink-0 rounded-3xl object-cover shadow-lg shadow-slate-200 sm:h-28 sm:w-28" />

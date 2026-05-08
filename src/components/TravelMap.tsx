@@ -9,7 +9,7 @@ import { formatMiles } from "../utils/format";
 import { getRouteColor, type MapPinCategory } from "../utils/mapRoutes";
 
 const MAP_STYLES: Record<ThemeMode, string> = {
-  dark: "https://tiles.openfreemap.org/styles/dark",
+  dark: "https://tiles.openfreemap.org/styles/liberty",
   light: "https://tiles.openfreemap.org/styles/positron",
 };
 
