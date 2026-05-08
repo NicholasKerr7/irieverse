@@ -537,7 +537,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
         })
         .catch((error) => {
           if (controller.signal.aborted || error?.name === "AbortError") return;
-          setImportMetadataError("Metadata unavailable. Heuristic parsing is still active.");
+          setImportMetadataError("Link preview did not load, but you can still save this idea.");
         })
         .finally(() => {
           if (!controller.signal.aborted) {
@@ -971,12 +971,12 @@ function ImportIntelligenceSummary({
         </span>
         <span className="text-slate-500">
           {isLoading
-            ? "Checking metadata"
+            ? "Checking link"
             : metadata?.confidence === "high" || suggestion.confidence === "high"
-              ? "High confidence"
+              ? "Strong match"
               : metadata?.confidence === "medium" || suggestion.confidence === "medium"
-                ? "Medium confidence"
-                : "Low confidence"}
+                ? "Likely match"
+                : "Needs review"}
         </span>
       </div>
       {(previewTitle || previewDescription || metadata?.imageUrl) && (
