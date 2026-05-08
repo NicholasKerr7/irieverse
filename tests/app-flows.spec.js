@@ -79,6 +79,12 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await expect(page.getByRole("button", { name: "Open saved idea Devon House" })).toBeVisible();
   await page.getByRole("button", { name: "Open saved idea Devon House" }).click();
   await expect(page.getByTestId("imported-place-detail-sheet").getByText("26 Hope Road, Kingston").first()).toBeVisible();
+  await page.getByLabel("Close saved idea details").click();
+  const mapDrawer = page.getByTestId("map-trip-drawer");
+  await mapDrawer.getByRole("button", { name: "Overview" }).click();
+  await mapDrawer.getByRole("button", { name: /Kingston/ }).first().click();
+  await expect(mapDrawer.getByText("Exact stops from your board")).toBeVisible();
+  await expect(mapDrawer.getByRole("button", { name: "Open exact stop Devon House" })).toBeVisible();
 
   await openCleanTab(page, "trips", []);
   const exactStopBadge = page.getByText("Exact stop").first();

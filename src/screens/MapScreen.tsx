@@ -104,12 +104,16 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       );
     });
   }, [activeCategory, app.search]);
+  const allImportedPlacePins = useMemo(
+    () => buildImportedPlacePins(app.importedIdeas, "", "all"),
+    [app.importedIdeas]
+  );
   const importedPlacePins = useMemo(
     () => buildImportedPlacePins(app.importedIdeas, app.search, activeCategory),
     [activeCategory, app.importedIdeas, app.search]
   );
   const selectedImportedPlacePin = selectedImportedPlaceId
-    ? importedPlacePins.find((pin) => pin.id === selectedImportedPlaceId) ?? null
+    ? allImportedPlacePins.find((pin) => pin.id === selectedImportedPlaceId) ?? null
     : null;
   const visiblePinCount = visibleDestinations.length + importedPlacePins.length;
 
@@ -121,9 +125,9 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
 
   useEffect(() => {
     if (!selectedImportedPlaceId) return;
-    if (importedPlacePins.some((pin) => pin.id === selectedImportedPlaceId)) return;
+    if (allImportedPlacePins.some((pin) => pin.id === selectedImportedPlaceId)) return;
     setSelectedImportedPlaceId(null);
-  }, [importedPlacePins, selectedImportedPlaceId]);
+  }, [allImportedPlacePins, selectedImportedPlaceId]);
 
   useEffect(() => {
     if (DESTINATIONS.some((destination) => destination.id === app.plannerBaseId)) {
@@ -216,6 +220,16 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const activePlannerDay = activeDrawerDay
     ? app.itinerary.daysPlan.find((day) => day.day === activeDrawerDay) ?? null
     : null;
+  const activeDrawerImportedStops = useMemo(() => {
+    if (!activeDrawerDestination) return [];
+    return allImportedPlacePins
+      .filter((pin) => pin.idea.linkedDestinationId === activeDrawerDestination.id)
+      .slice(0, 5);
+  }, [activeDrawerDestination, allImportedPlacePins]);
+  const mapImportedPlacePins = useMemo(
+    () => mergeImportedPlacePins(importedPlacePins, activeDrawerImportedStops, selectedImportedPlacePin ? [selectedImportedPlacePin] : []),
+    [activeDrawerImportedStops, importedPlacePins, selectedImportedPlacePin]
+  );
   const focusDestinations = useMemo(() => {
     if (activeDrawerTab === "overview") return routeDestinations;
     if (activeDrawerTab === "unplanned") return unplannedDestinations.length ? unplannedDestinations : visibleDestinations;
@@ -228,9 +242,10 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   }, [activeDrawerDestination, activeDrawerRouteLeg, activeDrawerTab, routeDestinations, unplannedDestinations, visibleDestinations]);
   const focusImportedPlacePins = useMemo(() => {
     if (selectedImportedPlacePin) return [selectedImportedPlacePin];
+    if (activeDrawerImportedStops.length) return activeDrawerImportedStops;
     if (activeDrawerTab === "unplanned") return importedPlacePins.slice(0, 6);
     return [];
-  }, [activeDrawerTab, importedPlacePins, selectedImportedPlacePin]);
+  }, [activeDrawerImportedStops, activeDrawerTab, importedPlacePins, selectedImportedPlacePin]);
   const tripTitle = `${app.plannerDays}-day ${app.destination.region}`;
 
   useEffect(() => {
@@ -249,11 +264,11 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     setSheetExpanded(true);
   };
 
-  const handleSelectImportedPlace = (placeId: string) => {
+  const handleSelectImportedPlace = (placeId: string, options: { keepDrawerTab?: boolean } = {}) => {
     setSelectedImportedPlaceId(placeId);
     setPlaceDetail(null);
     setSelectedRouteLegId(null);
-    setActiveDrawerTab("unplanned");
+    if (!options.keepDrawerTab) setActiveDrawerTab("unplanned");
     setSheetExpanded(true);
   };
 
@@ -380,7 +395,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         routeDestinations={routeDestinations}
         routeLegs={routeSummary.legs}
         focusDestinations={focusDestinations}
-        extraMarkers={importedPlacePins}
+        extraMarkers={mapImportedPlacePins}
         selectedExtraMarkerId={selectedImportedPlacePin?.id ?? null}
         focusExtraMarkers={focusImportedPlacePins}
         onSelectExtraMarker={handleSelectImportedPlace}
@@ -388,7 +403,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         onSelectRouteLeg={(routeLegId) => handleSelectRouteLeg(routeLegId)}
         onRouteStatusChange={setRouteStatus}
         onRouteDetailsChange={setRouteDetails}
-        autoFitKey={`${activeCategory}-${app.search}-${selectedDestination.id}-${selectedImportedPlacePin?.id ?? ""}-${sheetExpanded}-${routeSummary.stops.length}-${importedPlacePins.length}`}
+        autoFitKey={`${activeCategory}-${app.search}-${selectedDestination.id}-${selectedImportedPlacePin?.id ?? ""}-${sheetExpanded}-${routeSummary.stops.length}-${mapImportedPlacePins.length}-${activeDrawerImportedStops.map((pin) => pin.id).join("|")}`}
         bottomInset={sheetExpanded ? "expanded" : "compact"}
         theme={app.theme}
       />
@@ -560,6 +575,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                   dayNote={app.dayNotes[String(activeDrawerDay)] ?? ""}
                   isSaved={app.savedPlaces.has(activeDrawerDestination.id)}
                   nearbyExperiences={getNearbyExperiences(activeDrawerDestination).slice(0, 3)}
+                  importedStops={activeDrawerImportedStops}
                   onSetDayNote={(note) => app.setDayNote(activeDrawerDay, note)}
                   onToggleSaved={() => app.toggleSavedPlace(activeDrawerDestination.id)}
                   onAddToTrip={() => {
@@ -569,6 +585,8 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                   onOpenDestinationMaps={() => handleOpenDestinationMaps(activeDrawerDestination)}
                   onOpenMaps={handleOpenDrivingGuide}
                   onNearbyExperience={handleNearbyExperience}
+                  onOpenImportedStop={(pin) => handleSelectImportedPlace(pin.id, { keepDrawerTab: true })}
+                  onOpenImportedStopMaps={handleOpenImportedPlaceMaps}
                   onOpenDestinationDetail={() => setPlaceDetail({ type: "destination", destination: activeDrawerDestination, day: activeDrawerDay })}
                   onOpenExperienceDetail={(experience) =>
                     setPlaceDetail({ type: "experience", experience, day: activeDrawerDay, linkedDestination: activeDrawerDestination })
@@ -712,6 +730,12 @@ function buildImportedPlacePins(
       } satisfies ImportedPlacePin;
     })
     .filter((pin): pin is ImportedPlacePin => Boolean(pin));
+}
+
+function mergeImportedPlacePins(...groups: ImportedPlacePin[][]): ImportedPlacePin[] {
+  const byId = new globalThis.Map<string, ImportedPlacePin>();
+  groups.flat().forEach((pin) => byId.set(pin.id, pin));
+  return Array.from(byId.values());
 }
 
 function getImportedPlacePinCategory(idea: ImportedIdea): MapPinCategory {
@@ -1060,12 +1084,15 @@ function DayPlanPanel({
   dayNote,
   isSaved,
   nearbyExperiences,
+  importedStops,
   onSetDayNote,
   onToggleSaved,
   onAddToTrip,
   onOpenDestinationMaps,
   onOpenMaps,
   onNearbyExperience,
+  onOpenImportedStop,
+  onOpenImportedStopMaps,
   onOpenDestinationDetail,
   onOpenExperienceDetail,
 }: {
@@ -1079,12 +1106,15 @@ function DayPlanPanel({
   dayNote: string;
   isSaved: boolean;
   nearbyExperiences: Experience[];
+  importedStops: ImportedPlacePin[];
   onSetDayNote: (note: string) => void;
   onToggleSaved: () => void;
   onAddToTrip: () => void;
   onOpenDestinationMaps: () => void;
   onOpenMaps: () => void;
   onNearbyExperience: (experience: Experience) => void;
+  onOpenImportedStop: (pin: ImportedPlacePin) => void;
+  onOpenImportedStopMaps: (pin: ImportedPlacePin) => void;
   onOpenDestinationDetail: () => void;
   onOpenExperienceDetail: (experience: Experience) => void;
 }) {
@@ -1130,6 +1160,23 @@ function DayPlanPanel({
             />
 
             <TimelineDriveChip stop={stop} routeLeg={routeLeg} routeDetail={routeDetail} />
+
+            {!!importedStops.length && (
+              <div className="mt-3 grid gap-2">
+                <p className="pl-1 text-[0.62rem] font-black uppercase tracking-[0.16em] text-sky-600">
+                  Exact stops from your board
+                </p>
+                {importedStops.map((pin, index) => (
+                  <TimelineImportedStopCard
+                    key={pin.id}
+                    pin={pin}
+                    index={index}
+                    onOpen={() => onOpenImportedStop(pin)}
+                    onOpenMaps={() => onOpenImportedStopMaps(pin)}
+                  />
+                ))}
+              </div>
+            )}
 
             {dayExperience ? (
               <TimelineExperienceCard
@@ -1283,6 +1330,72 @@ function TimelineDriveChip({
   );
 }
 
+function TimelineImportedStopCard({
+  pin,
+  index,
+  onOpen,
+  onOpenMaps,
+}: {
+  pin: ImportedPlacePin;
+  index: number;
+  onOpen: () => void;
+  onOpenMaps: () => void;
+}) {
+  const ratingText = typeof pin.rating === "number"
+    ? pin.userRatingCount
+      ? `${pin.rating.toFixed(1)} (${formatCompactCount(pin.userRatingCount)})`
+      : pin.rating.toFixed(1)
+    : "";
+  const pills = uniqueStrings([
+    pin.primaryType,
+    ratingText ? `${ratingText} rating` : "",
+    pin.idea.sourceLabel ?? "",
+  ]).slice(0, 3);
+
+  return (
+    <article className="relative rounded-3xl border border-cyan-200 bg-cyan-50/80 p-3 shadow-sm shadow-cyan-100/60">
+      <TimelineDot label={String(index + 1)} tone="imported" />
+      <div className="flex gap-3">
+        {pin.idea.imageUrl ? (
+          <img src={pin.idea.imageUrl} alt={pin.name} className="h-20 w-20 shrink-0 rounded-2xl object-cover" />
+        ) : (
+          <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-100 via-white to-emerald-100">
+            <Sparkles className="h-7 w-7 text-sky-600" />
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-sky-600">Exact stop</p>
+              <h3 className="mt-1 truncate text-base font-black">{pin.name}</h3>
+            </div>
+            <button
+              type="button"
+              onClick={onOpen}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cyan-200 bg-white text-slate-500 transition hover:border-sky-300 hover:text-sky-700"
+              aria-label={`Open exact stop ${pin.name}`}
+            >
+              <ArrowUpRight className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-slate-500">
+            {pin.address || pin.subtitle}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {pills.map((pill) => (
+              <MiniPill key={pill}>{pill}</MiniPill>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <DrawerAction icon={ArrowUpRight} label="Details" onClick={onOpen} />
+        <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
+      </div>
+    </article>
+  );
+}
+
 function TimelineExperienceCard({
   experience,
   onOpenDetail,
@@ -1332,11 +1445,12 @@ function TimelineExperienceCard({
   );
 }
 
-function TimelineDot({ label, tone = "main" }: { label: string; tone?: "main" | "route" | "experience" | "muted" }) {
+function TimelineDot({ label, tone = "main" }: { label: string; tone?: "main" | "route" | "experience" | "imported" | "muted" }) {
   const toneClass = {
     main: "bg-sky-500 text-white",
     route: "bg-[#020617] text-white",
     experience: "bg-emerald-500 text-white",
+    imported: "bg-cyan-500 text-white",
     muted: "bg-slate-200 text-slate-500",
   }[tone];
 
