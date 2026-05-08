@@ -80,6 +80,20 @@ export function analyzeImportLink(input: ImportLinkInput): ImportLinkSuggestion 
   };
 }
 
+export function inferLinkedDestinationIdFromCoordinates(latitude: unknown, longitude: unknown): string {
+  const lat = asFiniteNumber(latitude);
+  const lng = asFiniteNumber(longitude);
+  if (lat === undefined || lng === undefined) return "";
+  if (!isLikelyJamaicaCoordinate(lat, lng)) return "";
+
+  const nearest = DESTINATIONS.map((destination) => ({
+    destination,
+    distanceKm: getDistanceKm(lat, lng, destination.latitude, destination.longitude),
+  })).sort((first, second) => first.distanceKm - second.distanceKm)[0];
+
+  return nearest && nearest.distanceKm <= 95 ? nearest.destination.id : "";
+}
+
 function detectSourcePlatform(url: URL | null): ImportedIdeaSourcePlatform {
   if (!url) return "manual";
   const host = url.hostname.replace(/^www\./, "").toLowerCase();
@@ -226,6 +240,31 @@ function getSuggestionConfidence(
   if (source === "google-maps" && extractedPlaceName && linkedDestinationId) return "high";
   if (extractedPlaceName || linkedDestinationId) return "medium";
   return "low";
+}
+
+function isLikelyJamaicaCoordinate(latitude: number, longitude: number): boolean {
+  return latitude >= 17.4 && latitude <= 18.7 && longitude >= -78.8 && longitude <= -76.0;
+}
+
+function getDistanceKm(fromLat: number, fromLng: number, toLat: number, toLng: number): number {
+  const radiusKm = 6371;
+  const dLat = degreesToRadians(toLat - fromLat);
+  const dLng = degreesToRadians(toLng - fromLng);
+  const firstLat = degreesToRadians(fromLat);
+  const secondLat = degreesToRadians(toLat);
+  const haversine =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(firstLat) * Math.cos(secondLat) * Math.sin(dLng / 2) ** 2;
+  return radiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function degreesToRadians(value: number): number {
+  return (value * Math.PI) / 180;
+}
+
+function asFiniteNumber(value: unknown): number | undefined {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? number : undefined;
 }
 
 function inferPlaceName(...candidates: string[]): string {

@@ -46,7 +46,11 @@ import type {
 } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassControl, glassControlMuted, glassField, glassPanel } from "../utils/glass";
-import { analyzeImportLink, type ImportLinkSuggestion } from "../utils/importIntelligence";
+import {
+  analyzeImportLink,
+  inferLinkedDestinationIdFromCoordinates,
+  type ImportLinkSuggestion,
+} from "../utils/importIntelligence";
 import { isStringRecord, readJsonFromStorage, writeJsonToStorage } from "../utils/storage";
 
 type SavedScreenProps = {
@@ -212,7 +216,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       sourceLabel: suggestion.sourceLabel,
       extractedPlaceName: suggestion.extractedPlaceName,
     }));
-    setImportAutoTitle(suggestion.title);
+    setImportAutoTitle(sharedIdea.title ? "" : suggestion.title);
     setImportAutoDestinationId(suggestion.linkedDestinationId);
     setImportCategoryEdited(false);
     setImportCollectionEdited(false);
@@ -474,6 +478,21 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     };
   };
 
+  const enrichSuggestionWithMetadataPlace = (suggestion: ImportLinkSuggestion, metadata: ImportMetadata | null) => {
+    if (suggestion.linkedDestinationId || !metadata?.place) return suggestion;
+    const coordinateDestinationId = inferLinkedDestinationIdFromCoordinates(
+      metadata.place.latitude,
+      metadata.place.longitude
+    );
+    if (!coordinateDestinationId) return suggestion;
+
+    return {
+      ...suggestion,
+      linkedDestinationId: coordinateDestinationId,
+      confidence: suggestion.confidence === "low" ? "medium" : suggestion.confidence,
+    };
+  };
+
   useEffect(() => {
     const url = importForm.url.trim();
     setImportMetadata(null);
@@ -493,16 +512,16 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
 
           setImportMetadata(metadata);
           const metadataUrl = metadata.finalUrl || metadata.url || url;
-          const suggestion = analyzeImportLink({
+          const suggestion = enrichSuggestionWithMetadataPlace(analyzeImportLink({
             url: metadataUrl,
             title: metadata.title,
             note: importForm.note || metadata.description,
             description: metadata.description,
-          });
+          }), metadata);
 
           setImportForm((prev) => {
             if (prev.url.trim() !== url) return prev;
-            const shouldUseMetadataTitle = metadata.title && !prev.title.trim();
+            const shouldUseMetadataTitle = shouldReplaceAutoImportTitle(prev.title, importAutoTitle, metadata);
             return {
               ...prev,
               title: shouldUseMetadataTitle ? metadata.title : prev.title,
@@ -594,12 +613,12 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     const title = importForm.title.trim();
     const url = importForm.url.trim();
     const note = importForm.note.trim();
-    const suggestion = analyzeImportLink({
+    const suggestion = enrichSuggestionWithMetadataPlace(analyzeImportLink({
       url: importMetadata?.finalUrl || url,
       title,
       note,
       description: importMetadata?.description,
-    });
+    }), importMetadata);
     const fallbackTitle = suggestion.title || importMetadata?.title || note.slice(0, 56);
 
     if (!title && !url && !note) {
@@ -613,7 +632,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       note,
       category: importForm.category,
       collectionId: importForm.collectionId,
-      linkedDestinationId: importForm.linkedDestinationId || undefined,
+      linkedDestinationId: importForm.linkedDestinationId || suggestion.linkedDestinationId || undefined,
       sourcePlatform: importMetadata?.sourcePlatform ?? suggestion.sourcePlatform,
       sourceLabel: importMetadata?.sourceLabel || suggestion.sourceLabel,
       extractedPlaceName: suggestion.extractedPlaceName || importForm.extractedPlaceName || undefined,
@@ -1795,6 +1814,22 @@ function categoryToCollection(category: ImportedIdeaCategory): CollectionId {
 
 function formatImportedCategory(category: ImportedIdeaCategory): string {
   return IMPORT_CATEGORIES.find((item) => item.id === category)?.label ?? "Idea";
+}
+
+function shouldReplaceAutoImportTitle(currentTitle: string, autoTitle: string, metadata: ImportMetadata): boolean {
+  if (!metadata.title) return false;
+  const current = currentTitle.trim();
+  if (!current) return true;
+  if (autoTitle && current === autoTitle) return true;
+
+  const genericTitles = [
+    `${metadata.sourceLabel} Jamaica idea`,
+    `${metadata.siteName} Jamaica idea`,
+    "Google Maps Jamaica idea",
+    "Website Jamaica idea",
+  ].filter(Boolean);
+
+  return genericTitles.some((title) => current.toLowerCase() === title.toLowerCase());
 }
 
 function formatImportedPlaceSummary(place: ImportedIdea["place"]): string {

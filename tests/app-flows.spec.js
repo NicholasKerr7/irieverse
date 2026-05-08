@@ -84,6 +84,64 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   expect(issues).toEqual([]);
 });
 
+test("google place imports auto-anchor from coordinates", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await page.route("**/api/import-metadata**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          url: "https://maps.google.com/?cid=quiet-garden",
+          finalUrl: "https://maps.google.com/?cid=quiet-garden",
+          sourcePlatform: "google-maps",
+          sourceLabel: "Google Maps",
+          title: "Quiet Garden",
+          description: "Courtyard hideaway · 4.5 rating",
+          siteName: "Google Maps",
+          confidence: "high",
+          place: {
+            name: "Quiet Garden",
+            address: "Hope Road",
+            shortAddress: "Hope Road",
+            latitude: 18.0179,
+            longitude: -76.7875,
+            mapsUrl: "https://maps.google.com/?cid=quiet-garden",
+            rating: 4.5,
+            primaryType: "Cafe",
+          },
+        },
+      }),
+    });
+  });
+
+  await openCleanTab(page, "saved", [
+    "irieverse_imported_ideas",
+    "irieverse_saved_collections",
+  ]);
+
+  await page.getByPlaceholder("https://maps.google.com/... or social link").fill("https://maps.google.com/?cid=quiet-garden");
+  await expect(page.getByText("Quiet Garden").first()).toBeVisible();
+  await page.getByRole("button", { name: "Save to Irieverse" }).click();
+
+  const ideas = await waitForImportedIdeas(
+    page,
+    (items) => items.length === 1 && items[0].title === "Quiet Garden"
+  );
+
+  expect(ideas[0]).toEqual(
+    expect.objectContaining({
+      linkedDestinationId: "kingston",
+      place: expect.objectContaining({
+        shortAddress: "Hope Road",
+      }),
+    })
+  );
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("share-target imports preserve provided titles", async ({ page }) => {
   const issues = collectPageIssues(page);
   const params = new URLSearchParams({
