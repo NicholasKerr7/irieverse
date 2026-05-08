@@ -399,7 +399,7 @@ async function verifyRoadRouteApi(request) {
 
 async function verifyPlaceDetailsApi(request) {
   const response = await request.get(
-    `${BASE_URL}/api/place-details?kind=destination&name=Negril&region=West%20Coast&latitude=18.2728&longitude=-78.3488`
+    `${BASE_URL}/api/place-details?kind=destination&name=Negril&region=West%20Coast&latitude=18.2728&longitude=-78.3488&placeQuery=${encodeURIComponent("Seven Mile Beach, Negril, Jamaica")}&requiredTerms=seven,mile`
   );
   expect(response.ok()).toBe(true);
   const payload = await response.json();
@@ -412,6 +412,23 @@ async function verifyPlaceDetailsApi(request) {
         mapsUrl: expect.any(String),
       })
     );
+  }
+
+  const mobayResponse = await request.get(
+    `${BASE_URL}/api/place-details?kind=destination&name=Montego%20Bay&region=North%20Coast&latitude=18.4762&longitude=-77.8939&placeQuery=${encodeURIComponent("Doctor's Cave Beach, Montego Bay, Jamaica")}&requiredTerms=doctor,cave&blockedTerms=imaging,diagnostic,medical,clinic,radiology`
+  );
+  expect(mobayResponse.ok()).toBe(true);
+  const mobayPayload = await mobayResponse.json();
+  expect(["google-places", "curated"]).toContain(mobayPayload.meta?.source);
+  if (mobayPayload.data) {
+    const resultText = [
+      mobayPayload.data.name,
+      mobayPayload.data.address,
+      mobayPayload.data.primaryType,
+      ...(mobayPayload.data.types ?? []),
+    ].join(" ");
+    expect(resultText).toMatch(/doctor|cave/i);
+    expect(resultText).not.toMatch(/northcoast|imaging|diagnostic|medical|clinic|radiology/i);
   }
 }
 

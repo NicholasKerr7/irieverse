@@ -31,6 +31,11 @@ export async function fetchPlaceDetails(
   signal?: AbortSignal
 ): Promise<PlaceDetails | null> {
   const endpoint = new URL("/api/place-details", getBaseUrl());
+  const placeLookup = lookup.kind === "destination" ? lookup.destination.placeLookup : lookup.experience.placeLookup;
+
+  if (lookup.kind === "experience" && !placeLookup?.query) {
+    return null;
+  }
 
   if (lookup.kind === "destination") {
     endpoint.searchParams.set("kind", "destination");
@@ -50,6 +55,18 @@ export async function fetchPlaceDetails(
     }
   }
 
+  if (placeLookup?.query) {
+    endpoint.searchParams.set("placeQuery", placeLookup.query);
+  }
+
+  if (placeLookup?.requiredTerms?.length) {
+    endpoint.searchParams.set("requiredTerms", placeLookup.requiredTerms.join(","));
+  }
+
+  if (placeLookup?.blockedTerms?.length) {
+    endpoint.searchParams.set("blockedTerms", placeLookup.blockedTerms.join(","));
+  }
+
   const response = await fetch(endpoint.toString(), { signal });
   if (!response.ok) {
     throw new Error(`Place details lookup failed: ${response.status}`);
@@ -58,7 +75,8 @@ export async function fetchPlaceDetails(
   const payload: unknown = await response.json();
   if (!isRecord(payload) || !isRecord(payload.data)) return null;
 
-  return normalizePlaceDetails(payload.data);
+  const details = normalizePlaceDetails(payload.data);
+  return isAcceptablePlaceDetails(details, lookup) ? details : null;
 }
 
 function normalizePlaceDetails(data: Record<string, unknown>): PlaceDetails {
@@ -104,4 +122,57 @@ function asStringArray(value: unknown): string[] {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+const DEFAULT_BLOCKED_PLACE_TERMS = [
+  "diagnostic",
+  "imaging",
+  "laboratory",
+  "medical",
+  "pharmacy",
+  "radiology",
+  "ultrasound",
+  "xray",
+];
+
+function isAcceptablePlaceDetails(details: PlaceDetails, lookup: PlaceDetailsLookup): boolean {
+  const placeLookup = lookup.kind === "destination" ? lookup.destination.placeLookup : lookup.experience.placeLookup;
+  const searchableText = normalizeSearchText([
+    details.name,
+    details.address,
+    details.shortAddress,
+    details.primaryType,
+    ...details.types,
+  ].join(" "));
+
+  const doctorCaveMatch = searchableText.includes("doctor s cave") || searchableText.includes("doctors cave");
+  const blockedTerms = [
+    ...DEFAULT_BLOCKED_PLACE_TERMS,
+    ...(placeLookup?.blockedTerms ?? []),
+  ].map(normalizeSearchText).filter(Boolean);
+
+  if (!doctorCaveMatch && blockedTerms.some((term) => searchTextIncludes(searchableText, term))) {
+    return false;
+  }
+
+  const requiredTerms = (placeLookup?.requiredTerms ?? [])
+    .map(normalizeSearchText)
+    .filter(Boolean);
+
+  if (!requiredTerms.length) return true;
+
+  return requiredTerms.every((term) => searchTextIncludes(searchableText, term));
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function searchTextIncludes(searchableText: string, term: string): boolean {
+  return searchableText.includes(term);
 }

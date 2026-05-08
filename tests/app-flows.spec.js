@@ -288,9 +288,9 @@ test("map place details surface live visit data when available", async ({ page }
       body: JSON.stringify({
         data: {
           id: "places/negril-live",
-          name: "Negril",
-          address: "Norman Manley Boulevard, Negril, Jamaica",
-          shortAddress: "Norman Manley Boulevard, Negril",
+          name: "Seven Mile Beach",
+          address: "Seven Mile Beach, Norman Manley Boulevard, Negril, Jamaica",
+          shortAddress: "Seven Mile Beach, Negril",
           mapsUrl: "https://maps.google.com/?cid=123",
           websiteUrl: "https://visitnegril.example",
           phone: "+1 876-555-0199",
@@ -315,9 +315,57 @@ test("map place details surface live visit data when available", async ({ page }
   const detailSheet = page.getByTestId("place-detail-sheet");
   await expect(detailSheet.getByText("Visit details")).toBeVisible();
   await expect(detailSheet.getByText("Open now").first()).toBeVisible();
-  await expect(detailSheet.getByText("Norman Manley Boulevard, Negril").first()).toBeVisible();
+  await expect(detailSheet.getByText("Seven Mile Beach, Negril").first()).toBeVisible();
   await expect(detailSheet.getByRole("link", { name: /Website/ })).toBeVisible();
   await expect(detailSheet.getByText("Monday: 9:00 AM - 6:00 PM")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
+test("map place details reject mismatched live data", async ({ page }) => {
+  const issues = collectPageIssues(page);
+  const placeDetailRequests = [];
+
+  await page.route("**/api/place-details**", async (route) => {
+    const url = new URL(route.request().url());
+    placeDetailRequests.push(url.searchParams.toString());
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          id: "places/northcoast-imaging",
+          name: "Northcoast Imaging Limited",
+          address: "Montego Bay, Jamaica",
+          shortAddress: "Montego Bay",
+          mapsUrl: "https://maps.google.com/?cid=northcoast-imaging",
+          phone: "+1 876-555-0111",
+          rating: 4.1,
+          userRatingCount: 84,
+          openNow: true,
+          weekdayDescriptions: ["Monday: 8:00 AM - 5:00 PM"],
+          primaryType: "Medical Diagnostic Imaging Center",
+          types: ["health", "point_of_interest"],
+          source: "google-places",
+        },
+        meta: { source: "google-places", providerConfigured: true },
+      }),
+    });
+  });
+
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await page.waitForTimeout(2500);
+  await page.getByRole("button", { name: /Day 1/ }).click();
+  await page.getByRole("button", { name: /Details/ }).first().click();
+
+  const detailSheet = page.getByTestId("place-detail-sheet");
+  await expect(detailSheet.getByRole("heading", { name: "Montego Bay" })).toBeVisible();
+  await expect.poll(() => placeDetailRequests.length).toBeGreaterThan(0);
+  await expect(detailSheet.getByText("Northcoast Imaging Limited")).toHaveCount(0);
+  await expect(detailSheet.getByText("Medical Diagnostic Imaging Center")).toHaveCount(0);
+  expect(placeDetailRequests.some((query) => query.includes("placeQuery=Doctor%27s+Cave+Beach"))).toBe(true);
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
 });

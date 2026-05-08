@@ -72,6 +72,13 @@ export interface Destination {
   airportCode: string;
   quickFacts?: QuickFact[];
   markerType?: "destination" | "experience";
+  placeLookup?: PlaceLookup;
+}
+
+export interface PlaceLookup {
+  query: string;
+  requiredTerms?: string[];
+  blockedTerms?: string[];
 }
 
 export interface QuickFact {
@@ -105,6 +112,7 @@ export interface Experience {
   bestTime: string;
   imageUrl: string;
   approxCost: string;
+  placeLookup?: PlaceLookup;
 }
 
 export interface ImportedIdea {

@@ -20,6 +20,11 @@ export const DESTINATIONS: Destination[] = [
     ],
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Doctors-Cave-Beach.jpg?width=1200",
+    placeLookup: {
+      query: "Doctor's Cave Beach, Montego Bay, Jamaica",
+      requiredTerms: ["doctor", "cave"],
+      blockedTerms: ["imaging", "diagnostic", "medical", "clinic", "radiology"],
+    },
     latitude: 18.4762,
     longitude: -77.8939,
     airportCode: "MBJ",
@@ -48,6 +53,10 @@ export const DESTINATIONS: Destination[] = [
     ],
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Atlantic_ocean_negril_jamaica.jpg?width=1200",
+    placeLookup: {
+      query: "Seven Mile Beach, Negril, Jamaica",
+      requiredTerms: ["seven", "mile"],
+    },
     latitude: 18.2728,
     longitude: -78.3488,
     airportCode: "MBJ",
@@ -76,6 +85,10 @@ export const DESTINATIONS: Destination[] = [
     ],
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Ocho_R%C3%ADos-Jamaica03.JPG?width=1200",
+    placeLookup: {
+      query: "Dunn's River Falls, Ocho Rios, Jamaica",
+      requiredTerms: ["dunn", "river"],
+    },
     latitude: 18.4029,
     longitude: -76.974,
     airportCode: "KIN",
@@ -104,6 +117,10 @@ export const DESTINATIONS: Destination[] = [
     ],
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Kingston%2C_Jamaica.JPG?width=1200",
+    placeLookup: {
+      query: "Bob Marley Museum, Kingston, Jamaica",
+      requiredTerms: ["bob", "marley"],
+    },
     latitude: 17.9784,
     longitude: -76.7882,
     airportCode: "KIN",
@@ -132,6 +149,10 @@ export const DESTINATIONS: Destination[] = [
     ],
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Frenchman%27s_Cove_%2832306710322%29.jpg?width=1200",
+    placeLookup: {
+      query: "Frenchman's Cove, Portland, Jamaica",
+      requiredTerms: ["frenchman", "cove"],
+    },
     latitude: 18.1801,
     longitude: -76.457,
     airportCode: "KIN",
@@ -160,6 +181,10 @@ export const DESTINATIONS: Destination[] = [
     ],
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Treasure_Beach_Jamaica_2023.jpg?width=1200",
+    placeLookup: {
+      query: "Treasure Beach, St Elizabeth, Jamaica",
+      requiredTerms: ["treasure", "beach"],
+    },
     latitude: 17.8815,
     longitude: -77.7675,
     airportCode: "MBJ",
@@ -193,6 +218,10 @@ export const EXPERIENCES: Experience[] = [
     imageUrl:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Boston_beach_Jamaica_-_panoramio.jpg?width=1200",
     approxCost: "$",
+    placeLookup: {
+      query: "Boston Jerk Centre, Portland, Jamaica",
+      requiredTerms: ["boston", "jerk"],
+    },
   },
   {
     id: "kingston-sound-system-night",
@@ -259,6 +288,10 @@ export const EXPERIENCES: Experience[] = [
     imageUrl:
       "https://images.unsplash.com/photo-1658833621083-01fd8a4acf19?auto=format&fit=crop&w=1200&q=80",
     approxCost: "$$",
+    placeLookup: {
+      query: "The Pork Pit, Montego Bay, Jamaica",
+      requiredTerms: ["pork", "pit"],
+    },
   },
   {
     id: "maroon-festival-winchesters",
@@ -281,6 +314,10 @@ export const EXPERIENCES: Experience[] = [
     imageUrl:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Accompong_Maroon_Festival_IMG_6766.jpg?width=1200",
     approxCost: "$$",
+    placeLookup: {
+      query: "Accompong Maroon Village, St Elizabeth, Jamaica",
+      requiredTerms: ["accompong"],
+    },
   },
   {
     id: "ochi-river-lemons-and-lime",
@@ -303,6 +340,10 @@ export const EXPERIENCES: Experience[] = [
     imageUrl:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Jamaica_Ocho_Rios_Dunn%27s_River_Falls_2.jpg?width=1200",
     approxCost: "$$",
+    placeLookup: {
+      query: "Dunn's River Falls, Ocho Rios, Jamaica",
+      requiredTerms: ["dunn", "river"],
+    },
   },
 ];
 

@@ -205,10 +205,10 @@ For production scale, set `ROUTING_API_BASE_URL` to your own OSRM-compatible ser
 The map detail sheet calls `api/place-details.js` when a user opens a destination or experience. The endpoint uses the server-only `GOOGLE_PLACES_API_KEY` with Google Places Text Search, then returns a normalized place object:
 
 ```text
-GET /api/place-details?kind=destination&name=Negril&region=West%20Coast&latitude=18.2728&longitude=-78.3488
+GET /api/place-details?kind=destination&name=Negril&region=West%20Coast&latitude=18.2728&longitude=-78.3488&placeQuery=Seven%20Mile%20Beach%2C%20Negril%2C%20Jamaica&requiredTerms=seven,mile
 ```
 
-When the key is configured and a match is found, the sheet can show live address, open/closed state, hours, phone, website, Google Maps link, rating count, and place type. When the key is missing, the endpoint returns no live data and the UI keeps showing curated Jamaica content without setup language.
+When the key is configured and a trustworthy match is found, the sheet can show live address, open/closed state, hours, phone, website, Google Maps link, rating count, and place type. Built-in Jamaica stops pass curated `placeQuery` and `requiredTerms` hints so broad destinations like Montego Bay enrich from the intended landmark instead of an unrelated nearby business. When the key is missing or the match looks wrong, the endpoint returns no live data and the UI keeps showing curated Jamaica content without setup language.
 
 Use a server-side key only:
 
