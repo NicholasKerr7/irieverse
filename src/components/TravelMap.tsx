@@ -416,22 +416,21 @@ export const TravelMap = memo(function TravelMap({
         {!!routeGeojson.features.length && (
           <Source id="route-preview" type="geojson" data={routeGeojson}>
             <Layer
-              id="route-preview-glow"
+              id="route-preview-casing"
               type="line"
               paint={{
-                "line-color": ["get", "color"],
+                "line-color": theme === "dark" ? "#020617" : "#ffffff",
                 "line-width": [
                   "case",
                   ["==", ["get", "id"], selectedRouteLegId ?? ""],
-                  23,
-                  15,
+                  11,
+                  8,
                 ],
                 "line-opacity": [
                   "*",
                   ["get", "opacity"],
-                  ["case", ["==", ["get", "source"], "fallback"], 0.16, 0.24],
+                  ["case", ["==", ["get", "source"], "fallback"], 0.36, 0.58],
                 ],
-                "line-blur": 5,
               }}
               layout={{
                 "line-cap": "round",
