@@ -1,6 +1,10 @@
 const DEFAULT_ROUTING_BASE_URL = "https://router.project-osrm.org";
 const MAX_ROUTE_DISTANCE_KM = 400;
 const MAX_ROUTE_STEPS = 32;
+const DEFAULT_ROUTING_TIMEOUT_MS = 4500;
+const DEFAULT_ROUTING_COOLDOWN_SECONDS = 45;
+
+let routingProviderCooldownUntil = 0;
 
 module.exports = async function roadRouteHandler(req, res) {
   setResponseHeaders(res);
@@ -34,8 +38,14 @@ module.exports = async function roadRouteHandler(req, res) {
     return;
   }
 
+  if (Date.now() < routingProviderCooldownUntil) {
+    sendRouteFallback(res, "Road preview is still syncing, so the app is keeping a simple route line for this leg.");
+    return;
+  }
+
   try {
     const route = await fetchOsrmRoute(from, to);
+    routingProviderCooldownUntil = 0;
     res.status(200).json({
       data: route,
       meta: {
@@ -44,15 +54,9 @@ module.exports = async function roadRouteHandler(req, res) {
       },
     });
   } catch (error) {
-    console.error("Road route lookup failed", error);
-    res.status(200).json({
-      data: null,
-      meta: {
-        source: "fallback",
-        reason: "road-route-unavailable",
-        message: "Road planning is limited for this leg, so the app is keeping a simple estimated route line.",
-      },
-    });
+    routingProviderCooldownUntil = Date.now() + getRoutingCooldownMs();
+    console.warn(`Road route provider unavailable; using planning route lines temporarily. ${formatErrorForLog(error)}`);
+    sendRouteFallback(res, "Road preview is unavailable right now, so the app is keeping a simple route line for this leg.");
   }
 };
 
@@ -73,7 +77,7 @@ async function fetchOsrmRoute(from, to) {
   url.searchParams.set("alternatives", "false");
   url.searchParams.set("annotations", "distance,duration");
 
-  const response = await fetch(url);
+  const response = await fetchWithTimeout(url, getRoutingTimeoutMs());
   if (!response.ok) {
     throw new Error(`OSRM route failed: ${response.status}`);
   }
@@ -94,6 +98,45 @@ async function fetchOsrmRoute(from, to) {
     steps: normalizeRouteSteps(route.legs),
     source: "osrm",
   };
+}
+
+function sendRouteFallback(res, message) {
+  res.status(200).json({
+    data: null,
+    meta: {
+      source: "fallback",
+      reason: "road-route-unavailable",
+      message,
+    },
+  });
+}
+
+async function fetchWithTimeout(url, timeoutMs) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function getRoutingTimeoutMs() {
+  return getPositiveEnvNumber("ROUTING_API_TIMEOUT_MS", DEFAULT_ROUTING_TIMEOUT_MS);
+}
+
+function getRoutingCooldownMs() {
+  return getPositiveEnvNumber("ROUTING_PROVIDER_COOLDOWN_SECONDS", DEFAULT_ROUTING_COOLDOWN_SECONDS) * 1000;
+}
+
+function getPositiveEnvNumber(name, fallback) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function formatErrorForLog(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function normalizeRouteSteps(legs) {

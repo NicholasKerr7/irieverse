@@ -59,7 +59,7 @@ module.exports = async function importMetadataHandler(req, res) {
     setCachedMetadata(cacheKey, metadata);
     res.status(200).json({ data: metadata });
   } catch (error) {
-    console.warn("Import metadata lookup failed", error);
+    console.warn(`Import metadata unavailable; using local link preview. ${formatErrorForLog(error)}`);
     res.status(200).json({
       data: buildBaseMetadata(parsedUrl, {
         confidence: "low",
@@ -86,7 +86,7 @@ async function resolveMetadata(url) {
 
   if (sourcePlatform === "google-maps") {
     const googleMapsMetadata = await resolveGoogleMapsMetadata(metadataUrl, url).catch((error) => {
-      console.warn("Google Maps import metadata lookup failed", error);
+      console.warn(`Google Maps import metadata unavailable; using local link preview. ${formatErrorForLog(error)}`);
       return null;
     });
     if (googleMapsMetadata) return googleMapsMetadata;
@@ -291,6 +291,10 @@ async function fetchWithTimeout(url, options = {}) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function formatErrorForLog(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function getMetaContent(html, names) {

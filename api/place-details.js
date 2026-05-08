@@ -96,7 +96,7 @@ module.exports = async function placeDetailsHandler(req, res) {
       },
     });
   } catch (error) {
-    console.warn("Place details lookup failed", error);
+    console.warn(`Place details lookup unavailable; using curated details. ${formatErrorForLog(error)}`);
     res.status(200).json({
       data: null,
       meta: {
@@ -166,6 +166,10 @@ async function fetchWithTimeout(url, options = {}) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function formatErrorForLog(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function normalizeGooglePlace(place) {

@@ -236,26 +236,44 @@ export const TravelMap = memo(function TravelMap({
     async function loadRoadRoutes() {
       setIsLoadingRoadRoutes(true);
       const entries: Array<{ id: string; result: RoadRouteFetchResult }> = [];
+      let pausedLookupFallback: RouteFallbackInfo | null = null;
 
       for (const request of routeRequests) {
         if (controller.signal.aborted) return;
-        try {
-          const result = await fetchRoadRoute(request, controller.signal);
-          entries.push({ id: request.id, result });
-        } catch (error) {
-          if (!controller.signal.aborted) {
-            console.error("Road route unavailable", error);
-          }
+
+        if (pausedLookupFallback) {
           entries.push({
             id: request.id,
             result: {
               route: null,
-              fallback: {
-                reason: "request-failed",
-                message: "The road-following preview is limited here, so this leg is using an estimated path.",
-              },
+              fallback: getPausedRouteLookupFallback(pausedLookupFallback.reason),
             },
           });
+          continue;
+        }
+
+        try {
+          const result = await fetchRoadRoute(request, controller.signal);
+          entries.push({ id: request.id, result });
+          if (shouldPauseRoadLookups(result.fallback?.reason)) {
+            pausedLookupFallback = result.fallback ?? getPausedRouteLookupFallback();
+          }
+        } catch (error) {
+          if (!controller.signal.aborted) {
+            console.error("Road route unavailable", error);
+          }
+          const fallback = {
+            reason: "request-failed" as const,
+            message: "The road preview is unavailable right now, so this leg is using a simple route line.",
+          };
+          entries.push({
+            id: request.id,
+            result: {
+              route: null,
+              fallback,
+            },
+          });
+          pausedLookupFallback = fallback;
         }
 
         await waitForRouteSlot(controller.signal);
@@ -953,6 +971,17 @@ function shallowRouteFallbacksEqual(first: Record<string, RouteFallbackInfo>, se
     first[key]?.reason === second[key]?.reason &&
     first[key]?.message === second[key]?.message
   ));
+}
+
+function shouldPauseRoadLookups(reason: RouteFallbackReason | undefined): boolean {
+  return reason === "request-failed" || reason === "invalid-response" || reason === "road-route-unavailable";
+}
+
+function getPausedRouteLookupFallback(reason: RouteFallbackReason = "road-route-unavailable"): RouteFallbackInfo {
+  return {
+    reason,
+    message: "Road preview is unavailable right now, so this leg is using a simple route line.",
+  };
 }
 
 function waitForRouteSlot(signal: AbortSignal): Promise<void> {
