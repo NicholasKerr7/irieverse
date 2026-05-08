@@ -40,6 +40,7 @@ import { formatLocalTime, type TravelOS } from "../hooks/useTravelOS";
 import type { Experience, ImportedIdea, PlanningMode, PlanningTemplate, RouteStop, Vibe } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
+import { getBoardIdeasForDestination } from "../utils/boardIdeas";
 import { getDayPlanningReasons, type DayPlanningReasonTone } from "../utils/dayPlanningReasons";
 import { formatDriveTime } from "../utils/format";
 import { glassCard, glassControlMuted, glassPanel, glassPanelStrong } from "../utils/glass";
@@ -1024,7 +1025,14 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
                 <div className="mt-2 grid gap-2">
                   {boardIdeas.slice(0, 3).map((idea) => (
                     <div key={idea.id} className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2">
-                      <p className="line-clamp-1 text-xs font-semibold text-slate-100">{idea.title}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="min-w-0 flex-1 line-clamp-1 text-xs font-semibold text-slate-100">{idea.title}</p>
+                        {idea.exactPlace && (
+                          <span className="shrink-0 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-[0.12em] text-cyan-100">
+                            Exact stop
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-0.5 line-clamp-1 text-[0.68rem] text-slate-500">{idea.meta}</p>
                     </div>
                   ))}
@@ -2537,26 +2545,12 @@ function getBoardStopLabel(app: TravelOS, destinationId: string): string {
 }
 
 function getDayBoardIdeas(app: TravelOS, destinationId: string) {
-  const destination = DESTINATIONS.find((item) => item.id === destinationId);
-  const savedDestinationIdeas = destination && app.savedPlaces.has(destinationId)
-    ? [{ id: `place-${destination.id}`, title: destination.name, meta: "Saved place" }]
-    : [];
-  const savedExperienceIdeas = EXPERIENCES
-    .filter((experience) => app.savedExperiences.has(experience.id) && experience.linkedDestinationId === destinationId)
-    .map((experience) => ({
-      id: `experience-${experience.id}`,
-      title: experience.title,
-      meta: `Saved experience · ${experience.location}`,
-    }));
-  const importedDayIdeas = app.importedIdeas
-    .filter((idea) => idea.linkedDestinationId === destinationId)
-    .map((idea) => ({
-      id: `import-${idea.id}`,
-      title: idea.title,
-      meta: idea.sourceLabel || idea.extractedPlaceName || "Imported idea",
-    }));
-
-  return [...savedDestinationIdeas, ...savedExperienceIdeas, ...importedDayIdeas];
+  return getBoardIdeasForDestination({
+    destinationId,
+    savedPlaceIds: app.savedPlaces,
+    savedExperienceIds: app.savedExperiences,
+    importedIdeas: app.importedIdeas,
+  });
 }
 
 function getCuratedStayBody(reason: string | undefined, endpointConfigured: boolean): string {

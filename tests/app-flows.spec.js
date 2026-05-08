@@ -80,6 +80,12 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await page.getByRole("button", { name: "Open saved idea Devon House" }).click();
   await expect(page.getByTestId("imported-place-detail-sheet").getByText("26 Hope Road, Kingston").first()).toBeVisible();
 
+  await openCleanTab(page, "trips", []);
+  const exactStopBadge = page.getByText("Exact stop").first();
+  await exactStopBadge.scrollIntoViewIfNeeded();
+  await expect(exactStopBadge).toBeVisible();
+  await expect(page.getByText(/26 Hope Road, Kingston.*Restaurant.*4\.6/).first()).toBeVisible();
+
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
 });

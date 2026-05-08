@@ -1,7 +1,8 @@
 import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, Lock, MapPin, Music2, PartyPopper, Route, Sparkles, StickyNote, Unlock, Utensils, WalletCards, X } from "lucide-react";
-import { DESTINATIONS, EXPERIENCES } from "../data/content";
+import { DESTINATIONS } from "../data/content";
 import type { ImportedIdea, ItineraryPlan } from "../types/travel";
 import { classNames } from "../utils/classNames";
+import { getBoardIdeasForDestination } from "../utils/boardIdeas";
 import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
 import { getDayPlanningReasons, type DayPlanningReasonTone } from "../utils/dayPlanningReasons";
 import { formatDriveTime } from "../utils/format";
@@ -113,7 +114,12 @@ export function ItineraryView({
           const experienceOptions = getExperienceOptionsForDay(day, 8, savedExperienceIds);
           const dayNote = dayNotes[String(day.day)] ?? "";
           const experienceIsSaved = Boolean(day.experience && savedExperienceIds.has(day.experience.id));
-          const boardIdeas = getDayBoardIdeas(day.destinationId, savedPlaceIds, savedExperienceIds, importedIdeas);
+          const boardIdeas = getBoardIdeasForDestination({
+            destinationId: day.destinationId,
+            savedPlaceIds,
+            savedExperienceIds,
+            importedIdeas,
+          });
           const planningReasons = getDayPlanningReasons(day, boardIdeas.length);
           const routeStopForDay = routeSummary.stops.find((stop) => stop.day === day.day);
           const canEditRouteStop = Boolean(onSetRouteStopForDay && routeStopForDay);
@@ -271,7 +277,14 @@ export function ItineraryView({
                 <div className="mt-2 grid gap-2">
                   {boardIdeas.slice(0, 3).map((idea) => (
                     <div key={idea.id} className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
-                      <p className="line-clamp-1 text-xs font-semibold text-slate-100">{idea.title}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="min-w-0 flex-1 line-clamp-1 text-xs font-semibold text-slate-100">{idea.title}</p>
+                        {idea.exactPlace && (
+                          <span className="shrink-0 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-[0.12em] text-cyan-100">
+                            Exact stop
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-0.5 line-clamp-1 text-[0.68rem] text-slate-500">{idea.meta}</p>
                     </div>
                   ))}
@@ -404,32 +417,4 @@ function getPacingLabel(totalDriveMinutes: number, days: number): string {
   if (averageDrive > 110) return "Ambitious";
   if (averageDrive > 55) return "Balanced";
   return "Relaxed";
-}
-
-function getDayBoardIdeas(
-  destinationId: string,
-  savedPlaceIds: Set<string>,
-  savedExperienceIds: Set<string>,
-  importedIdeas: ImportedIdea[]
-) {
-  const destination = DESTINATIONS.find((item) => item.id === destinationId);
-  const savedDestinationIdeas = destination && savedPlaceIds.has(destinationId)
-    ? [{ id: `place-${destination.id}`, title: destination.name, meta: "Saved place" }]
-    : [];
-  const savedExperienceIdeas = EXPERIENCES
-    .filter((experience) => savedExperienceIds.has(experience.id) && experience.linkedDestinationId === destinationId)
-    .map((experience) => ({
-      id: `experience-${experience.id}`,
-      title: experience.title,
-      meta: `Saved experience · ${experience.location}`,
-    }));
-  const importedDayIdeas = importedIdeas
-    .filter((idea) => idea.linkedDestinationId === destinationId)
-    .map((idea) => ({
-      id: `import-${idea.id}`,
-      title: idea.title,
-      meta: idea.sourceLabel || idea.extractedPlaceName || "Imported idea",
-    }));
-
-  return [...savedDestinationIdeas, ...savedExperienceIdeas, ...importedDayIdeas];
 }
