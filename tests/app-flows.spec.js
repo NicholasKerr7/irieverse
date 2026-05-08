@@ -298,6 +298,8 @@ test("map place details surface live visit data when available", async ({ page }
           userRatingCount: 1240,
           openNow: true,
           weekdayDescriptions: ["Monday: 9:00 AM - 6:00 PM"],
+          businessStatus: "Operational",
+          priceLevel: "$$",
           primaryType: "Beach",
           source: "google-places",
         },
@@ -318,6 +320,8 @@ test("map place details surface live visit data when available", async ({ page }
   await expect(detailSheet.getByText("Seven Mile Beach, Negril").first()).toBeVisible();
   await expect(detailSheet.getByRole("link", { name: /Website/ })).toBeVisible();
   await expect(detailSheet.getByText("Monday: 9:00 AM - 6:00 PM")).toBeVisible();
+  await expect(detailSheet.getByText("Status")).toHaveCount(0);
+  await expect(detailSheet.getByText("Operational")).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
 });

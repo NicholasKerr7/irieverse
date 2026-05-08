@@ -1718,8 +1718,6 @@ function PlaceDetailSheet({
         { label: "Best time", value: target.experience.bestTime },
         { label: "Cost", value: target.experience.approxCost },
       ];
-  const liveFacts = buildLivePlaceFacts(liveDetails);
-  const facts = liveFacts.length ? liveFacts : curatedFacts;
   const whatToExpect = isDestination ? target.destination.highlights.slice(0, 4) : target.experience.whatToExpect.slice(0, 4);
   const liveVisitRows = buildLiveVisitRows(liveDetails);
   const openStatusLabel = isLiveDetailsLoading
@@ -1821,14 +1819,16 @@ function PlaceDetailSheet({
             </section>
           )}
 
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            {facts.map((fact) => (
-              <div key={fact.label} className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
-                <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-slate-400">{fact.label}</p>
-                <p className="mt-1 truncate text-sm font-black text-slate-800">{fact.value}</p>
-              </div>
-            ))}
-          </div>
+          {!liveDetails && (
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {curatedFacts.map((fact) => (
+                <div key={fact.label} className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
+                  <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-slate-400">{fact.label}</p>
+                  <p className="mt-1 truncate text-sm font-black text-slate-800">{fact.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
 
           {!!liveDetails?.weekdayDescriptions.length && (
             <section className="mt-3 rounded-3xl border border-slate-200 bg-white p-4">
@@ -1858,19 +1858,6 @@ function PlaceDetailSheet({
       </article>
     </div>
   );
-}
-
-function buildLivePlaceFacts(details: PlaceDetails | null): Array<{ label: string; value: string }> {
-  if (!details) return [];
-
-  return [
-    { label: "Location", value: details.shortAddress || details.address },
-    { label: "Hours", value: details.openNow === undefined ? "" : details.openNow ? "Open now" : "Closed now" },
-    { label: "Phone", value: details.phone || details.internationalPhone },
-    { label: "Type", value: details.primaryType || humanizePlaceType(details.types[0] ?? "") },
-    { label: "Price", value: details.priceLevel },
-    { label: "Status", value: details.businessStatus },
-  ].filter((fact) => fact.value);
 }
 
 type LiveVisitRowProps = {
