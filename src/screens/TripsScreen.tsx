@@ -1469,7 +1469,7 @@ function WizardPanel({
             onClick={app.handleExportItinerary}
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-emerald-300 px-4 py-3 text-sm font-bold text-slate-950"
           >
-            <Download className="h-4 w-4" /> Export ICS
+            <Download className="h-4 w-4" /> Export calendar
           </button>
           <button
             type="button"
@@ -2205,7 +2205,7 @@ function SharePanel({ app }: { app: TravelOS }) {
           onClick={app.handleExportItinerary}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-emerald-400/60 bg-emerald-400/10 px-4 py-2 text-xs font-bold text-emerald-100"
         >
-          <Download className="h-4 w-4" /> Export ICS
+          <Download className="h-4 w-4" /> Export calendar
         </button>
         <button
           type="button"

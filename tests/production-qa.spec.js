@@ -76,7 +76,7 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: /Export ICS/ }).last().click(),
+    page.getByRole("button", { name: /Export calendar/ }).last().click(),
   ]);
   expect(download.suggestedFilename()).toMatch(/irieverse.*\.ics$/i);
 
