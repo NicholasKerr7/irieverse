@@ -186,6 +186,7 @@ async function expectVisibleNavigation(page) {
 }
 
 async function screenshot(page, filename) {
+  await page.waitForTimeout(350);
   await page.screenshot({
     path: path.join(SCREENSHOT_DIR, filename),
     fullPage: false,
