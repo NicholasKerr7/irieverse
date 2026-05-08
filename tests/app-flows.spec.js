@@ -36,6 +36,7 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await openCleanTab(page, "saved", [
     "irieverse_imported_ideas",
     "irieverse_saved_collections",
+    "irieverse_imported_idea_days",
   ]);
 
   const urlInput = page.getByPlaceholder("https://maps.google.com/... or social link");
@@ -84,6 +85,10 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await mapDrawer.getByRole("button", { name: "Overview" }).click();
   await mapDrawer.getByRole("button", { name: /Kingston/ }).first().click();
   await expect(mapDrawer.getByText("Exact stops from your board")).toBeVisible();
+  await expect(mapDrawer.getByRole("button", { name: "Open exact stop Devon House" })).toBeVisible();
+  await mapDrawer.getByLabel("Move Devon House to day").selectOption("1");
+  await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments) => Object.values(assignments).includes("1"));
+  await mapDrawer.getByRole("button", { name: /Day 1/ }).click();
   await expect(mapDrawer.getByRole("button", { name: "Open exact stop Devon House" })).toBeVisible();
 
   await openCleanTab(page, "trips", []);

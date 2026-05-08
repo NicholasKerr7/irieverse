@@ -43,6 +43,7 @@ import type {
   DayExperienceOverrides,
   DayNotes,
   LiveEvent,
+  ImportedIdeaDayAssignments,
   OriginAirport,
   PlanningMode,
   PlanningTemplateId,
@@ -80,6 +81,7 @@ const STORAGE_KEY_MANUAL_ROUTE = "irieverse_manual_route";
 const STORAGE_KEY_LOCKED_ROUTE = "irieverse_locked_route";
 const STORAGE_KEY_DAY_EXPERIENCES = "irieverse_day_experiences";
 const STORAGE_KEY_DAY_NOTES = "irieverse_day_notes";
+const STORAGE_KEY_IMPORTED_IDEA_DAYS = "irieverse_imported_idea_days";
 const STORAGE_KEY_THEME = "irieverse_theme";
 const STORAGE_KEY_PLANNING_MODE = "irieverse_planning_mode";
 const STORAGE_KEY_PLANNING_TEMPLATE = "irieverse_planning_template";
@@ -171,6 +173,9 @@ export function useTravelOS() {
   const [dayNotes, setDayNotes] = useState<DayNotes>(() =>
     readJsonFromStorage(STORAGE_KEY_DAY_NOTES, {}, isStringRecord)
   );
+  const [importedIdeaDayAssignments, setImportedIdeaDayAssignments] = useState<ImportedIdeaDayAssignments>(() =>
+    readJsonFromStorage(STORAGE_KEY_IMPORTED_IDEA_DAYS, {}, isStringRecord)
+  );
   const [originAirportId, setOriginAirportId] = useState(() => getInitialOriginAirportId());
   const [hasUserPreferredOrigin, setHasUserPreferredOrigin] = useState(() => Boolean(getStoredOriginAirportId()));
   const [liveFacts, setLiveFacts] = useState<QuickFact[] | null>(null);
@@ -251,6 +256,10 @@ export function useTravelOS() {
   }, [dayNotes]);
 
   useEffect(() => {
+    writeJsonToStorage(STORAGE_KEY_IMPORTED_IDEA_DAYS, importedIdeaDayAssignments);
+  }, [importedIdeaDayAssignments]);
+
+  useEffect(() => {
     setManualRouteDestinationIds((prev) => {
       const normalized = normalizeRouteDestinationIds(prev, plannerBaseId, plannerDays);
       return arraysEqual(prev, normalized) ? prev : normalized;
@@ -274,7 +283,11 @@ export function useTravelOS() {
       const next = normalizeDayNotes(prev, plannerDays);
       return stringRecordsEqual(prev, next) ? prev : next;
     });
-  }, [plannerDays]);
+    setImportedIdeaDayAssignments((prev) => {
+      const next = normalizeImportedIdeaDayAssignments(prev, plannerDays, importedIdeas);
+      return stringRecordsEqual(prev, next) ? prev : next;
+    });
+  }, [importedIdeas, plannerDays]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -620,6 +633,9 @@ export function useTravelOS() {
     );
     setDayExperienceOverrides(normalizeDayExperienceOverrides(payload.dayExperienceOverrides ?? {}, payload.plannerDays ?? 5));
     setDayNotes(normalizeDayNotes(payload.dayNotes ?? {}, payload.plannerDays ?? 5));
+    setImportedIdeaDayAssignments(
+      normalizeImportedIdeaDayAssignments(payload.importedIdeaDayAssignments ?? {}, payload.plannerDays ?? 5, payload.importedIdeas ?? [])
+    );
     setSavedPlaces(new Set(payload.savedPlaces ?? []));
     setSavedExperiences(new Set(payload.savedExperiences ?? []));
     setImportedIdeas(payload.importedIdeas ?? []);
@@ -692,6 +708,7 @@ export function useTravelOS() {
     setLockedRouteDestinationIds([]);
     setDayExperienceOverrides({});
     setDayNotes({});
+    setImportedIdeaDayAssignments({});
 
     if (template.originAirportId && ORIGIN_AIRPORTS.some((airport) => airport.id === template.originAirportId)) {
       setOriginAirportId(template.originAirportId);
@@ -724,6 +741,7 @@ export function useTravelOS() {
     setLockedRouteDestinationIds([]);
     setDayExperienceOverrides({});
     setDayNotes({});
+    setImportedIdeaDayAssignments({});
     setSavedPlaces((prev) => {
       const next = new Set(prev);
       selectedDestinationIds.forEach((id) => next.add(id));
@@ -868,6 +886,7 @@ export function useTravelOS() {
         lockedRouteDestinationIds,
         dayExperienceOverrides,
         dayNotes,
+        importedIdeaDayAssignments,
         savedPlaces,
         savedExperiences,
         importedIdeas,
@@ -1116,6 +1135,25 @@ export function useTravelOS() {
     });
   };
 
+  const assignImportedIdeaToDay = (ideaId: string, day: number) => {
+    const safeDay = Math.round(day);
+    if (safeDay < 1 || safeDay > plannerDays) return;
+    if (!importedIdeas.some((idea) => idea.id === ideaId)) return;
+    setImportedIdeaDayAssignments((prev) => ({
+      ...prev,
+      [ideaId]: String(safeDay),
+    }));
+  };
+
+  const clearImportedIdeaDayAssignment = (ideaId: string) => {
+    setImportedIdeaDayAssignments((prev) => {
+      if (!prev[ideaId]) return prev;
+      const next = { ...prev };
+      delete next[ideaId];
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (!tripId || !tripEditToken || !collaborationReady) return;
     const payload = serializeTripState({
@@ -1131,6 +1169,7 @@ export function useTravelOS() {
       lockedRouteDestinationIds,
       dayExperienceOverrides,
       dayNotes,
+      importedIdeaDayAssignments,
       savedPlaces,
       savedExperiences,
       importedIdeas,
@@ -1168,6 +1207,7 @@ export function useTravelOS() {
     lockedRouteDestinationIds,
     dayExperienceOverrides,
     dayNotes,
+    importedIdeaDayAssignments,
     savedPlaces,
     savedExperiences,
     importedIdeas,
@@ -1211,6 +1251,7 @@ export function useTravelOS() {
     lockedRouteDestinationIds,
     dayExperienceOverrides,
     dayNotes,
+    importedIdeaDayAssignments,
     routeIsManual: manualRouteDestinationIds.length > 0,
     originAirportId,
     handleOriginAirportChange,
@@ -1268,6 +1309,8 @@ export function useTravelOS() {
     refreshDayExperience,
     setDayNote,
     clearDayNote,
+    assignImportedIdeaToDay,
+    clearImportedIdeaDayAssignment,
     handleExportItinerary,
     handleShareTrip,
     handleCopyShareLink,
@@ -1328,6 +1371,22 @@ function normalizeDayNotes(notes: DayNotes, plannerDays: number): DayNotes {
         const dayNumber = Number(day);
         return Number.isInteger(dayNumber) && dayNumber >= 1 && dayNumber <= safeDays && Boolean(note.trim());
       })
+  );
+}
+
+function normalizeImportedIdeaDayAssignments(
+  assignments: ImportedIdeaDayAssignments,
+  plannerDays: number,
+  importedIdeas: ImportedIdea[]
+): ImportedIdeaDayAssignments {
+  const safeDays = clampPlannerDays(plannerDays);
+  const validIdeaIds = new Set(importedIdeas.map((idea) => idea.id));
+
+  return Object.fromEntries(
+    Object.entries(assignments).filter(([ideaId, day]) => {
+      const dayNumber = Number(day);
+      return validIdeaIds.has(ideaId) && Number.isInteger(dayNumber) && dayNumber >= 1 && dayNumber <= safeDays;
+    })
   );
 }
 

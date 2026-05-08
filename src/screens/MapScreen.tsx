@@ -221,11 +221,13 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     ? app.itinerary.daysPlan.find((day) => day.day === activeDrawerDay) ?? null
     : null;
   const activeDrawerImportedStops = useMemo(() => {
-    if (!activeDrawerDestination) return [];
+    if (!activeDrawerDestination || !activeDrawerDay) return [];
     return allImportedPlacePins
-      .filter((pin) => pin.idea.linkedDestinationId === activeDrawerDestination.id)
+      .filter((pin) =>
+        importedPinBelongsToDay(pin, activeDrawerDay, activeDrawerDestination.id, app.importedIdeaDayAssignments)
+      )
       .slice(0, 5);
-  }, [activeDrawerDestination, allImportedPlacePins]);
+  }, [activeDrawerDay, activeDrawerDestination, allImportedPlacePins, app.importedIdeaDayAssignments]);
   const mapImportedPlacePins = useMemo(
     () => mergeImportedPlacePins(importedPlacePins, activeDrawerImportedStops, selectedImportedPlacePin ? [selectedImportedPlacePin] : []),
     [activeDrawerImportedStops, importedPlacePins, selectedImportedPlacePin]
@@ -587,6 +589,10 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                   onNearbyExperience={handleNearbyExperience}
                   onOpenImportedStop={(pin) => handleSelectImportedPlace(pin.id, { keepDrawerTab: true })}
                   onOpenImportedStopMaps={handleOpenImportedPlaceMaps}
+                  plannerDays={app.plannerDays}
+                  importedIdeaDayAssignments={app.importedIdeaDayAssignments}
+                  onAssignImportedStopToDay={app.assignImportedIdeaToDay}
+                  onClearImportedStopDay={app.clearImportedIdeaDayAssignment}
                   onOpenDestinationDetail={() => setPlaceDetail({ type: "destination", destination: activeDrawerDestination, day: activeDrawerDay })}
                   onOpenExperienceDetail={(experience) =>
                     setPlaceDetail({ type: "experience", experience, day: activeDrawerDay, linkedDestination: activeDrawerDestination })
@@ -736,6 +742,22 @@ function mergeImportedPlacePins(...groups: ImportedPlacePin[][]): ImportedPlaceP
   const byId = new globalThis.Map<string, ImportedPlacePin>();
   groups.flat().forEach((pin) => byId.set(pin.id, pin));
   return Array.from(byId.values());
+}
+
+function importedPinBelongsToDay(
+  pin: ImportedPlacePin,
+  day: number,
+  destinationId: string,
+  assignments: Record<string, string>
+): boolean {
+  const assignedDay = getAssignedImportedIdeaDay(pin.idea.id, assignments);
+  if (assignedDay) return assignedDay === day;
+  return pin.idea.linkedDestinationId === destinationId;
+}
+
+function getAssignedImportedIdeaDay(ideaId: string, assignments: Record<string, string>): number | undefined {
+  const day = Number(assignments[ideaId]);
+  return Number.isInteger(day) && day > 0 ? day : undefined;
 }
 
 function getImportedPlacePinCategory(idea: ImportedIdea): MapPinCategory {
@@ -1093,6 +1115,10 @@ function DayPlanPanel({
   onNearbyExperience,
   onOpenImportedStop,
   onOpenImportedStopMaps,
+  plannerDays,
+  importedIdeaDayAssignments,
+  onAssignImportedStopToDay,
+  onClearImportedStopDay,
   onOpenDestinationDetail,
   onOpenExperienceDetail,
 }: {
@@ -1115,6 +1141,10 @@ function DayPlanPanel({
   onNearbyExperience: (experience: Experience) => void;
   onOpenImportedStop: (pin: ImportedPlacePin) => void;
   onOpenImportedStopMaps: (pin: ImportedPlacePin) => void;
+  plannerDays: number;
+  importedIdeaDayAssignments: Record<string, string>;
+  onAssignImportedStopToDay: (ideaId: string, day: number) => void;
+  onClearImportedStopDay: (ideaId: string) => void;
   onOpenDestinationDetail: () => void;
   onOpenExperienceDetail: (experience: Experience) => void;
 }) {
@@ -1173,6 +1203,10 @@ function DayPlanPanel({
                     index={index}
                     onOpen={() => onOpenImportedStop(pin)}
                     onOpenMaps={() => onOpenImportedStopMaps(pin)}
+                    plannerDays={plannerDays}
+                    assignedDay={getAssignedImportedIdeaDay(pin.idea.id, importedIdeaDayAssignments)}
+                    onAssignDay={(day) => onAssignImportedStopToDay(pin.idea.id, day)}
+                    onClearDay={() => onClearImportedStopDay(pin.idea.id)}
                   />
                 ))}
               </div>
@@ -1335,11 +1369,19 @@ function TimelineImportedStopCard({
   index,
   onOpen,
   onOpenMaps,
+  plannerDays,
+  assignedDay,
+  onAssignDay,
+  onClearDay,
 }: {
   pin: ImportedPlacePin;
   index: number;
   onOpen: () => void;
   onOpenMaps: () => void;
+  plannerDays: number;
+  assignedDay?: number;
+  onAssignDay: (day: number) => void;
+  onClearDay: () => void;
 }) {
   const ratingText = typeof pin.rating === "number"
     ? pin.userRatingCount
@@ -1392,6 +1434,28 @@ function TimelineImportedStopCard({
         <DrawerAction icon={ArrowUpRight} label="Details" onClick={onOpen} />
         <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
       </div>
+      <label className="mt-2 block">
+        <span className="sr-only">Move {pin.name} to day</span>
+        <select
+          value={assignedDay ? String(assignedDay) : ""}
+          onChange={(event) => {
+            if (event.target.value) {
+              onAssignDay(Number(event.target.value));
+            } else {
+              onClearDay();
+            }
+          }}
+          className="w-full rounded-2xl border border-cyan-200 bg-white px-3 py-2 text-xs font-black text-slate-700"
+          aria-label={`Move ${pin.name} to day`}
+        >
+          <option value="">Auto day</option>
+          {Array.from({ length: plannerDays }, (_, dayIndex) => dayIndex + 1).map((dayOption) => (
+            <option key={dayOption} value={dayOption}>
+              Day {dayOption}
+            </option>
+          ))}
+        </select>
+      </label>
     </article>
   );
 }

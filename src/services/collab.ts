@@ -1,4 +1,4 @@
-import type { DayExperienceOverrides, DayNotes, ImportedIdea, PlanningMode, PlanningTemplateId } from "../types/travel";
+import type { DayExperienceOverrides, DayNotes, ImportedIdea, ImportedIdeaDayAssignments, PlanningMode, PlanningTemplateId } from "../types/travel";
 import { hasSupabaseBackend, supabaseClient } from "./supabaseClient";
 
 const EDIT_TOKEN_STORAGE_KEY = "irieverse_trip_edit_tokens";
@@ -37,6 +37,7 @@ export type TripPayload = {
   lockedRouteDestinationIds?: string[];
   dayExperienceOverrides?: DayExperienceOverrides;
   dayNotes?: DayNotes;
+  importedIdeaDayAssignments?: ImportedIdeaDayAssignments;
   savedPlaces: string[];
   savedExperiences: string[];
   importedIdeas: ImportedIdea[];
@@ -155,6 +156,7 @@ export function serializeTripState(args: {
   lockedRouteDestinationIds: string[];
   dayExperienceOverrides: DayExperienceOverrides;
   dayNotes: DayNotes;
+  importedIdeaDayAssignments: ImportedIdeaDayAssignments;
   savedPlaces: Set<string>;
   savedExperiences: Set<string>;
   importedIdeas: ImportedIdea[];
@@ -173,6 +175,7 @@ export function serializeTripState(args: {
     lockedRouteDestinationIds: args.lockedRouteDestinationIds,
     dayExperienceOverrides: args.dayExperienceOverrides,
     dayNotes: args.dayNotes,
+    importedIdeaDayAssignments: args.importedIdeaDayAssignments,
     savedPlaces: Array.from(args.savedPlaces),
     savedExperiences: Array.from(args.savedExperiences),
     importedIdeas: args.importedIdeas,

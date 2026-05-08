@@ -1,11 +1,13 @@
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
-import type { ImportedIdea } from "../types/travel";
+import type { ImportedIdea, ImportedIdeaDayAssignments } from "../types/travel";
 
 export type BoardIdea = {
   id: string;
   title: string;
   meta: string;
   exactPlace: boolean;
+  importedIdeaId?: string;
+  assignedDay?: number;
 };
 
 export function getBoardIdeasForDestination({
@@ -13,11 +15,15 @@ export function getBoardIdeasForDestination({
   savedPlaceIds,
   savedExperienceIds,
   importedIdeas,
+  importedIdeaDayAssignments = {},
+  day,
 }: {
   destinationId: string;
   savedPlaceIds: Set<string>;
   savedExperienceIds: Set<string>;
   importedIdeas: ImportedIdea[];
+  importedIdeaDayAssignments?: ImportedIdeaDayAssignments;
+  day?: number;
 }): BoardIdea[] {
   const destination = DESTINATIONS.find((item) => item.id === destinationId);
   const savedDestinationIdeas = destination && savedPlaceIds.has(destinationId)
@@ -32,15 +38,34 @@ export function getBoardIdeasForDestination({
       exactPlace: false,
     }));
   const importedDayIdeas = importedIdeas
-    .filter((idea) => idea.linkedDestinationId === destinationId)
+    .filter((idea) => importedIdeaBelongsToBoardDay(idea, destinationId, importedIdeaDayAssignments, day))
     .map((idea) => ({
       id: `import-${idea.id}`,
       title: idea.title,
       meta: getImportedIdeaBoardMeta(idea),
       exactPlace: hasExactPlaceCoordinates(idea),
+      importedIdeaId: idea.id,
+      assignedDay: getAssignedDay(idea.id, importedIdeaDayAssignments),
     }));
 
   return [...savedDestinationIdeas, ...savedExperienceIdeas, ...importedDayIdeas];
+}
+
+function importedIdeaBelongsToBoardDay(
+  idea: ImportedIdea,
+  destinationId: string,
+  assignments: ImportedIdeaDayAssignments,
+  day?: number
+): boolean {
+  const assignedDay = getAssignedDay(idea.id, assignments);
+  if (day && assignedDay) return assignedDay === day;
+  if (day && !assignedDay) return idea.linkedDestinationId === destinationId;
+  return idea.linkedDestinationId === destinationId;
+}
+
+function getAssignedDay(ideaId: string, assignments: ImportedIdeaDayAssignments): number | undefined {
+  const day = Number(assignments[ideaId]);
+  return Number.isInteger(day) && day > 0 ? day : undefined;
 }
 
 function getImportedIdeaBoardMeta(idea: ImportedIdea): string {

@@ -1,6 +1,6 @@
 import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, Lock, MapPin, Music2, PartyPopper, Route, Sparkles, StickyNote, Unlock, Utensils, WalletCards, X } from "lucide-react";
 import { DESTINATIONS } from "../data/content";
-import type { ImportedIdea, ItineraryPlan } from "../types/travel";
+import type { ImportedIdea, ImportedIdeaDayAssignments, ItineraryPlan } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { getBoardIdeasForDestination } from "../utils/boardIdeas";
 import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
@@ -15,6 +15,7 @@ interface ItineraryViewProps {
   savedPlaceIds?: Set<string>;
   savedExperienceIds?: Set<string>;
   importedIdeas?: ImportedIdea[];
+  importedIdeaDayAssignments?: ImportedIdeaDayAssignments;
   dayNotes?: Record<string, string>;
   lockedRouteDestinationIds?: string[];
   onSetRouteStopForDay?: (day: number, destinationId: string) => void;
@@ -24,6 +25,8 @@ interface ItineraryViewProps {
   onRefreshDayExperience?: (day: number) => void;
   onSetDayNote?: (day: number, note: string) => void;
   onClearDayNote?: (day: number) => void;
+  onAssignImportedIdeaToDay?: (ideaId: string, day: number) => void;
+  onClearImportedIdeaDayAssignment?: (ideaId: string) => void;
 }
 
 export function ItineraryView({
@@ -32,6 +35,7 @@ export function ItineraryView({
   savedPlaceIds = new Set(),
   savedExperienceIds = new Set(),
   importedIdeas = [],
+  importedIdeaDayAssignments = {},
   dayNotes = {},
   lockedRouteDestinationIds = [],
   onSetRouteStopForDay,
@@ -41,6 +45,8 @@ export function ItineraryView({
   onRefreshDayExperience,
   onSetDayNote,
   onClearDayNote,
+  onAssignImportedIdeaToDay,
+  onClearImportedIdeaDayAssignment,
 }: ItineraryViewProps) {
   const { base, days, plannerVibe, budgetPerDay, daysPlan, routeSummary } = itinerary;
   const canEditExperiences = Boolean(onSetDayExperience && onClearDayExperience);
@@ -119,6 +125,8 @@ export function ItineraryView({
             savedPlaceIds,
             savedExperienceIds,
             importedIdeas,
+            importedIdeaDayAssignments,
+            day: day.day,
           });
           const planningReasons = getDayPlanningReasons(day, boardIdeas.length);
           const routeStopForDay = routeSummary.stops.find((stop) => stop.day === day.day);
@@ -286,6 +294,30 @@ export function ItineraryView({
                         )}
                       </div>
                       <p className="mt-0.5 line-clamp-1 text-[0.68rem] text-slate-500">{idea.meta}</p>
+                      {idea.importedIdeaId && onAssignImportedIdeaToDay && onClearImportedIdeaDayAssignment && (
+                        <label className="mt-2 block">
+                          <span className="sr-only">Move {idea.title} to day</span>
+                          <select
+                            value={idea.assignedDay ? String(idea.assignedDay) : ""}
+                            onChange={(event) => {
+                              if (event.target.value) {
+                                onAssignImportedIdeaToDay(idea.importedIdeaId!, Number(event.target.value));
+                              } else {
+                                onClearImportedIdeaDayAssignment(idea.importedIdeaId!);
+                              }
+                            }}
+                            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-2 py-1.5 text-[0.68rem] font-semibold text-slate-300"
+                            aria-label={`Move ${idea.title} to day`}
+                          >
+                            <option value="">Auto day</option>
+                            {Array.from({ length: days }, (_, index) => index + 1).map((dayOption) => (
+                              <option key={dayOption} value={dayOption}>
+                                Day {dayOption}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
                     </div>
                   ))}
                 </div>

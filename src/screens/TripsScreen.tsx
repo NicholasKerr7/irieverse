@@ -255,6 +255,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                   savedPlaceIds={app.savedPlaces}
                   savedExperienceIds={app.savedExperiences}
                   importedIdeas={app.importedIdeas}
+                  importedIdeaDayAssignments={app.importedIdeaDayAssignments}
                   dayNotes={app.dayNotes}
                   lockedRouteDestinationIds={app.lockedRouteDestinationIds}
                   onSetRouteStopForDay={app.setRouteStopForDay}
@@ -264,6 +265,8 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                   onRefreshDayExperience={app.refreshDayExperience}
                   onSetDayNote={app.setDayNote}
                   onClearDayNote={app.clearDayNote}
+                  onAssignImportedIdeaToDay={app.assignImportedIdeaToDay}
+                  onClearImportedIdeaDayAssignment={app.clearImportedIdeaDayAssignment}
                 />
               </section>
 
@@ -937,7 +940,7 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
           const experienceOptions = getExperienceOptionsForDay(day, 6, app.savedExperiences);
           const boardStopLabel = getBoardStopLabel(app, day.destinationId);
           const experienceIsSaved = Boolean(day.experience && app.savedExperiences.has(day.experience.id));
-          const boardIdeas = getDayBoardIdeas(app, day.destinationId);
+          const boardIdeas = getDayBoardIdeas(app, day.destinationId, day.day);
           const planningReasons = getDayPlanningReasons(day, boardIdeas.length);
           const routeStopForDay = app.itinerary.routeSummary.stops.find((stop) => stop.day === day.day);
           const dayIsLocked = app.lockedRouteDestinationIds.includes(day.destinationId);
@@ -1034,6 +1037,30 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
                         )}
                       </div>
                       <p className="mt-0.5 line-clamp-1 text-[0.68rem] text-slate-500">{idea.meta}</p>
+                      {idea.importedIdeaId && (
+                        <label className="mt-2 block">
+                          <span className="sr-only">Move {idea.title} to day</span>
+                          <select
+                            value={idea.assignedDay ? String(idea.assignedDay) : ""}
+                            onChange={(event) => {
+                              if (event.target.value) {
+                                app.assignImportedIdeaToDay(idea.importedIdeaId!, Number(event.target.value));
+                              } else {
+                                app.clearImportedIdeaDayAssignment(idea.importedIdeaId!);
+                              }
+                            }}
+                            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-2 py-1.5 text-[0.68rem] font-semibold text-slate-300"
+                            aria-label={`Move ${idea.title} to day`}
+                          >
+                            <option value="">Auto day</option>
+                            {Array.from({ length: app.plannerDays }, (_, index) => index + 1).map((dayOption) => (
+                              <option key={dayOption} value={dayOption}>
+                                Day {dayOption}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -2544,12 +2571,14 @@ function getBoardStopLabel(app: TravelOS, destinationId: string): string {
   return "";
 }
 
-function getDayBoardIdeas(app: TravelOS, destinationId: string) {
+function getDayBoardIdeas(app: TravelOS, destinationId: string, day: number) {
   return getBoardIdeasForDestination({
     destinationId,
     savedPlaceIds: app.savedPlaces,
     savedExperienceIds: app.savedExperiences,
     importedIdeas: app.importedIdeas,
+    importedIdeaDayAssignments: app.importedIdeaDayAssignments,
+    day,
   });
 }
 
