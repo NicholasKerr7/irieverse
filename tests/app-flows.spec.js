@@ -82,6 +82,7 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await expect(page.getByTestId("imported-place-detail-sheet").getByText("26 Hope Road, Kingston").first()).toBeVisible();
   await page.getByLabel("Close saved idea details").click();
   const mapDrawer = page.getByTestId("map-trip-drawer");
+  await expect(mapDrawer.getByText("Exact stops from your board")).toBeVisible();
   await mapDrawer.getByRole("button", { name: "Unplanned" }).click();
   await expect(mapDrawer.getByText("Good Jamaica ideas to add next.")).toBeVisible();
   await expect(mapDrawer.getByText("Devon House", { exact: true })).toHaveCount(0);

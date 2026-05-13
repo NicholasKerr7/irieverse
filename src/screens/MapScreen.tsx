@@ -232,11 +232,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const plannedImportedPlaceIds = useMemo(() => {
     const plannedIds = new Set<string>();
     allImportedPlacePins.forEach((pin) => {
-      if (
-        routeSummary.stops.some((stop) =>
-          importedPinBelongsToDay(pin, stop.day, stop.destinationId, app.importedIdeaDayAssignments)
-        )
-      ) {
+      if (getImportedPinRouteDay(pin, routeSummary.stops, app.importedIdeaDayAssignments)) {
         plannedIds.add(pin.id);
       }
     });
@@ -312,8 +308,25 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const handleSelectImportedPlace = (placeId: string, options: { keepDrawerTab?: boolean } = {}) => {
     setSelectedImportedPlaceId(placeId);
     setPlaceDetail(null);
-    setSelectedRouteLegId(null);
-    if (!options.keepDrawerTab) setActiveDrawerTab("unplanned");
+    if (!options.keepDrawerTab) {
+      const importedPin = allImportedPlacePins.find((pin) => pin.id === placeId);
+      const routeDay = importedPin
+        ? getImportedPinRouteDay(importedPin, routeSummary.stops, app.importedIdeaDayAssignments)
+        : undefined;
+
+      if (routeDay) {
+        const routeStop = routeSummary.stops.find((stop) => stop.day === routeDay);
+        const routeLeg = routeLegOptions.find((option) => option.day === routeDay);
+        if (routeStop) setFocusedDestinationId(routeStop.destinationId);
+        setSelectedRouteLegId(routeLeg?.id ?? null);
+        setActiveDrawerTab(`day-${routeDay}`);
+      } else {
+        setSelectedRouteLegId(null);
+        setActiveDrawerTab("unplanned");
+      }
+    } else {
+      setSelectedRouteLegId(null);
+    }
     setSheetExpanded(true);
   };
 
@@ -796,6 +809,14 @@ function importedPinBelongsToDay(
   const assignedDay = getAssignedImportedIdeaDay(pin.idea.id, assignments);
   if (assignedDay) return assignedDay === day;
   return pin.idea.linkedDestinationId === destinationId;
+}
+
+function getImportedPinRouteDay(
+  pin: ImportedPlacePin,
+  stops: RouteStop[],
+  assignments: Record<string, string>
+): number | undefined {
+  return stops.find((stop) => importedPinBelongsToDay(pin, stop.day, stop.destinationId, assignments))?.day;
 }
 
 function getAssignedImportedIdeaDay(ideaId: string, assignments: Record<string, string>): number | undefined {
