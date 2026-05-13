@@ -103,6 +103,9 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await exactStopBadge.scrollIntoViewIfNeeded();
   await expect(exactStopBadge).toBeVisible();
   await expect(page.getByText(/26 Hope Road, Kingston.*Restaurant.*4\.6/).first()).toBeVisible();
+  await page.getByRole("button", { name: /Add ideas/ }).click();
+  await expect(page.getByText("1 route-ready")).toBeVisible();
+  await expect(page.getByText("Map anchor ready for route planning")).toBeVisible();
 
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
@@ -202,6 +205,12 @@ test("unplaced imported map ideas ask to be placed before trip use", async ({ pa
   await expect(detailSheet.getByText("Attach this saved idea to a Jamaica area in Saved before turning it into a full trip day.")).toBeVisible();
   await expect(detailSheet.getByRole("button", { name: "Place it" })).toBeVisible();
   await expect(detailSheet.getByRole("button", { name: "Trip" })).toHaveCount(0);
+
+  await page.goto("/?tab=trips", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: /Add ideas/ }).click();
+  await expect(page.getByText("1 need placing")).toBeVisible();
+  await expect(page.getByText("1 saved import need Jamaica map anchors")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Place in Saved" })).toBeVisible();
 
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);

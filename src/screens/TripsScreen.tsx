@@ -1208,6 +1208,9 @@ function WizardPanel({
   importedIdeas: ImportedIdea[];
   onNavigate: (tab: MobileTabId) => void;
 }) {
+  const routeReadyImportedIdeas = importedIdeas.filter((idea) => Boolean(idea.linkedDestinationId));
+  const pendingImportedIdeas = importedIdeas.filter((idea) => !idea.linkedDestinationId);
+
   return (
     <div className={classNames("rounded-3xl p-4", glassPanel)}>
       {activeStep === "base" && (
@@ -1292,7 +1295,10 @@ function WizardPanel({
 
       {activeStep === "saved" && (
         <div className="space-y-3">
-          <WizardTitle title="Add saved spots" body="Saved places can become the trip base; imported ideas stay attached to this trip board." />
+          <WizardTitle
+            title="Add saved spots"
+            body="Saved places can set the trip base. Imported links only shape the route after they have a Jamaica map anchor."
+          />
           <div className="space-y-2">
             {savedDestinations.slice(0, 4).map((destination) => (
               <button
@@ -1317,27 +1323,70 @@ function WizardPanel({
           </div>
           {!!importedIdeas.length && (
             <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-              <p className="text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">Imported ideas</p>
-              {importedIdeas.slice(0, 3).map((idea) => (
-                <button
-                  key={idea.id}
-                  type="button"
-                  onClick={() => {
-                    if (idea.linkedDestinationId) {
-                      app.setPlannerBaseId(idea.linkedDestinationId);
-                    }
-                  }}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2 text-left"
-                >
-                  <span>
-                    <span className="block text-sm font-semibold text-slate-200">{idea.title}</span>
-                    <span className="block text-xs text-slate-500">
-                      {idea.linkedDestinationId ? "Map location attached" : "Map location pending"}
-                    </span>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">Imported ideas</p>
+                <div className="flex flex-wrap gap-2 text-[0.62rem] font-bold uppercase tracking-[0.14em]">
+                  <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2.5 py-1 text-cyan-100">
+                    {routeReadyImportedIdeas.length} route-ready
                   </span>
-                  {idea.linkedDestinationId === app.plannerBaseId && <Check className="h-4 w-4 text-cyan-300" />}
-                </button>
-              ))}
+                  {!!pendingImportedIdeas.length && (
+                    <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-2.5 py-1 text-amber-100">
+                      {pendingImportedIdeas.length} need placing
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {!!routeReadyImportedIdeas.length && (
+                <div className="space-y-2">
+                  {routeReadyImportedIdeas.slice(0, 3).map((idea) => (
+                    <button
+                      key={idea.id}
+                      type="button"
+                      onClick={() => app.setPlannerBaseId(idea.linkedDestinationId!)}
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-2 text-left"
+                    >
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-100">{idea.title}</span>
+                        <span className="block text-xs text-cyan-100/80">Map anchor ready for route planning</span>
+                      </span>
+                      {idea.linkedDestinationId === app.plannerBaseId && <Check className="h-4 w-4 text-cyan-300" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!!pendingImportedIdeas.length && (
+                <div className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-amber-100">
+                        {pendingImportedIdeas.length} saved import{pendingImportedIdeas.length === 1 ? "" : "s"} need Jamaica map anchors
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-amber-100/80">
+                        They stay on your board, but they will not steer route order or day planning until you place them.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate("saved")}
+                      className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-amber-200/45 px-3 py-2 text-xs font-bold text-amber-50"
+                    >
+                      Place in Saved
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {pendingImportedIdeas.slice(0, 3).map((idea) => (
+                      <span
+                        key={idea.id}
+                        className="rounded-full border border-amber-100/20 bg-slate-950/35 px-3 py-1 text-xs font-semibold text-amber-50"
+                      >
+                        {idea.title}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {!!savedExperiences.length && (
