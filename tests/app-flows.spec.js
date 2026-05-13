@@ -213,6 +213,7 @@ test("unplaced imported map ideas ask to be placed before trip use", async ({ pa
   await page.getByRole("button", { name: "Place in Saved" }).click();
   await expect(page.getByRole("button", { name: "Place imports" })).toBeVisible();
   await expect(page.getByText("Needs placing").first()).toBeVisible();
+  await expect(page.getByText("1 to place").first()).toBeVisible();
   await page.getByRole("button", { name: "Place imports" }).click();
   await expect(page.getByText("Map anchors needed")).toBeVisible();
   await expect(page.getByText("Nearest Jamaica area from place data")).toBeVisible();
@@ -221,6 +222,7 @@ test("unplaced imported map ideas ask to be placed before trip use", async ({ pa
   await page.getByRole("button", { name: /Use Port Antonio & Portland/ }).click();
   await waitForImportedIdeas(page, (ideas) => ideas[0]?.linkedDestinationId === "portland");
   await expect(page.getByText("Route-ready").first()).toBeVisible();
+  await expect(page.getByText("1 to place")).toHaveCount(0);
 
   await page.goto("/?tab=trips", { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: /Add ideas/ }).click();

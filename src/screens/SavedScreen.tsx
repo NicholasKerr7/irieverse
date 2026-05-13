@@ -887,6 +887,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
           <div className="space-y-2">
             {COLLECTIONS.map((collection) => {
               const count = getCollectionCount(savedItems, collection.id);
+              const missingLocationCount = getCollectionMissingLocationCount(savedItems, collection.id);
               return (
                 <button
                   key={collection.id}
@@ -901,7 +902,21 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
                 >
                   <span className="flex items-center justify-between gap-3">
                     <span className="text-sm font-semibold">{collection.label}</span>
-                    <span className="rounded-full bg-slate-950/20 px-2 py-0.5 text-xs">{count}</span>
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      {!!missingLocationCount && (
+                        <span
+                          className={classNames(
+                            "rounded-full px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-[0.12em]",
+                            activeCollection === collection.id
+                              ? "bg-amber-200 text-slate-950"
+                              : "border border-amber-300/35 bg-amber-300/10 text-amber-100"
+                          )}
+                        >
+                          {missingLocationCount} to place
+                        </span>
+                      )}
+                      <span className="rounded-full bg-slate-950/20 px-2 py-0.5 text-xs">{count}</span>
+                    </span>
                   </span>
                   <span className={classNames("mt-1 block text-xs", activeCollection === collection.id ? "text-slate-800" : "text-slate-500")}>
                     {collection.helper}
@@ -1688,6 +1703,15 @@ function getSavedItemTitle(savedItem: SavedItem) {
 function getCollectionCount(savedItems: SavedItem[], collection: CollectionId) {
   if (collection === "all") return savedItems.length;
   return savedItems.filter((savedItem) => savedItem.collection === collection).length;
+}
+
+function getCollectionMissingLocationCount(savedItems: SavedItem[], collection: CollectionId) {
+  const collectionItems =
+    collection === "all"
+      ? savedItems
+      : savedItems.filter((savedItem) => savedItem.collection === collection);
+
+  return collectionItems.filter((savedItem) => savedItem.kind === "import" && !savedItem.item.linkedDestinationId).length;
 }
 
 function buildBoardSummary(savedItems: SavedItem[]): BoardSummary {
