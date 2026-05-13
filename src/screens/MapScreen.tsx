@@ -229,6 +229,23 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       )
       .slice(0, 5);
   }, [activeDrawerDay, activeDrawerDestination, allImportedPlacePins, app.importedIdeaDayAssignments]);
+  const plannedImportedPlaceIds = useMemo(() => {
+    const plannedIds = new Set<string>();
+    allImportedPlacePins.forEach((pin) => {
+      if (
+        routeSummary.stops.some((stop) =>
+          importedPinBelongsToDay(pin, stop.day, stop.destinationId, app.importedIdeaDayAssignments)
+        )
+      ) {
+        plannedIds.add(pin.id);
+      }
+    });
+    return plannedIds;
+  }, [allImportedPlacePins, app.importedIdeaDayAssignments, routeSummary.stops]);
+  const unplannedImportedPlacePins = useMemo(
+    () => importedPlacePins.filter((pin) => !plannedImportedPlaceIds.has(pin.id)),
+    [importedPlacePins, plannedImportedPlaceIds]
+  );
   const numberedActiveDrawerImportedStops = useMemo(
     () => activeDrawerImportedStops.map((pin, index) => ({ ...pin, sequenceLabel: String(index + 1) })),
     [activeDrawerImportedStops]
@@ -266,9 +283,9 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const focusImportedPlacePins = useMemo(() => {
     if (selectedImportedPlacePin) return [selectedImportedPlacePin];
     if (numberedActiveDrawerImportedStops.length) return numberedActiveDrawerImportedStops;
-    if (activeDrawerTab === "unplanned") return importedPlacePins.slice(0, 6);
+    if (activeDrawerTab === "unplanned") return unplannedImportedPlacePins.slice(0, 6);
     return [];
-  }, [activeDrawerTab, importedPlacePins, numberedActiveDrawerImportedStops, selectedImportedPlacePin]);
+  }, [activeDrawerTab, numberedActiveDrawerImportedStops, selectedImportedPlacePin, unplannedImportedPlacePins]);
   const tripTitle = `${app.plannerDays}-day ${app.destination.region}`;
 
   useEffect(() => {
@@ -579,7 +596,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
               {activeDrawerTab === "unplanned" && (
                 <UnplannedPlacesPanel
                   destinations={unplannedDestinations}
-                  importedPlaces={importedPlacePins}
+                  importedPlaces={unplannedImportedPlacePins}
                   onSelectDestination={handleSelectDestination}
                   onSelectImportedPlace={handleSelectImportedPlace}
                   onOpenExplore={() => onNavigate("explore")}
