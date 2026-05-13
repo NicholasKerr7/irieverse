@@ -247,13 +247,17 @@ function scorePlaceMatch(place, query) {
   }
 
   const requiredTerms = query.requiredTerms.map(normalizeSearchText).filter(Boolean);
-  if (requiredTerms.length && !requiredTerms.every((term) => searchTextIncludes(searchableText, term))) {
+  const placeNameText = buildPlaceNameText(place);
+  if (requiredTerms.length && !requiredTerms.every((term) => searchTextIncludes(placeNameText, term))) {
     return -1;
   }
 
   const queryTerms = getSignificantTerms(query.placeQuery || query.name);
   const matchedTerms = queryTerms.filter((term) => searchTextIncludes(searchableText, term));
-  let score = matchedTerms.length * 12;
+  if (queryTerms.length && !matchedTerms.length) return -1;
+
+  const matchedNameTerms = queryTerms.filter((term) => searchTextIncludes(placeNameText, term));
+  let score = matchedTerms.length * 8 + matchedNameTerms.length * 10;
 
   if (searchableText.includes("jamaica")) score += 10;
   if (query.location && searchTextIncludes(searchableText, normalizeSearchText(query.location))) score += 8;
@@ -275,13 +279,16 @@ function scorePlaceMatch(place, query) {
 }
 
 function isBlockedPlaceMatch(searchableText, query) {
-  const doctorCaveMatch = searchableText.includes("doctor s cave") || searchableText.includes("doctors cave");
   const blockedTerms = [
     ...DEFAULT_BLOCKED_PLACE_TERMS,
     ...query.blockedTerms,
   ].map(normalizeSearchText).filter(Boolean);
 
-  return !doctorCaveMatch && blockedTerms.some((term) => searchTextIncludes(searchableText, term));
+  return blockedTerms.some((term) => searchTextIncludes(searchableText, term));
+}
+
+function buildPlaceNameText(place) {
+  return normalizeSearchText(localizedText(place.displayName));
 }
 
 function buildSearchablePlaceText(place) {

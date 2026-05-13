@@ -414,7 +414,7 @@ function getSourceLabel(source, url) {
   if (source === "instagram") return "Instagram";
   if (source === "youtube") return "YouTube";
   if (source === "article") return readableHost(url.hostname);
-  return "Manual idea";
+  return "Saved note";
 }
 
 function titleFromUrl(url, sourcePlatform) {

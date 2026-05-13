@@ -43,6 +43,9 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      - name: API regression tests
+        run: npm run test:api
+
       - name: Build
         run: npm run build
 

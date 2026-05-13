@@ -144,14 +144,14 @@ function isAcceptablePlaceDetails(details: PlaceDetails, lookup: PlaceDetailsLoo
     details.primaryType,
     ...details.types,
   ].join(" "));
+  const placeNameText = normalizeSearchText(details.name);
 
-  const doctorCaveMatch = searchableText.includes("doctor s cave") || searchableText.includes("doctors cave");
   const blockedTerms = [
     ...DEFAULT_BLOCKED_PLACE_TERMS,
     ...(placeLookup?.blockedTerms ?? []),
   ].map(normalizeSearchText).filter(Boolean);
 
-  if (!doctorCaveMatch && blockedTerms.some((term) => searchTextIncludes(searchableText, term))) {
+  if (blockedTerms.some((term) => searchTextIncludes(searchableText, term))) {
     return false;
   }
 
@@ -161,7 +161,7 @@ function isAcceptablePlaceDetails(details: PlaceDetails, lookup: PlaceDetailsLoo
 
   if (!requiredTerms.length) return true;
 
-  return requiredTerms.every((term) => searchTextIncludes(searchableText, term));
+  return requiredTerms.every((term) => searchTextIncludes(placeNameText, term));
 }
 
 function normalizeSearchText(value: string): string {

@@ -402,8 +402,8 @@ test("map place details reject mismatched live data", async ({ page }) => {
         data: {
           id: "places/northcoast-imaging",
           name: "Northcoast Imaging Limited",
-          address: "Montego Bay, Jamaica",
-          shortAddress: "Montego Bay",
+          address: "Doctor's Cave Beach Plaza, Montego Bay, Jamaica",
+          shortAddress: "Doctor's Cave Beach Plaza",
           mapsUrl: "https://maps.google.com/?cid=northcoast-imaging",
           phone: "+1 876-555-0111",
           rating: 4.1,
