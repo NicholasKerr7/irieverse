@@ -214,6 +214,57 @@ test("trip day cards support area edits, locks, and single-day add-on refresh", 
   expect(issues).toEqual([]);
 });
 
+test("trip route order controls move, lock, remove, and reset stops", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await openCleanTab(page, "trips", [
+    "irieverse_planning_mode",
+    "irieverse_planning_template",
+    "irieverse_manual_route",
+    "irieverse_locked_route",
+  ]);
+
+  await page.getByText("Route intelligence").scrollIntoViewIfNeeded();
+
+  const firstLaterButton = page.locator('button[aria-label^="Move "][aria-label$=" later"]:not([disabled])').first();
+  const laterLabel = await firstLaterButton.getAttribute("aria-label");
+  expect(laterLabel).toMatch(/^Move .+ later$/);
+  const movedStopName = laterLabel.replace(/^Move /, "").replace(/ later$/, "");
+
+  await firstLaterButton.click();
+  const routeAfterLater = await waitForLocalStorageValue(
+    page,
+    "irieverse_manual_route",
+    (route) => Array.isArray(route) && route.length > 1
+  );
+  const routeAfterLaterJson = JSON.stringify(routeAfterLater);
+
+  await page.locator(`button[aria-label="Move ${movedStopName} earlier"]:not([disabled])`).first().click();
+  await expect
+    .poll(() =>
+      page.evaluate((storageKey) => window.localStorage.getItem(storageKey) || "null", "irieverse_manual_route")
+    )
+    .not.toBe(routeAfterLaterJson);
+
+  await page.locator('button[aria-label^="Keep "][aria-label$=" on this day"]').first().click();
+  await expectLocalStorage(page, "irieverse_locked_route", (locked) => Array.isArray(locked) && locked.length === 1);
+
+  await page.locator('button[aria-label^="Unlock route day for "]').first().click();
+  await expectLocalStorage(page, "irieverse_locked_route", (locked) => Array.isArray(locked) && locked.length === 0);
+
+  const removeButtonsBefore = await page.locator('button[aria-label^="Remove "][aria-label$=" from route"]').count();
+  await page.locator('button[aria-label^="Remove "][aria-label$=" from route"]').first().click();
+  await expect
+    .poll(() => page.locator('button[aria-label^="Remove "][aria-label$=" from route"]').count())
+    .toBe(removeButtonsBefore - 1);
+
+  await page.getByRole("button", { name: "Auto" }).first().click();
+  await expectLocalStorage(page, "irieverse_manual_route", (route) => Array.isArray(route) && route.length === 0);
+
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("traveler-facing screens avoid integration jargon", async ({ page }) => {
   const issues = collectPageIssues(page);
   const internalTerms = /\b(Supabase|schema|OSRM|AviationStack|Amadeus|fallback|Fallback data|Irieverse sample|API key|public\.trips|heuristic|metadata parsing)\b/i;
@@ -402,6 +453,11 @@ async function expectLocalStorage(page, key, predicate) {
     },
     { storageKey: key, predicateSource: predicate.toString() }
   );
+}
+
+async function waitForLocalStorageValue(page, key, predicate) {
+  await expectLocalStorage(page, key, predicate);
+  return page.evaluate((storageKey) => JSON.parse(window.localStorage.getItem(storageKey) || "null"), key);
 }
 
 async function expectNoHorizontalOverflow(page) {
