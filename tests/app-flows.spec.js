@@ -306,6 +306,16 @@ test("empty states give clear recovery actions", async ({ page }) => {
   await page.getByText("Clear search", { exact: true }).click();
   await expect(page.getByText("No map pins match")).toBeHidden();
 
+  await openCleanTab(page, "saved", [
+    "irieverse_saved_places",
+    "irieverse_saved_experiences",
+    "irieverse_imported_ideas",
+    "irieverse_saved_collections",
+  ]);
+  await expect(page.getByText("No saved Jamaica ideas yet")).toBeVisible();
+  await page.getByRole("button", { name: "Paste a link" }).click();
+  await expect(page.getByPlaceholder("https://maps.google.com/... or social link")).toBeFocused();
+
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
 });

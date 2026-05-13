@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -22,6 +22,7 @@ import {
   Wand2,
 } from "lucide-react";
 import type { MobileTabId } from "../components/mobile/BottomNav";
+import { EmptyStatePanel } from "../components/LoadingStates";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
 import {
@@ -143,6 +144,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   const [cloudStatusMessage, setCloudStatusMessage] = useState("");
   const [cloudBoardUpdatedAt, setCloudBoardUpdatedAt] = useState("");
   const [isCloudBusy, setIsCloudBusy] = useState(false);
+  const importFormRef = useRef<HTMLFormElement | null>(null);
 
   const importSuggestion = useMemo(
     () => analyzeImportLink(importForm),
@@ -307,6 +309,11 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     }
     app.setPlannerBaseId(anchorDestinationId);
     onNavigate("map");
+  };
+
+  const focusImportForm = () => {
+    importFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    importFormRef.current?.querySelector<HTMLInputElement>('input[type="url"]')?.focus({ preventScroll: true });
   };
 
   const handleMoveCollection = (kind: ItemKind, id: string, collection: CollectionId) => {
@@ -744,6 +751,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       )}
 
       <form
+        ref={importFormRef}
         onSubmit={handleImportSubmit}
         className={classNames("mt-5 rounded-3xl p-4", glassPanel)}
       >
@@ -894,20 +902,17 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
 
         <div>
           {!hasSavedItems && (
-            <div className={classNames("rounded-3xl border-dashed p-8 text-center", glassControlMuted)}>
-              <Heart className="mx-auto h-8 w-8 text-cyan-300" />
-              <h2 className="mt-3 text-lg font-semibold">No saved Jamaica ideas yet</h2>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400">
-                Save from Explore, the Map, or the import form above, then build your trip from this board.
-              </p>
-              <button
-                type="button"
-                onClick={() => onNavigate("explore")}
-                className="mt-5 rounded-full bg-cyan-300 px-5 py-3 text-sm font-bold text-slate-950"
-              >
-                Browse Explore
-              </button>
-            </div>
+            <EmptyStatePanel
+              icon={Heart}
+              eyebrow="First save"
+              title="No saved Jamaica ideas yet"
+              body="Save a place from Explore, or paste a Google Maps, TikTok, Instagram, YouTube, article, or note link to start your board."
+              actionLabel="Browse Explore"
+              onAction={() => onNavigate("explore")}
+              secondaryLabel="Paste a link"
+              onSecondary={focusImportForm}
+              className="p-8"
+            />
           )}
 
           {hasSavedItems && (
@@ -932,9 +937,18 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
                   />
                 ))
               ) : (
-                <div className={classNames("rounded-3xl border-dashed p-8 text-center text-sm text-slate-400 md:col-span-2", glassControlMuted)}>
-                  No saved items in this board yet.
-                </div>
+                <EmptyStatePanel
+                  icon={Heart}
+                  eyebrow="Empty board"
+                  title={`No ${getCollectionLabel(activeCollection)} ideas yet`}
+                  body="Move an existing saved item into this board, paste a new link above, or browse Jamaica places and experiences to fill it."
+                  actionLabel="Browse Explore"
+                  onAction={() => onNavigate("explore")}
+                  secondaryLabel="All Saved"
+                  onSecondary={() => setActiveCollection("all")}
+                  tone="info"
+                  className="md:col-span-2"
+                />
               )}
             </div>
           )}
