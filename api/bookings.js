@@ -132,7 +132,7 @@ module.exports = async function bookingsHandler(req, res) {
       },
     });
   } catch (error) {
-    console.error("Amadeus booking lookup failed", error);
+    console.warn(`Amadeus booking lookup unavailable; using curated stays. ${formatErrorForLog(error)}`);
     res.status(200).json({
       data: getFallbackBookings(cityCode),
       meta: {
@@ -334,4 +334,8 @@ function titleCase(value) {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+function formatErrorForLog(error) {
+  return error instanceof Error ? error.message : String(error);
 }

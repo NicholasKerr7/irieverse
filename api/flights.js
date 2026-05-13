@@ -88,7 +88,7 @@ module.exports = async function flightsHandler(req, res) {
       return;
     }
 
-    console.error("AviationStack flight lookup failed", error);
+    console.warn(`AviationStack flight lookup unavailable; using saved examples. ${formatErrorForLog(error)}`);
     res.status(200).json(buildFallbackResponse("aviationstack-request-failed", true, origin, destination));
   }
 };
@@ -219,6 +219,10 @@ function getRateLimitCooldownSeconds() {
 function getPositiveEnvNumber(name, fallback) {
   const value = Number(process.env[name]);
   return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function formatErrorForLog(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function isRateLimitError(message, type) {
