@@ -770,18 +770,9 @@ function PlanCheckCard({ check, onAction }: { check: PlanCheck; onAction: () => 
 
 function QuickRoutePanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab: MobileTabId) => void }) {
   const routeSummary = app.itinerary.routeSummary;
-  const routedDestinationIds = new Set(routeSummary.stops.map((stop) => stop.destinationId));
-  const addableSavedDestinations = DESTINATIONS.filter(
-    (destination) => app.savedPlaces.has(destination.id) && !routedDestinationIds.has(destination.id)
-  ).slice(0, 3);
   const canEditRoute = routeSummary.stops.length > 1;
   const lockedRouteIds = new Set(app.lockedRouteDestinationIds);
   const lockedStopCount = routeSummary.stops.filter((stop) => lockedRouteIds.has(stop.destinationId)).length;
-  const routeAtDayLimit = routeSummary.stops.length >= app.plannerDays;
-  const hasUnlockedRouteStop = routeSummary.stops.some(
-    (stop) => !stop.isBase && !lockedRouteIds.has(stop.destinationId)
-  );
-  const addSavedRouteDisabled = routeAtDayLimit && !hasUnlockedRouteStop;
 
   return (
     <section className={classNames("min-w-0 overflow-hidden rounded-3xl p-4", glassPanel)}>
@@ -827,101 +818,12 @@ function QuickRoutePanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab:
         </p>
       )}
 
-      <ol className="mt-4 space-y-2">
-        {routeSummary.stops.map((stop, index) => {
-          const boardStopLabel = getBoardStopLabel(app, stop.destinationId);
-          const isLocked = lockedRouteIds.has(stop.destinationId);
-          const previousDestinationId = routeSummary.stops[index - 1]?.destinationId;
-          const nextDestinationId = routeSummary.stops[index + 1]?.destinationId;
-          const previousStopIsLocked = Boolean(previousDestinationId && lockedRouteIds.has(previousDestinationId));
-          const nextStopIsLocked = Boolean(nextDestinationId && lockedRouteIds.has(nextDestinationId));
-
-          return (
-            <li
-              key={stop.destinationId}
-              className={classNames(
-                "flex min-w-0 flex-wrap items-center gap-3 rounded-2xl border px-3 py-3",
-                isLocked
-                  ? "border-cyan-300/35 bg-cyan-300/10"
-                  : stop.transferSeverity === "long"
-                    ? "border-rose-300/30 bg-rose-300/10"
-                    : stop.transferSeverity === "moderate"
-                      ? "border-amber-300/30 bg-amber-300/10"
-                      : "border-slate-800 bg-slate-950/70"
-              )}
-            >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-xs font-bold text-slate-950">
-                {index + 1}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-slate-100">{stop.name}</span>
-                  {boardStopLabel && <BoardStopBadge label={boardStopLabel} />}
-                  {isLocked && <BoardStopBadge label="Locked" />}
-                </span>
-                <span className="block text-xs text-slate-500">
-                  {stop.region} · {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"}
-                </span>
-              </span>
-              {!stop.isBase && (
-                <span className="ml-11 flex w-full shrink-0 items-center justify-end gap-1 sm:ml-0 sm:w-auto">
-                  <IconRouteButton
-                    label={isLocked ? "Unlock day" : "Keep on this day"}
-                    active={isLocked}
-                    onClick={() => app.toggleRouteStopLock(stop.destinationId)}
-                  >
-                    {isLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                  </IconRouteButton>
-                  <IconRouteButton
-                    label="Move earlier"
-                    disabled={isLocked || previousStopIsLocked || index <= 1}
-                    onClick={() => app.moveRouteStop(stop.destinationId, -1)}
-                  >
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  </IconRouteButton>
-                  <IconRouteButton
-                    label="Move later"
-                    disabled={isLocked || nextStopIsLocked || index >= routeSummary.stops.length - 1}
-                    onClick={() => app.moveRouteStop(stop.destinationId, 1)}
-                  >
-                    <ArrowDown className="h-3.5 w-3.5" />
-                  </IconRouteButton>
-                  <IconRouteButton
-                    label="Remove from route"
-                    onClick={() => app.removeDestinationFromRoute(stop.destinationId)}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </IconRouteButton>
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-
-      {!!addableSavedDestinations.length && (
-        <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-          <p className="text-[0.65rem] uppercase tracking-[0.22em] text-slate-500">Add saved stop</p>
-          {addSavedRouteDisabled && (
-            <p className="mt-2 text-xs leading-5 text-slate-500">
-              Unlock or remove a route stop before adding another saved place.
-            </p>
-          )}
-          <div className="mt-3 flex max-w-full gap-2 overflow-x-auto pb-1">
-            {addableSavedDestinations.map((destination) => (
-              <button
-                key={destination.id}
-                type="button"
-                disabled={addSavedRouteDisabled}
-                onClick={() => app.pinDestinationToRoute(destination.id)}
-                className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Plus className="h-3.5 w-3.5 text-cyan-300" /> {destination.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <RouteOrderList
+        app={app}
+        savedLimit={3}
+        addSavedHeading="Add saved stop"
+        addSavedHelp="Unlock or remove a route stop before adding another saved place."
+      />
     </section>
   );
 }
@@ -1935,18 +1837,9 @@ function getBookingIntegrationStatus(app: TravelOS): { status: string; tone: Int
 
 function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab: MobileTabId) => void }) {
   const routeSummary = app.itinerary.routeSummary;
-  const routedDestinationIds = new Set(routeSummary.stops.map((stop) => stop.destinationId));
-  const addableSavedDestinations = DESTINATIONS.filter(
-    (destination) => app.savedPlaces.has(destination.id) && !routedDestinationIds.has(destination.id)
-  ).slice(0, 4);
   const canEditRoute = routeSummary.stops.length > 1;
   const lockedRouteIds = new Set(app.lockedRouteDestinationIds);
   const lockedStopCount = routeSummary.stops.filter((stop) => lockedRouteIds.has(stop.destinationId)).length;
-  const routeAtDayLimit = routeSummary.stops.length >= app.plannerDays;
-  const hasUnlockedRouteStop = routeSummary.stops.some(
-    (stop) => !stop.isBase && !lockedRouteIds.has(stop.destinationId)
-  );
-  const addSavedRouteDisabled = routeAtDayLimit && !hasUnlockedRouteStop;
 
   return (
     <section className={classNames("min-w-0 overflow-hidden rounded-3xl p-4", glassPanel)}>
@@ -2026,7 +1919,45 @@ function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (ta
         </p>
       )}
 
-      <ol className="mt-4 grid gap-2 md:grid-cols-2">
+      <RouteOrderList
+        app={app}
+        layout="grid"
+        savedLimit={4}
+        addSavedHeading="Add saved to route"
+        addSavedHelp="Unlock a route day before adding another saved stop."
+      />
+    </section>
+  );
+}
+
+function RouteOrderList({
+  app,
+  layout = "stack",
+  savedLimit,
+  addSavedHeading,
+  addSavedHelp,
+}: {
+  app: TravelOS;
+  layout?: "stack" | "grid";
+  savedLimit: number;
+  addSavedHeading: string;
+  addSavedHelp: string;
+}) {
+  const routeSummary = app.itinerary.routeSummary;
+  const lockedRouteIds = new Set(app.lockedRouteDestinationIds);
+  const routedDestinationIds = new Set(routeSummary.stops.map((stop) => stop.destinationId));
+  const addableSavedDestinations = DESTINATIONS.filter(
+    (destination) => app.savedPlaces.has(destination.id) && !routedDestinationIds.has(destination.id)
+  ).slice(0, savedLimit);
+  const routeAtDayLimit = routeSummary.stops.length >= app.plannerDays;
+  const hasUnlockedRouteStop = routeSummary.stops.some(
+    (stop) => !stop.isBase && !lockedRouteIds.has(stop.destinationId)
+  );
+  const addSavedRouteDisabled = routeAtDayLimit && !hasUnlockedRouteStop;
+
+  return (
+    <>
+      <ol className={classNames("mt-4", layout === "grid" ? "grid gap-2 md:grid-cols-2" : "space-y-2")}>
         {routeSummary.stops.map((stop, index) => {
           const isLocked = lockedRouteIds.has(stop.destinationId);
           const boardStopLabel = getBoardStopLabel(app, stop.destinationId);
@@ -2039,63 +1970,71 @@ function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (ta
             <li
               key={stop.destinationId}
               className={classNames(
-                "flex min-w-0 flex-wrap items-center gap-3 rounded-2xl border px-3 py-3",
+                "grid min-w-0 gap-3 rounded-2xl border p-3",
                 isLocked
                   ? "border-cyan-300/35 bg-cyan-300/10"
                   : stop.transferSeverity === "long"
                     ? "border-rose-300/30 bg-rose-300/10"
                     : stop.transferSeverity === "moderate"
                       ? "border-amber-300/30 bg-amber-300/10"
-                      : "border-slate-800 bg-slate-950/70"
+                      : "border-white/10 bg-white/[0.04]"
               )}
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-xs font-bold text-slate-950">
-                {index + 1}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-slate-100">{stop.name}</span>
-                  {boardStopLabel && <BoardStopBadge label={boardStopLabel} />}
-                  {isLocked && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-cyan-300/30 px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-[0.12em] text-cyan-100">
-                      <Lock className="h-2.5 w-2.5" /> Locked
-                    </span>
-                  )}
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-2xl bg-cyan-300 text-slate-950 shadow-sm shadow-cyan-950/20">
+                  <span className="text-[0.52rem] font-black uppercase tracking-[0.12em]">Day</span>
+                  <span className="-mt-0.5 text-sm font-black">{stop.day}</span>
                 </span>
-                <span className="block text-xs text-slate-500">
-                  {stop.region} · {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Start"}
+                <span className="min-w-0 flex-1">
+                  <span className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="truncate text-sm font-semibold text-slate-100">{stop.name}</span>
+                    {boardStopLabel && <BoardStopBadge label={boardStopLabel} />}
+                    {isLocked && <BoardStopBadge label="Locked" />}
+                  </span>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    {stop.region} · {stop.driveMinutesFromPrevious ? formatDriveTime(stop.driveMinutesFromPrevious) : "Starting area"}
+                  </span>
                 </span>
-              </span>
-              {!stop.isBase && (
-                <span className="ml-11 flex w-full shrink-0 items-center justify-end gap-1 sm:ml-0 sm:w-auto">
-                  <IconRouteButton
-                    label={isLocked ? "Unlock day" : "Keep on this day"}
+              </div>
+
+              {!stop.isBase ? (
+                <div className="flex min-w-0 flex-wrap gap-2 pl-0 sm:pl-[3.25rem]">
+                  <RouteEditButton
+                    ariaLabel={isLocked ? `Unlock route day for ${stop.name}` : `Keep ${stop.name} on this day`}
+                    label={isLocked ? "Unlock" : "Keep"}
                     active={isLocked}
                     onClick={() => app.toggleRouteStopLock(stop.destinationId)}
                   >
                     {isLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                  </IconRouteButton>
-                  <IconRouteButton
-                    label="Move earlier"
+                  </RouteEditButton>
+                  <RouteEditButton
+                    ariaLabel={`Move ${stop.name} earlier`}
+                    label="Earlier"
                     disabled={isLocked || previousStopIsLocked || index <= 1}
                     onClick={() => app.moveRouteStop(stop.destinationId, -1)}
                   >
                     <ArrowUp className="h-3.5 w-3.5" />
-                  </IconRouteButton>
-                  <IconRouteButton
-                    label="Move later"
+                  </RouteEditButton>
+                  <RouteEditButton
+                    ariaLabel={`Move ${stop.name} later`}
+                    label="Later"
                     disabled={isLocked || nextStopIsLocked || index >= routeSummary.stops.length - 1}
                     onClick={() => app.moveRouteStop(stop.destinationId, 1)}
                   >
                     <ArrowDown className="h-3.5 w-3.5" />
-                  </IconRouteButton>
-                  <IconRouteButton
-                    label="Remove from route"
+                  </RouteEditButton>
+                  <RouteEditButton
+                    ariaLabel={`Remove ${stop.name} from route`}
+                    label="Remove"
                     onClick={() => app.removeDestinationFromRoute(stop.destinationId)}
                   >
                     <X className="h-3.5 w-3.5" />
-                  </IconRouteButton>
-                </span>
+                  </RouteEditButton>
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs leading-5 text-slate-400">
+                  This is the trip base. Change the start area from the day card or builder.
+                </p>
               )}
             </li>
           );
@@ -2103,21 +2042,20 @@ function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (ta
       </ol>
 
       {!!addableSavedDestinations.length && (
-        <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
-          <p className="text-[0.65rem] uppercase tracking-[0.22em] text-slate-500">Add saved to route</p>
-          {addSavedRouteDisabled && (
-            <p className="mt-2 text-xs leading-5 text-slate-500">
-              Unlock a route day before adding another saved stop.
-            </p>
-          )}
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        <div className={classNames("mt-4 rounded-2xl p-3", glassCard)}>
+          <p className="text-[0.65rem] uppercase tracking-[0.22em] text-slate-500">{addSavedHeading}</p>
+          {addSavedRouteDisabled && <p className="mt-2 text-xs leading-5 text-slate-500">{addSavedHelp}</p>}
+          <div className="mt-3 flex max-w-full gap-2 overflow-x-auto pb-1">
             {addableSavedDestinations.map((destination) => (
               <button
                 key={destination.id}
                 type="button"
                 disabled={addSavedRouteDisabled}
                 onClick={() => app.pinDestinationToRoute(destination.id)}
-                className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60 disabled:cursor-not-allowed disabled:opacity-40"
+                className={classNames(
+                  "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60 disabled:cursor-not-allowed disabled:opacity-40",
+                  glassControlMuted
+                )}
               >
                 <Plus className="h-3.5 w-3.5 text-cyan-300" /> {destination.name}
               </button>
@@ -2125,11 +2063,12 @@ function RoutePreviewPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (ta
           </div>
         </div>
       )}
-    </section>
+    </>
   );
 }
 
-function IconRouteButton({
+function RouteEditButton({
+  ariaLabel,
   label,
   active,
   disabled,
@@ -2137,6 +2076,7 @@ function IconRouteButton({
   children,
 }: {
   label: string;
+  ariaLabel: string;
   active?: boolean;
   disabled?: boolean;
   onClick: () => void;
@@ -2145,17 +2085,18 @@ function IconRouteButton({
   return (
     <button
       type="button"
-      aria-label={label}
-      title={label}
+      aria-label={ariaLabel}
+      title={ariaLabel}
       disabled={disabled}
       onClick={onClick}
       className={classNames(
-        "inline-flex h-10 w-10 scroll-mb-28 items-center justify-center rounded-full hover:border-cyan-300/60 disabled:cursor-not-allowed disabled:opacity-35",
+        "inline-flex min-h-9 scroll-mb-28 items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-[0.68rem] font-bold hover:border-cyan-300/60 disabled:cursor-not-allowed disabled:opacity-35",
         active ? "border-cyan-300/50 bg-cyan-300/15 text-cyan-100" : "text-slate-300 hover:text-cyan-100",
         glassPanelStrong
       )}
     >
       {children}
+      <span>{label}</span>
     </button>
   );
 }
