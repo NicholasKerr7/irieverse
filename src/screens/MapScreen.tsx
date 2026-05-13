@@ -229,9 +229,17 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       )
       .slice(0, 5);
   }, [activeDrawerDay, activeDrawerDestination, allImportedPlacePins, app.importedIdeaDayAssignments]);
+  const numberedActiveDrawerImportedStops = useMemo(
+    () => activeDrawerImportedStops.map((pin, index) => ({ ...pin, sequenceLabel: String(index + 1) })),
+    [activeDrawerImportedStops]
+  );
   const mapImportedPlacePins = useMemo(
-    () => mergeImportedPlacePins(importedPlacePins, activeDrawerImportedStops, selectedImportedPlacePin ? [selectedImportedPlacePin] : []),
-    [activeDrawerImportedStops, importedPlacePins, selectedImportedPlacePin]
+    () => mergeImportedPlacePins(
+      importedPlacePins,
+      selectedImportedPlacePin ? [selectedImportedPlacePin] : [],
+      numberedActiveDrawerImportedStops
+    ),
+    [importedPlacePins, numberedActiveDrawerImportedStops, selectedImportedPlacePin]
   );
   const focusDestinations = useMemo(() => {
     if (activeDrawerTab === "overview") return routeDestinations;
@@ -257,10 +265,10 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   ]);
   const focusImportedPlacePins = useMemo(() => {
     if (selectedImportedPlacePin) return [selectedImportedPlacePin];
-    if (activeDrawerImportedStops.length) return activeDrawerImportedStops;
+    if (numberedActiveDrawerImportedStops.length) return numberedActiveDrawerImportedStops;
     if (activeDrawerTab === "unplanned") return importedPlacePins.slice(0, 6);
     return [];
-  }, [activeDrawerImportedStops, activeDrawerTab, importedPlacePins, selectedImportedPlacePin]);
+  }, [activeDrawerTab, importedPlacePins, numberedActiveDrawerImportedStops, selectedImportedPlacePin]);
   const tripTitle = `${app.plannerDays}-day ${app.destination.region}`;
 
   useEffect(() => {

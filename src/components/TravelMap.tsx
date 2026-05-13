@@ -110,6 +110,7 @@ export type MapExtraMarker = {
   latitude: number;
   longitude: number;
   category: MapPinCategory;
+  sequenceLabel?: string;
 };
 
 type MapFitTarget = {
@@ -650,7 +651,8 @@ export const TravelMap = memo(function TravelMap({
                 type="button"
                 aria-label={`Open saved idea ${marker.name}`}
                 className={classNames(
-                  "group relative flex h-9 w-9 items-center justify-center rounded-2xl border shadow-2xl transition duration-200",
+                  "group relative flex h-9 w-9 items-center justify-center border shadow-2xl transition duration-200",
+                  marker.sequenceLabel ? "rounded-full" : "rounded-2xl",
                   isSelected
                     ? "scale-125 border-white bg-white text-slate-950 shadow-cyan-950/80"
                     : "border-white/80 bg-slate-950/90 text-white opacity-95 hover:scale-110"
@@ -661,11 +663,18 @@ export const TravelMap = memo(function TravelMap({
               >
                 {isSelected && (
                   <span
-                    className="absolute inset-0 -z-10 animate-ping rounded-2xl opacity-25"
+                    className={classNames(
+                      "absolute inset-0 -z-10 animate-ping opacity-25",
+                      marker.sequenceLabel ? "rounded-full" : "rounded-2xl"
+                    )}
                     style={{ backgroundColor: color }}
                   />
                 )}
-                <Sparkles className="h-4 w-4" fill={color} color={color} />
+                {marker.sequenceLabel ? (
+                  <span className="text-sm font-black">{marker.sequenceLabel}</span>
+                ) : (
+                  <Sparkles className="h-4 w-4" fill={color} color={color} />
+                )}
                 {isSelected && (
                   <span className="pointer-events-none absolute left-1/2 top-10 hidden -translate-x-1/2 whitespace-nowrap rounded-full border border-white/15 bg-slate-950/90 px-2.5 py-1 text-[0.62rem] font-semibold text-cyan-100 shadow-xl shadow-slate-950/50 backdrop-blur md:block">
                     {marker.name}
