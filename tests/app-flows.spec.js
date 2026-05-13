@@ -79,7 +79,9 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
   await expect(page.getByRole("button", { name: "Open saved idea Devon House" })).toBeVisible();
   await page.getByRole("button", { name: "Open saved idea Devon House" }).click();
-  await expect(page.getByTestId("imported-place-detail-sheet").getByText("26 Hope Road, Kingston").first()).toBeVisible();
+  const plannedDetailSheet = page.getByTestId("imported-place-detail-sheet");
+  await expect(plannedDetailSheet.getByText("Trip-ready map idea")).toBeVisible();
+  await expect(plannedDetailSheet.getByText("26 Hope Road, Kingston").first()).toBeVisible();
   await page.getByLabel("Close saved idea details").click();
   const mapDrawer = page.getByTestId("map-trip-drawer");
   await expect(mapDrawer.getByText("Exact stops from your board")).toBeVisible();
@@ -196,6 +198,7 @@ test("unplaced imported map ideas ask to be placed before trip use", async ({ pa
 
   await page.getByRole("button", { name: "Open saved idea Loose beach pin" }).click();
   const detailSheet = page.getByTestId("imported-place-detail-sheet");
+  await expect(detailSheet.getByText("Saved map idea")).toBeVisible();
   await expect(detailSheet.getByText("Attach this saved idea to a Jamaica area in Saved before turning it into a full trip day.")).toBeVisible();
   await expect(detailSheet.getByRole("button", { name: "Place it" })).toBeVisible();
   await expect(detailSheet.getByRole("button", { name: "Trip" })).toHaveCount(0);

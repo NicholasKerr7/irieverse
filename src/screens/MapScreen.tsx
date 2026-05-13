@@ -1684,6 +1684,7 @@ function ImportedPlaceDetailSheet({
     pin.idea.sourceLabel ?? "",
     pin.linkedDestination?.name ?? "",
   ]).slice(0, 4);
+  const isPlacedIdea = Boolean(pin.idea.linkedDestinationId);
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-950/55 p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-md sm:p-5">
@@ -1696,7 +1697,9 @@ function ImportedPlaceDetailSheet({
             <Sparkles className="h-8 w-8 text-sky-600" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-sky-600">Saved map idea</p>
+            <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-sky-600">
+              {isPlacedIdea ? "Trip-ready map idea" : "Saved map idea"}
+            </p>
             <h2 className="mt-1 text-3xl font-black leading-tight tracking-tight">{pin.name}</h2>
             <p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-500">
               {ratingText && (
@@ -1743,7 +1746,7 @@ function ImportedPlaceDetailSheet({
             </section>
           )}
 
-          {!pin.idea.linkedDestinationId && (
+          {!isPlacedIdea && (
             <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-800">
               Attach this saved idea to a Jamaica area in Saved before turning it into a full trip day.
             </p>
@@ -1754,9 +1757,9 @@ function ImportedPlaceDetailSheet({
           <DrawerAction icon={Heart} label="Saved" onClick={onOpenSaved} active />
           <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
           <DrawerAction
-            icon={pin.idea.linkedDestinationId ? Plus : MapPin}
-            label={pin.idea.linkedDestinationId ? "Trip" : "Place it"}
-            onClick={pin.idea.linkedDestinationId ? onAddToTrip : onOpenSaved}
+            icon={isPlacedIdea ? Plus : MapPin}
+            label={isPlacedIdea ? "Trip" : "Place it"}
+            onClick={isPlacedIdea ? onAddToTrip : onOpenSaved}
             primary
           />
         </div>
