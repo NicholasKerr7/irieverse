@@ -267,7 +267,7 @@ test("trip route order controls move, lock, remove, and reset stops", async ({ p
 
 test("traveler-facing screens avoid integration jargon", async ({ page }) => {
   const issues = collectPageIssues(page);
-  const internalTerms = /\b(Supabase|schema|OSRM|AviationStack|Amadeus|fallback|Fallback data|Irieverse sample|API key|public\.trips|heuristic|metadata parsing)\b/i;
+  const internalTerms = /\b(Supabase|schema|OSRM|AviationStack|Amadeus|fallback|Fallback data|Irieverse sample|API key|public\.trips|heuristic|metadata parsing|Manual idea)\b/i;
 
   for (const tab of ["home", "explore", "map", "saved", "trips"]) {
     await openCleanTab(page, tab, []);

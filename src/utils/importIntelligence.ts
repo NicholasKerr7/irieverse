@@ -114,7 +114,7 @@ function getSourceLabel(source: ImportedIdeaSourcePlatform, url: URL | null): st
   if (source === "instagram") return "Instagram";
   if (source === "youtube") return "YouTube";
   if (source === "article" && url) return readableHost(url.hostname);
-  return "Manual idea";
+  return "Saved note";
 }
 
 function extractPlaceFromUrl(url: URL, source: ImportedIdeaSourcePlatform): string {

@@ -760,7 +760,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
             <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Save a Jamaica idea</p>
             <h2 className="mt-1 text-xl font-semibold">Paste a travel link or add a note.</h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
-              Capture TikTok, Instagram, Google Maps, YouTube, article links, or manual ideas now; attach exact map data later.
+              Capture TikTok, Instagram, Google Maps, YouTube, article links, or personal notes now; attach the map location later.
             </p>
           </div>
           <button
@@ -1378,7 +1378,7 @@ function ImportAnchorCard({
     ? DESTINATIONS.find((destination) => destination.id === suggestion.linkedDestinationId)
     : null;
   const meta = [
-    idea.sourceLabel || suggestion.sourceLabel,
+    formatImportSourceLabel(idea.sourceLabel || suggestion.sourceLabel),
     formatImportedCategory(idea.category),
     idea.extractedPlaceName || suggestion.extractedPlaceName,
   ].filter(Boolean);
@@ -1463,7 +1463,8 @@ function SavedCard({
       : savedItem.kind === "experience"
         ? `${savedItem.item.region} · ${savedItem.item.location}`
         : [
-            savedItem.item.siteName || savedItem.item.sourceLabel || formatImportedCategory(savedItem.item.category),
+            formatImportSourceLabel(savedItem.item.siteName || savedItem.item.sourceLabel) ||
+              formatImportedCategory(savedItem.item.category),
             importedPlace?.shortAddress ||
               importedPlace?.address ||
               savedItem.item.extractedPlaceName ||
@@ -1486,7 +1487,7 @@ function SavedCard({
           formatImportedPlaceSummary(importedPlace) ||
           savedItem.item.extractedPlaceName ||
           savedItem.item.url ||
-          "Manual Jamaica idea";
+          "Saved Jamaica idea";
   const sourceUrl = savedItem.kind === "import" ? (savedItem.item.canonicalUrl || savedItem.item.url) : "";
 
   return (
@@ -1829,6 +1830,12 @@ function categoryToCollection(category: ImportedIdeaCategory): CollectionId {
 
 function formatImportedCategory(category: ImportedIdeaCategory): string {
   return IMPORT_CATEGORIES.find((item) => item.id === category)?.label ?? "Idea";
+}
+
+function formatImportSourceLabel(label?: string): string {
+  const normalized = (label ?? "").trim();
+  if (!normalized) return "";
+  return normalized.toLowerCase() === "manual idea" ? "Saved note" : normalized;
 }
 
 function shouldReplaceAutoImportTitle(currentTitle: string, autoTitle: string, metadata: ImportMetadata): boolean {
