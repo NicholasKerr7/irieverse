@@ -1197,6 +1197,10 @@ function DayPlanPanel({
             </div>
           )}
 
+          {!!importedStops.length && (
+            <DayFocusCard destination={destination} importedStops={importedStops} />
+          )}
+
           <div className="relative mt-4 pl-9">
             <span className="absolute bottom-4 left-4 top-4 w-px border-l border-dashed border-slate-300" />
             <TimelineDestinationCard
@@ -1298,6 +1302,40 @@ function DayPlanPanel({
         </div>
       </div>
     </div>
+  );
+}
+
+function DayFocusCard({
+  destination,
+  importedStops,
+}: {
+  destination: Destination;
+  importedStops: ImportedPlacePin[];
+}) {
+  const visibleStopNames = importedStops.slice(0, 2).map((pin) => pin.name);
+  const hiddenCount = Math.max(0, importedStops.length - visibleStopNames.length);
+  const stopLabel = `${importedStops.length} saved stop${importedStops.length === 1 ? "" : "s"}`;
+
+  return (
+    <section className="mt-3 rounded-3xl border border-cyan-200 bg-cyan-50/80 p-3">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-100">
+          <MapPin className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-sky-600">Day focus</p>
+          <p className="mt-1 text-sm font-black leading-5 text-slate-900">
+            {stopLabel} pinned into this day.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {visibleStopNames.map((name) => (
+              <MiniPill key={name}>{name}</MiniPill>
+            ))}
+            {!!hiddenCount && <MiniPill>{`+${hiddenCount} more`}</MiniPill>}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

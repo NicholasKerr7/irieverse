@@ -90,6 +90,7 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments) => Object.values(assignments).includes("1"));
   await mapDrawer.getByRole("button", { name: /Day 1/ }).click();
   await expect(mapDrawer.getByRole("button", { name: "Open exact stop Devon House" })).toBeVisible();
+  await expect(mapDrawer.getByText("1 saved stop pinned into this day.")).toBeVisible();
 
   await openCleanTab(page, "trips", []);
   const exactStopBadge = page.getByText("Exact stop").first();
