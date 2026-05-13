@@ -210,7 +210,18 @@ test("unplaced imported map ideas ask to be placed before trip use", async ({ pa
   await page.getByRole("button", { name: /Add ideas/ }).click();
   await expect(page.getByText("1 need placing")).toBeVisible();
   await expect(page.getByText("1 saved import need Jamaica map anchors")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Place in Saved" })).toBeVisible();
+  await page.getByRole("button", { name: "Place in Saved" }).click();
+  await expect(page.getByText("Map anchors needed")).toBeVisible();
+  await expect(page.getByText("Nearest Jamaica area from place data")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Use Port Antonio & Portland/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Place" }).first()).toBeVisible();
+  await page.getByRole("button", { name: /Use Port Antonio & Portland/ }).click();
+  await waitForImportedIdeas(page, (ideas) => ideas[0]?.linkedDestinationId === "portland");
+
+  await page.goto("/?tab=trips", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: /Add ideas/ }).click();
+  await expect(page.getByText("1 route-ready")).toBeVisible();
+  await expect(page.getByText("Map anchor ready for route planning")).toBeVisible();
 
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);

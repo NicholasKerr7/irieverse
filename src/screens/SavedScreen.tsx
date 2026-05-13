@@ -145,6 +145,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
   const [cloudBoardUpdatedAt, setCloudBoardUpdatedAt] = useState("");
   const [isCloudBusy, setIsCloudBusy] = useState(false);
   const importFormRef = useRef<HTMLFormElement | null>(null);
+  const importAnchorPanelRef = useRef<HTMLDivElement | null>(null);
 
   const importSuggestion = useMemo(
     () => analyzeImportLink(importForm),
@@ -334,11 +335,13 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     if (destinationId) {
       app.buildTripFromDestinations([destinationId], getTemplateForCollection(savedItem.collection));
       setStatusMessage(`${getSavedItemTitle(savedItem)} opened in Trips.`);
+      onNavigate("trips");
+      return;
     }
     if (!destinationId && savedItem.kind === "import") {
-      setStatusMessage("Imported idea is ready in the trip builder. Attach a map location when you have one.");
+      setStatusMessage("Choose a Jamaica map location before using this saved link in Trips.");
+      importAnchorPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    onNavigate("trips");
   };
 
   const handleViewMap = (savedItem: SavedItem) => {
@@ -744,10 +747,12 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       />
 
       {!!unanchoredImportedIdeas.length && (
-        <ImportAnchorPanel
-          ideas={unanchoredImportedIdeas}
-          onAttach={handleUpdateImportLocation}
-        />
+        <div ref={importAnchorPanelRef}>
+          <ImportAnchorPanel
+            ideas={unanchoredImportedIdeas}
+            onAttach={handleUpdateImportLocation}
+          />
+        </div>
       )}
 
       <form
@@ -1374,12 +1379,20 @@ function ImportAnchorCard({
   onAttach: (idea: ImportedIdea, destinationId: string) => void;
 }) {
   const suggestion = analyzeImportLink({ url: idea.url, title: idea.title, note: idea.note });
-  const suggestedDestination = suggestion.linkedDestinationId
-    ? DESTINATIONS.find((destination) => destination.id === suggestion.linkedDestinationId)
+  const coordinateDestinationId = inferLinkedDestinationIdFromCoordinates(idea.place?.latitude, idea.place?.longitude);
+  const suggestedDestinationId = suggestion.linkedDestinationId || coordinateDestinationId;
+  const suggestedDestination = suggestedDestinationId
+    ? DESTINATIONS.find((destination) => destination.id === suggestedDestinationId)
     : null;
+  const suggestionReason = suggestion.linkedDestinationId
+    ? "Matched from link text"
+    : coordinateDestinationId
+      ? "Nearest Jamaica area from place data"
+      : "";
   const meta = [
     formatImportSourceLabel(idea.sourceLabel || suggestion.sourceLabel),
     formatImportedCategory(idea.category),
+    idea.place?.shortAddress || idea.place?.address,
     idea.extractedPlaceName || suggestion.extractedPlaceName,
   ].filter(Boolean);
 
@@ -1402,9 +1415,15 @@ function ImportAnchorCard({
             <button
               type="button"
               onClick={() => onAttach(idea, suggestedDestination.id)}
-              className="mt-3 inline-flex min-h-9 items-center justify-center gap-2 rounded-full border border-cyan-300/45 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-cyan-100"
+              className="mt-3 block w-full rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-2 text-left transition hover:border-cyan-300/45"
             >
-              <Sparkles className="h-3.5 w-3.5" /> Use {suggestedDestination.name}
+              <span className="block text-[0.64rem] uppercase tracking-[0.16em] text-cyan-200/80">
+                {suggestionReason || "Suggested anchor"}
+              </span>
+              <span className="mt-2 flex min-h-10 w-full items-center justify-start gap-2 rounded-full border border-cyan-300/45 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-cyan-100">
+                <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Use {suggestedDestination.name}</span>
+              </span>
             </button>
           )}
         </div>
@@ -1489,6 +1508,7 @@ function SavedCard({
           savedItem.item.url ||
           "Saved Jamaica idea";
   const sourceUrl = savedItem.kind === "import" ? (savedItem.item.canonicalUrl || savedItem.item.url) : "";
+  const needsImportAnchor = savedItem.kind === "import" && !savedItem.item.linkedDestinationId;
 
   return (
     <article className={classNames("overflow-hidden rounded-3xl", glassCard)}>
@@ -1579,7 +1599,11 @@ function SavedCard({
         )}
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <IconAction label="Trip" icon={CalendarDays} onClick={onAddToTrip} />
+          <IconAction
+            label={needsImportAnchor ? "Place" : "Trip"}
+            icon={needsImportAnchor ? MapPinned : CalendarDays}
+            onClick={onAddToTrip}
+          />
           <IconAction label="Map" icon={MapPinned} onClick={onViewMap} />
           <IconAction label="Share" icon={Share2} onClick={onShareLater} />
           <IconAction label="Remove" icon={Trash2} onClick={onRemove} />
