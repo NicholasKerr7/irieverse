@@ -260,7 +260,11 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   );
   const focusDestinations = useMemo(() => {
     if (activeDrawerTab === "overview") return routeDestinations;
-    if (activeDrawerTab === "unplanned") return unplannedDestinations.length ? unplannedDestinations : visibleDestinations;
+    if (activeDrawerTab === "unplanned") {
+      if (unplannedDestinations.length) return unplannedDestinations;
+      if (unplannedImportedPlacePins.length) return [];
+      return visibleDestinations;
+    }
     if (activeDrawerDay && activeDrawerDestination && activeDrawerImportedStops.length) {
       return [activeDrawerDestination];
     }
@@ -278,6 +282,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     activeDrawerTab,
     routeDestinations,
     unplannedDestinations,
+    unplannedImportedPlacePins.length,
     visibleDestinations,
   ]);
   const focusImportedPlacePins = useMemo(() => {
