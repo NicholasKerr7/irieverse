@@ -18,6 +18,8 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | `AMADEUS_CLIENT_SECRET` | Optional | Server-only Amadeus API secret used by `api/bookings.js`. |
 | `AMADEUS_BASE_URL` | Optional | Amadeus base URL. Defaults to `https://test.api.amadeus.com`; use `https://api.amadeus.com` for production credentials. |
 | `ROUTING_API_BASE_URL` | Optional | Server-only OSRM-compatible routing base URL used by `api/road-route.js`. Defaults to `https://router.project-osrm.org`. |
+| `ROUTING_API_TIMEOUT_MS` | Optional | Max server wait for one routing-provider request. Defaults to `4500` ms. |
+| `ROUTING_PROVIDER_COOLDOWN_SECONDS` | Optional | Server-side pause after routing-provider failures before retrying live geometry. Defaults to `45` seconds. |
 | `GOOGLE_PLACES_API_KEY` | Optional | Server-only Google Places key used by `api/place-details.js` for live place address, hours, phone, website, and map links. |
 
 Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack, Amadeus, Places, and routing credentials server-only.
@@ -54,6 +56,8 @@ vercel env add AMADEUS_CLIENT_ID production
 vercel env add AMADEUS_CLIENT_SECRET production
 vercel env add AMADEUS_BASE_URL production
 vercel env add ROUTING_API_BASE_URL production
+vercel env add ROUTING_API_TIMEOUT_MS production
+vercel env add ROUTING_PROVIDER_COOLDOWN_SECONDS production
 vercel env add GOOGLE_PLACES_API_KEY production
 ```
 
@@ -198,7 +202,7 @@ https://router.project-osrm.org/route/v1/driving/{lon,lat};{lon,lat}?overview=fu
 
 That gives IrieVerse road-following GeoJSON lines plus normalized maneuver previews: instruction text, road names/refs, direction labels, distance, duration, roundabout exits, and destination/ref hints when OSRM returns them. The map uses green status indicators for road-following legs, amber indicators for estimated fallback legs, and per-leg fallback messaging when routing is still syncing or the provider fails.
 
-For production scale, set `ROUTING_API_BASE_URL` to your own OSRM-compatible service or a paid routing provider proxy. If road routing fails, the map falls back to the local preview route instead of breaking and keeps the external Google Maps handoff available for full turn-by-turn navigation and traffic.
+For production scale, set `ROUTING_API_BASE_URL` to your own OSRM-compatible service or a paid routing provider proxy. `ROUTING_API_TIMEOUT_MS` keeps slow provider calls from holding the map open, while `ROUTING_PROVIDER_COOLDOWN_SECONDS` prevents repeated failing retries from hammering the same provider. If road routing fails, the map falls back to the local preview route instead of breaking and keeps the external Google Maps handoff available for full turn-by-turn navigation and traffic.
 
 ## Place Details API
 

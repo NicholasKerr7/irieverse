@@ -37,6 +37,8 @@ VITE_BOOKING_API_URL=/api/bookings            # live bookings through the Vercel
 AMADEUS_CLIENT_ID=your_amadeus_api_key        # server-only; do not prefix with VITE_
 AMADEUS_CLIENT_SECRET=your_amadeus_api_secret # server-only; do not prefix with VITE_
 ROUTING_API_BASE_URL=https://router.project-osrm.org # server-only road routing proxy
+ROUTING_API_TIMEOUT_MS=4500                   # stop slow routing calls before they hold up the map
+ROUTING_PROVIDER_COOLDOWN_SECONDS=45          # pause provider retries briefly after routing failures
 ```
 
 If env vars are absent, the app falls back to local sample data in `public/data`.
