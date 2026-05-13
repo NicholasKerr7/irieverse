@@ -2053,6 +2053,7 @@ function RoutePreviewCard({
   const hasRoadPreview = routeDetail?.source === "road";
   const distanceKm = routeDetail?.distanceKm ?? routeLeg.leg.distanceKm;
   const durationMinutes = routeDetail?.durationMinutes ?? routeLeg.leg.driveMinutes;
+  const routeNotes = getRoutePreviewNotes(routeDetail);
 
   return (
     <div className={classNames(
@@ -2090,7 +2091,36 @@ function RoutePreviewCard({
         <DrawerFact icon={Route} label="Distance" value={formatMiles(distanceKm)} />
         <DrawerFact icon={Clock3} label="Drive time" value={formatDriveTime(durationMinutes)} />
       </div>
+
+      {!!routeNotes.length && (
+        <details className="mt-3 rounded-2xl border border-white/80 bg-white/85 p-3">
+          <summary className="cursor-pointer list-none text-xs font-black uppercase tracking-[0.14em] text-slate-600">
+            Route notes
+          </summary>
+          <div className="mt-3 grid gap-2">
+            {routeNotes.map((note) => (
+              <div key={note} className="rounded-2xl bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-600">
+                {note}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
+  );
+}
+
+function getRoutePreviewNotes(routeDetail: RouteDetail | null): string[] {
+  if (!routeDetail || routeDetail.source !== "road") return [];
+
+  return uniqueStrings(
+    routeDetail.steps
+      .filter((step) => step.instruction && step.maneuverType !== "arrive")
+      .slice(0, 3)
+      .map((step) => {
+        const suffix = step.distanceKm ? ` · ${formatMiles(step.distanceKm)}` : "";
+        return `${step.instruction}${suffix}`;
+      })
   );
 }
 

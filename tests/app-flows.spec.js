@@ -340,6 +340,78 @@ test("map place details open with curated fallback content", async ({ page }) =>
   expect(issues).toEqual([]);
 });
 
+test("map route preview keeps route notes secondary", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await page.route("**/api/road-route**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          coordinates: [
+            [-77.8939, 18.4762],
+            [-78.02, 18.39],
+            [-78.3488, 18.2728],
+          ],
+          distanceKm: 78.4,
+          durationMinutes: 108,
+          summary: "Road-aware preview",
+          steps: [
+            {
+              id: "depart",
+              instruction: "Head west on A1",
+              distanceKm: 11.2,
+              durationMinutes: 18,
+              roadName: "A1",
+              maneuverType: "depart",
+              modifier: "west",
+              direction: "West",
+            },
+            {
+              id: "continue",
+              instruction: "Continue toward Lucea",
+              distanceKm: 34.6,
+              durationMinutes: 45,
+              roadName: "A1",
+              maneuverType: "continue",
+              modifier: "",
+              direction: "Continue",
+            },
+            {
+              id: "turn",
+              instruction: "Turn left toward Negril",
+              distanceKm: 19.1,
+              durationMinutes: 27,
+              roadName: "",
+              maneuverType: "turn",
+              modifier: "left",
+              direction: "Left",
+            },
+          ],
+          source: "osrm",
+        },
+        meta: { source: "osrm", stepCount: 3 },
+      }),
+    });
+  });
+
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await page.getByRole("button", { name: /Day 2/ }).click();
+
+  const mapDrawer = page.getByTestId("map-trip-drawer");
+  await expect(mapDrawer.getByText("Road-following preview")).toBeVisible();
+  const routeNotes = mapDrawer.getByText("Route notes");
+  await expect(routeNotes).toBeVisible();
+  await routeNotes.click();
+  await expect(mapDrawer.getByText(/Head west on A1/)).toBeVisible();
+  await expect(mapDrawer.getByText(/Continue toward Lucea/)).toBeVisible();
+
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("map place details surface live visit data when available", async ({ page }) => {
   const issues = collectPageIssues(page);
 
