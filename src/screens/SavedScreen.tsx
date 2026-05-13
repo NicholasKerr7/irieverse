@@ -312,6 +312,12 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
     onNavigate("map");
   };
 
+  const handlePlaceImports = () => {
+    if (!unanchoredImportedIdeas.length) return;
+    setStatusMessage(`${unanchoredImportedIdeas.length} saved import${unanchoredImportedIdeas.length === 1 ? "" : "s"} ready to place.`);
+    importAnchorPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const focusImportForm = () => {
     importFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     importFormRef.current?.querySelector<HTMLInputElement>('input[type="url"]')?.focus({ preventScroll: true });
@@ -728,6 +734,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
         quickPlanCollectionLabel={quickPlanCollectionLabel}
         onStartPlan={handleStartQuickPlan}
         onOpenMap={handleOpenBoardMap}
+        onPlaceImports={handlePlaceImports}
         onExplore={() => onNavigate("explore")}
       />
 
@@ -1193,6 +1200,7 @@ function BoardPlanningPanel({
   quickPlanCollectionLabel,
   onStartPlan,
   onOpenMap,
+  onPlaceImports,
   onExplore,
 }: {
   summary: BoardSummary;
@@ -1201,6 +1209,7 @@ function BoardPlanningPanel({
   quickPlanCollectionLabel: string;
   onStartPlan: () => void;
   onOpenMap: () => void;
+  onPlaceImports: () => void;
   onExplore: () => void;
 }) {
   const routeReady = summary.routeReadyCount > 0;
@@ -1261,9 +1270,19 @@ function BoardPlanningPanel({
           </p>
 
           {summary.missingLocationCount > 0 && (
-            <p className="mt-3 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100">
-              {summary.missingLocationCount} imported idea{summary.missingLocationCount === 1 ? "" : "s"} still need a Jamaica map location.
-            </p>
+            <button
+              type="button"
+              aria-label="Place imports"
+              onClick={onPlaceImports}
+              className="mt-3 flex w-full flex-col gap-2 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-left text-xs leading-5 text-amber-100 transition hover:border-amber-200/45 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <p>
+                {summary.missingLocationCount} imported idea{summary.missingLocationCount === 1 ? "" : "s"} still need a Jamaica map location.
+              </p>
+              <span className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-full border border-amber-200/45 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-amber-50">
+                Place imports
+              </span>
+            </button>
           )}
 
           {!!quickPlanDestinations.length && (
@@ -1523,6 +1542,18 @@ function SavedCard({
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+        {savedItem.kind === "import" && (
+          <span
+            className={classNames(
+              "absolute right-3 top-3 inline-flex rounded-full border px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.14em]",
+              needsImportAnchor
+                ? "border-amber-200/45 bg-amber-300/15 text-amber-50"
+                : "border-emerald-200/45 bg-emerald-300/15 text-emerald-50"
+            )}
+          >
+            {needsImportAnchor ? "Needs placing" : "Route-ready"}
+          </span>
+        )}
         <div className="absolute bottom-3 left-3 right-3">
           <p className="text-xs uppercase tracking-[0.18em] text-cyan-200">{region}</p>
           <h2 className="mt-1 text-lg font-semibold">{title}</h2>
