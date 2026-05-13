@@ -1103,7 +1103,7 @@ function CloudBoardPanel({
         <div className="border-t border-slate-800 bg-slate-950/45 p-4 sm:p-5 lg:border-l lg:border-t-0">
           {!ready && (
             <div className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-3 text-sm leading-6 text-amber-100">
-              Online boards are not available in this build yet. This device still keeps your saved ideas locally.
+              Online board sync is off here. This device still keeps your saved ideas locally.
             </div>
           )}
 

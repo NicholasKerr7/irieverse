@@ -5,6 +5,7 @@ const DEFAULT_ROUTING_TIMEOUT_MS = 4500;
 const DEFAULT_ROUTING_COOLDOWN_SECONDS = 45;
 
 let routingProviderCooldownUntil = 0;
+let routingProviderLastWarningAt = 0;
 
 module.exports = async function roadRouteHandler(req, res) {
   setResponseHeaders(res);
@@ -55,7 +56,9 @@ module.exports = async function roadRouteHandler(req, res) {
     });
   } catch (error) {
     routingProviderCooldownUntil = Date.now() + getRoutingCooldownMs();
-    console.warn(`Road route provider unavailable; using planning route lines temporarily. ${formatErrorForLog(error)}`);
+    if (!isAbortError(error) && shouldLogRoutingProviderFailure()) {
+      console.warn(`Road route provider unavailable; using planning route lines temporarily. ${formatErrorForLog(error)}`);
+    }
     sendRouteFallback(res, "Road preview is unavailable right now, so the app is keeping a simple route line for this leg.");
   }
 };
@@ -130,6 +133,13 @@ function getRoutingCooldownMs() {
   return getPositiveEnvNumber("ROUTING_PROVIDER_COOLDOWN_SECONDS", DEFAULT_ROUTING_COOLDOWN_SECONDS) * 1000;
 }
 
+function shouldLogRoutingProviderFailure() {
+  const now = Date.now();
+  if (now - routingProviderLastWarningAt < getRoutingCooldownMs()) return false;
+  routingProviderLastWarningAt = now;
+  return true;
+}
+
 function getPositiveEnvNumber(name, fallback) {
   const value = Number(process.env[name]);
   return Number.isFinite(value) && value > 0 ? value : fallback;
@@ -137,6 +147,18 @@ function getPositiveEnvNumber(name, fallback) {
 
 function formatErrorForLog(error) {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isAbortError(error) {
+  if (!error || typeof error !== "object") return false;
+  const name = typeof error.name === "string" ? error.name : "";
+  const code = typeof error.code === "string" ? error.code : "";
+  const message = error instanceof Error ? error.message : "";
+  return (
+    name === "AbortError" ||
+    code === "ABORT_ERR" ||
+    /operation was aborted|request aborted|aborted/i.test(message)
+  );
 }
 
 function normalizeRouteSteps(legs) {
