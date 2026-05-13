@@ -208,12 +208,15 @@ export const TravelMap = memo(function TravelMap({
   const routeIndexByDestination = new globalThis.Map(
     routeDestinations.map((destination, index) => [destination.id, index + 1])
   );
-  const explicitFocusTargets: MapFitTarget[] = [...focusDestinations, ...focusExtraMarkers];
-  const fitTargets: MapFitTarget[] = explicitFocusTargets.length
-    ? explicitFocusTargets
-    : selectedRouteSegment
-    ? [selectedRouteSegment.from, selectedRouteSegment.to]
-    : routeDestinations.length > 1 ? routeDestinations : destinations;
+  const explicitFocusTargets: MapFitTarget[] = useMemo(
+    () => [...focusDestinations, ...focusExtraMarkers],
+    [focusDestinations, focusExtraMarkers]
+  );
+  const fitTargets: MapFitTarget[] = useMemo(() => {
+    if (explicitFocusTargets.length) return explicitFocusTargets;
+    if (selectedRouteSegment) return [selectedRouteSegment.from, selectedRouteSegment.to];
+    return routeDestinations.length > 1 ? routeDestinations : destinations;
+  }, [destinations, explicitFocusTargets, routeDestinations, selectedRouteSegment]);
   const fitKey = [
     autoFitKey,
     bottomInset,
@@ -361,9 +364,10 @@ export const TravelMap = memo(function TravelMap({
     if (!mapReady || !fitTargets.length || !mapRef.current) return;
     if (fitTargets.length === 1) {
       const destination = fitTargets[0];
+      const isExactMarker = focusExtraMarkers.some((marker) => marker.id === destination.id);
       mapRef.current.easeTo({
         center: [destination.longitude, destination.latitude],
-        zoom: 11.4,
+        zoom: isExactMarker ? 13.3 : 11.4,
         duration: 850,
       });
       return;
@@ -372,9 +376,9 @@ export const TravelMap = memo(function TravelMap({
     mapRef.current.fitBounds(bounds, {
       padding: getFitPadding(containerRef.current, bottomInset),
       duration: 850,
-      maxZoom: 8.9,
+      maxZoom: getFitMaxZoom(fitTargets),
     });
-  }, [bottomInset, fitTargets, mapReady]);
+  }, [bottomInset, fitTargets, focusExtraMarkers, mapReady]);
 
   useEffect(() => {
     const timeout = window.setTimeout(fitMapToTargets, 120);
@@ -1018,13 +1022,51 @@ function getMapTargetBounds(targets: MapFitTarget[]): [[number, number], [number
   const maxLng = Math.max(...longitudes);
   const minLat = Math.min(...latitudes);
   const maxLat = Math.max(...latitudes);
-  const lngPadding = Math.max((maxLng - minLng) * 0.08, 0.08);
-  const latPadding = Math.max((maxLat - minLat) * 0.1, 0.05);
+  const lngPadding = Math.max((maxLng - minLng) * 0.18, 0.01);
+  const latPadding = Math.max((maxLat - minLat) * 0.22, 0.008);
 
   return [
     [minLng - lngPadding, minLat - latPadding],
     [maxLng + lngPadding, maxLat + latPadding],
   ];
+}
+
+function getFitMaxZoom(targets: MapFitTarget[]): number {
+  const maxDistanceKm = getMaxTargetDistanceKm(targets);
+  if (maxDistanceKm <= 2) return 14;
+  if (maxDistanceKm <= 8) return 13.2;
+  if (maxDistanceKm <= 20) return 11.8;
+  if (maxDistanceKm <= 60) return 10.5;
+  return 8.9;
+}
+
+function getMaxTargetDistanceKm(targets: MapFitTarget[]): number {
+  let maxDistanceKm = 0;
+
+  targets.forEach((target, index) => {
+    targets.slice(index + 1).forEach((otherTarget) => {
+      maxDistanceKm = Math.max(maxDistanceKm, getDistanceKm(target, otherTarget));
+    });
+  });
+
+  return maxDistanceKm;
+}
+
+function getDistanceKm(first: MapFitTarget, second: MapFitTarget): number {
+  const earthRadiusKm = 6371;
+  const latitudeDelta = degreesToRadians(second.latitude - first.latitude);
+  const longitudeDelta = degreesToRadians(second.longitude - first.longitude);
+  const startLatitude = degreesToRadians(first.latitude);
+  const endLatitude = degreesToRadians(second.latitude);
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(startLatitude) * Math.cos(endLatitude) * Math.sin(longitudeDelta / 2) ** 2;
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function degreesToRadians(value: number): number {
+  return value * (Math.PI / 180);
 }
 
 function getFitPadding(container: HTMLDivElement | null, bottomInset: "compact" | "expanded") {

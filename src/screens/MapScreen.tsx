@@ -236,13 +236,25 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const focusDestinations = useMemo(() => {
     if (activeDrawerTab === "overview") return routeDestinations;
     if (activeDrawerTab === "unplanned") return unplannedDestinations.length ? unplannedDestinations : visibleDestinations;
+    if (activeDrawerDay && activeDrawerDestination && activeDrawerImportedStops.length) {
+      return [activeDrawerDestination];
+    }
     if (activeDrawerRouteLeg) {
       const from = DESTINATIONS.find((destination) => destination.id === activeDrawerRouteLeg.leg.fromDestinationId);
       const to = DESTINATIONS.find((destination) => destination.id === activeDrawerRouteLeg.leg.toDestinationId);
       return [from, to].filter((destination): destination is Destination => Boolean(destination));
     }
     return activeDrawerDestination ? [activeDrawerDestination] : routeDestinations;
-  }, [activeDrawerDestination, activeDrawerRouteLeg, activeDrawerTab, routeDestinations, unplannedDestinations, visibleDestinations]);
+  }, [
+    activeDrawerDay,
+    activeDrawerDestination,
+    activeDrawerImportedStops.length,
+    activeDrawerRouteLeg,
+    activeDrawerTab,
+    routeDestinations,
+    unplannedDestinations,
+    visibleDestinations,
+  ]);
   const focusImportedPlacePins = useMemo(() => {
     if (selectedImportedPlacePin) return [selectedImportedPlacePin];
     if (activeDrawerImportedStops.length) return activeDrawerImportedStops;
