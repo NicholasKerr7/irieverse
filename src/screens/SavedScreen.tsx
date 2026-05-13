@@ -51,6 +51,7 @@ import {
   inferLinkedDestinationIdFromCoordinates,
   type ImportLinkSuggestion,
 } from "../utils/importIntelligence";
+import { logRecoverableWarning } from "../utils/logging";
 import { isStringRecord, readJsonFromStorage, writeJsonToStorage } from "../utils/storage";
 
 type SavedScreenProps = {
@@ -391,7 +392,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       await requestCloudSignIn(email);
       setCloudStatusMessage("Check your email for the IrieVerse sign-in link.");
     } catch (error) {
-      console.error(error);
+      logRecoverableWarning("Cloud board sign-in unavailable.", error);
       setCloudStatusMessage("Sign-in link could not be sent right now.");
     } finally {
       setIsCloudBusy(false);
@@ -405,7 +406,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       setCloudBoardUpdatedAt(board.updatedAt || board.data.updatedAt);
       setCloudStatusMessage("Jamaica board saved online.");
     } catch (error) {
-      console.error(error);
+      logRecoverableWarning("Cloud board save unavailable.", error);
       setCloudStatusMessage("Online board could not be saved right now.");
     } finally {
       setIsCloudBusy(false);
@@ -426,7 +427,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       setCloudBoardUpdatedAt(board.updatedAt || board.data.updatedAt);
       setCloudStatusMessage("Online board loaded onto this device.");
     } catch (error) {
-      console.error(error);
+      logRecoverableWarning("Cloud board load unavailable.", error);
       setCloudStatusMessage("Online board could not be loaded right now.");
     } finally {
       setIsCloudBusy(false);
@@ -440,7 +441,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       setCloudUser(null);
       setCloudStatusMessage("Signed out of online boards.");
     } catch (error) {
-      console.error(error);
+      logRecoverableWarning("Cloud board sign-out unavailable.", error);
       setCloudStatusMessage("Sign out did not finish.");
     } finally {
       setIsCloudBusy(false);

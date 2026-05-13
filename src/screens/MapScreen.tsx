@@ -26,6 +26,7 @@ import { fetchPlaceDetails, type PlaceDetails } from "../services/placeDetails";
 import type { Destination, Experience, ImportedIdea, PlannerDay, RouteLeg } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { formatDriveTime, formatMiles } from "../utils/format";
+import { logRecoverableWarning } from "../utils/logging";
 import {
   MAP_CATEGORIES,
   buildDrivingGuideUrl,
@@ -158,7 +159,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       .then((details) => setLivePlaceDetails(details))
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        console.warn("Place details unavailable", error);
+        logRecoverableWarning("Place details unavailable; using curated details.", error);
         setLivePlaceDetails(null);
       })
       .finally(() => {

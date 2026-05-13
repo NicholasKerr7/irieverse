@@ -71,6 +71,7 @@ import {
   writeJsonToStorage,
   writeStringToStorage,
 } from "../utils/storage";
+import { logRecoverableWarning } from "../utils/logging";
 
 const AVERAGE_JET_SPEED_KMH = 850;
 const STORAGE_KEY_ORIGIN_AIRPORT = "irieverse_origin_airport";
@@ -460,7 +461,7 @@ export function useTravelOS() {
         );
       setLiveEvents(filteredEvents);
     } catch (error) {
-      console.error(error);
+      logRecoverableWarning("Events unavailable; showing an empty regional calendar.", error);
       setEventsError("Live events unavailable right now.");
       setLiveEvents([]);
     } finally {
@@ -485,7 +486,7 @@ export function useTravelOS() {
         setBookingOptions(options);
         setBookingSourceMeta(meta);
       } catch (error) {
-        console.error(error);
+        logRecoverableWarning("Booking lookup unavailable; showing curated stays.", error);
         setBookingError("Booking partners unavailable right now.");
         setBookingOptions([]);
         setBookingSourceMeta({
@@ -671,7 +672,7 @@ export function useTravelOS() {
         setCollaborationErrorCode(null);
       })
       .catch((error) => {
-        console.error(error);
+        logRecoverableWarning("Shared trip load unavailable.", error);
         if (!cancelled) {
           setTripStatusMessage(getCollaborationErrorMessage(error));
           setCollaborationErrorCode(getCollaborationErrorCode(error));
@@ -859,7 +860,7 @@ export function useTravelOS() {
       URL.revokeObjectURL(url);
       setTripStatusMessage("Calendar file downloaded.");
     } catch (error) {
-      console.error(error);
+      logRecoverableWarning("Calendar export unavailable.", error);
       setTripStatusMessage("Calendar export could not be created right now.");
     }
   };
@@ -903,7 +904,7 @@ export function useTravelOS() {
       setTripStatusMessage(result.mode === "updated" ? "Share link updated" : "Share link created");
       setCollaborationErrorCode(null);
     } catch (error) {
-      console.error(error);
+      logRecoverableWarning("Share link update unavailable.", error);
       setTripStatusMessage(getCollaborationErrorMessage(error));
       setCollaborationErrorCode(getCollaborationErrorCode(error));
     } finally {
@@ -917,7 +918,7 @@ export function useTravelOS() {
       await navigator.clipboard.writeText(tripShareUrl);
       setTripStatusMessage("Link copied!");
     } catch (error) {
-      console.error(error);
+      logRecoverableWarning("Clipboard copy unavailable.", error);
       setTripStatusMessage("Copy unavailable");
     }
   };
@@ -1183,7 +1184,7 @@ export function useTravelOS() {
           setCollaborationErrorCode(null);
         })
         .catch((error) => {
-          console.error(error);
+          logRecoverableWarning("Shared trip auto-save unavailable.", error);
           setTripStatusMessage(getCollaborationErrorMessage(error));
           setCollaborationErrorCode(getCollaborationErrorCode(error));
         })

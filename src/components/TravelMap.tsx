@@ -6,6 +6,7 @@ import { MapPin, Sparkles } from "lucide-react";
 import { MapCanvasSkeleton } from "./LoadingStates";
 import { classNames } from "../utils/classNames";
 import { formatMiles } from "../utils/format";
+import { logRecoverableWarning } from "../utils/logging";
 import { getRouteColor, type MapPinCategory } from "../utils/mapRoutes";
 
 const MAP_STYLES: Record<ThemeMode, string> = {
@@ -260,7 +261,7 @@ export const TravelMap = memo(function TravelMap({
           }
         } catch (error) {
           if (!controller.signal.aborted) {
-            console.error("Road route unavailable", error);
+            logRecoverableWarning("Road route unavailable; using planning route line.", error);
           }
           const fallback = {
             reason: "request-failed" as const,
