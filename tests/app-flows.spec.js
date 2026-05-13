@@ -164,6 +164,46 @@ test("google place imports auto-anchor from coordinates", async ({ page }) => {
   expect(issues).toEqual([]);
 });
 
+test("unplaced imported map ideas ask to be placed before trip use", async ({ page }) => {
+  const issues = collectPageIssues(page);
+  const unplacedIdea = {
+    id: "qa-unplaced-map-idea",
+    title: "Loose beach pin",
+    url: "https://maps.google.com/?cid=loose-beach-pin",
+    note: "Needs a Jamaica area before trip use.",
+    category: "beach",
+    collectionId: "wishlist",
+    createdAt: "2026-05-13T00:00:00.000Z",
+    sourcePlatform: "google-maps",
+    sourceLabel: "Google Maps",
+    linkedDestinationId: "",
+    place: {
+      name: "Loose beach pin",
+      shortAddress: "Coastal Jamaica",
+      latitude: 18.181,
+      longitude: -76.46,
+      mapsUrl: "https://maps.google.com/?cid=loose-beach-pin",
+      primaryType: "Beach",
+    },
+  };
+
+  await page.goto("/?tab=map", { waitUntil: "domcontentloaded" });
+  await page.evaluate((idea) => {
+    window.localStorage.setItem("irieverse_imported_ideas", JSON.stringify([idea]));
+  }, unplacedIdea);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+
+  await page.getByRole("button", { name: "Open saved idea Loose beach pin" }).click();
+  const detailSheet = page.getByTestId("imported-place-detail-sheet");
+  await expect(detailSheet.getByText("Attach this saved idea to a Jamaica area in Saved before turning it into a full trip day.")).toBeVisible();
+  await expect(detailSheet.getByRole("button", { name: "Place it" })).toBeVisible();
+  await expect(detailSheet.getByRole("button", { name: "Trip" })).toHaveCount(0);
+
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("share-target imports preserve provided titles", async ({ page }) => {
   const issues = collectPageIssues(page);
   const params = new URLSearchParams({

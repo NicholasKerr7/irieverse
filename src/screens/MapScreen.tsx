@@ -1753,7 +1753,12 @@ function ImportedPlaceDetailSheet({
         <div className="grid shrink-0 grid-cols-3 gap-2 border-t border-slate-200 bg-white/95 p-4">
           <DrawerAction icon={Heart} label="Saved" onClick={onOpenSaved} active />
           <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
-          <DrawerAction icon={Plus} label="Trip" onClick={onAddToTrip} primary />
+          <DrawerAction
+            icon={pin.idea.linkedDestinationId ? Plus : MapPin}
+            label={pin.idea.linkedDestinationId ? "Trip" : "Place it"}
+            onClick={pin.idea.linkedDestinationId ? onAddToTrip : onOpenSaved}
+            primary
+          />
         </div>
       </article>
     </div>
