@@ -17,9 +17,9 @@ An interactive Jamaica trip planner built with React + Vite. Explore destination
 - PWA manifest, full install/maskable icon set, app shortcuts, and same-origin offline cache for fallback data/assets
 
 ## Quick start
-1) Install Node 18+  
-2) Install deps: `npm install`  
-3) Run dev server: `npm run dev`  
+1) Install Node 20+ (`.nvmrc` is set to the Node 20 maintenance line)
+2) Install deps: `npm install`
+3) Run dev server: `npm run dev`
 4) Build for prod: `npm run build`
 
 ## Environment (optional)
