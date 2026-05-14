@@ -1,5 +1,13 @@
 const { test, expect } = require("@playwright/test");
 
+const PREVIEW_IMAGE_URL = [
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 80'%3E",
+  "%3Crect width='120' height='80' fill='%230ea5e9'/%3E",
+  "%3Ccircle cx='82' cy='24' r='12' fill='%23facc15'/%3E",
+  "%3Cpath d='M0 64 C24 42 38 52 58 36 C76 22 92 48 120 30 L120 80 L0 80 Z' fill='%230f766e'/%3E",
+  "%3C/svg%3E",
+].join("");
+
 test("saved import updates duplicate links instead of adding clutter", async ({ page }) => {
   const issues = collectPageIssues(page);
 
@@ -15,6 +23,7 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
           sourceLabel: "Google Maps",
           title: "Devon House",
           description: "26 Hope Road, Kingston · Restaurant · 4.6 rating from 248 reviews",
+          imageUrl: PREVIEW_IMAGE_URL,
           siteName: "Google Maps",
           confidence: "high",
           place: {
@@ -81,6 +90,7 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await page.getByRole("button", { name: "Open saved idea Devon House" }).click();
   const plannedDetailSheet = page.getByTestId("imported-place-detail-sheet");
   await expect(plannedDetailSheet.getByText("Trip-ready map idea")).toBeVisible();
+  await expect(plannedDetailSheet.getByRole("img", { name: "Devon House" })).toBeVisible();
   await expect(plannedDetailSheet.getByText("26 Hope Road, Kingston").first()).toBeVisible();
   await page.getByLabel("Close saved idea details").click();
   const mapDrawer = page.getByTestId("map-trip-drawer");

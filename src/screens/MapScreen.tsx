@@ -1127,11 +1127,15 @@ function UnplannedPlacesPanel({
             onClick={() => onSelectImportedPlace(pin.id)}
             className="overflow-hidden rounded-3xl border border-cyan-200 bg-cyan-50 text-left transition hover:border-sky-300"
           >
-            <span className="flex h-28 w-full items-center justify-center bg-gradient-to-br from-cyan-100 via-white to-emerald-100">
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-cyan-200 shadow-xl">
-                <Sparkles className="h-6 w-6" />
+            {pin.idea.imageUrl ? (
+              <img src={pin.idea.imageUrl} alt={pin.name} className="h-28 w-full object-cover" loading="lazy" />
+            ) : (
+              <span className="flex h-28 w-full items-center justify-center bg-gradient-to-br from-cyan-100 via-white to-emerald-100">
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-cyan-200 shadow-xl">
+                  <Sparkles className="h-6 w-6" />
+                </span>
               </span>
-            </span>
+            )}
             <span className="block p-3">
               <span className="block truncate text-sm font-black">{pin.name}</span>
               <span className="mt-1 block truncate text-xs font-semibold text-slate-500">{pin.subtitle}</span>
@@ -1710,9 +1714,13 @@ function ImportedPlaceDetailSheet({
         className="map-glass-sheet flex max-h-[84vh] w-full max-w-xl flex-col overflow-hidden rounded-[2rem] border"
       >
         <div className="flex items-start gap-3 p-4 sm:p-5">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-cyan-100 via-white to-emerald-100 shadow-lg shadow-slate-200">
-            <Sparkles className="h-8 w-8 text-sky-600" />
-          </div>
+          {pin.idea.imageUrl ? (
+            <img src={pin.idea.imageUrl} alt={pin.name} className="h-20 w-20 shrink-0 rounded-3xl object-cover shadow-lg shadow-slate-200" />
+          ) : (
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-cyan-100 via-white to-emerald-100 shadow-lg shadow-slate-200">
+              <Sparkles className="h-8 w-8 text-sky-600" />
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-sky-600">
               {isPlacedIdea ? "Trip-ready map idea" : "Saved map idea"}
