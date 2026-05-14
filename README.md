@@ -72,6 +72,8 @@ See `docs/production-env.md` for production platform setup, booking API response
 - `npm run audit:all` checks the full dependency tree at moderate severity when doing a deeper maintenance pass.
 - `npm run audit:fix:dry` previews npm audit fixes before changing the lockfile.
 
+See `docs/dependency-maintenance.md` for the full dependency review runbook.
+
 Current audit note: high-severity production audit currently passes. npm may still report a moderate MapLibre transitive advisory through `pbf`/`protocol-buffers-schema`; review with `npm run audit:all` and `npm run audit:fix:dry` before changing the lockfile.
 
 ## Screenshots
