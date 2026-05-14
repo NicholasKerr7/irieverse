@@ -41,10 +41,13 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: API regression tests
         run: npm run test:api
+
+      - name: Production dependency audit
+        run: npm run audit:prod
 
       - name: Build
         run: npm run build
