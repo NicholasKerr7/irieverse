@@ -502,32 +502,35 @@ export const TravelMap = memo(function TravelMap({
         {routeSegments.map((segment, index) => {
           const opacity = getSegmentRevealOpacity(routeRevealProgress, index);
           const isSelectedRouteLeg = segment.id === selectedRouteLegId;
-          const shouldShowRouteLabel = selectedRouteLegId ? isSelectedRouteLeg : routeSegments.length <= 3;
+          const shouldShowRouteLabel = selectedRouteLegId
+            ? isSelectedRouteLeg
+            : routeSegments.length <= 2;
 
           if (!shouldShowRouteLabel) return null;
+          const label = isSelectedRouteLeg ? segment.label : `Day ${segment.day}`;
 
           return (
-          <Marker
-            key={`label-${segment.id}`}
-            longitude={segment.midpoint.longitude}
-            latitude={segment.midpoint.latitude}
-            anchor="center"
-          >
-            <div
-              className={classNames(
-                "pointer-events-none rounded-full px-3 py-1.5 text-[0.72rem] font-black text-white shadow-2xl ring-2 backdrop-blur transition duration-300 sm:text-xs",
-                isSelectedRouteLeg ? "ring-white" : "ring-white/55"
-              )}
-              style={{
-                backgroundColor: segment.color,
-                boxShadow: `0 10px 26px ${segment.color}66`,
-                opacity,
-                transform: `scale(${isSelectedRouteLeg ? 1.08 : 1})`,
-              }}
+            <Marker
+              key={`label-${segment.id}`}
+              longitude={segment.midpoint.longitude}
+              latitude={segment.midpoint.latitude}
+              anchor="center"
             >
-              {segment.label}
-            </div>
-          </Marker>
+              <div
+                className={classNames(
+                  "pointer-events-none rounded-full px-3 py-1.5 text-[0.7rem] font-black text-white shadow-2xl ring-2 backdrop-blur transition duration-300 sm:text-xs",
+                  isSelectedRouteLeg ? "ring-white" : "ring-white/55"
+                )}
+                style={{
+                  backgroundColor: segment.color,
+                  boxShadow: `0 10px 26px ${segment.color}66`,
+                  opacity,
+                  transform: `scale(${isSelectedRouteLeg ? 1.08 : 0.94})`,
+                }}
+              >
+                {label}
+              </div>
+            </Marker>
           );
         })}
 

@@ -418,9 +418,12 @@ test("map place details open with curated fallback content", async ({ page }) =>
 
   const detailSheet = page.getByTestId("place-detail-sheet");
   await expect(detailSheet.getByRole("heading", { name: "Negril" })).toBeVisible();
+  await expect(detailSheet.locator('[aria-label="Trip fit"]')).toBeVisible();
+  await expect(detailSheet.getByText("Easy day stop")).toBeVisible();
   await expect(detailSheet.getByText("About this place")).toBeVisible();
-  await expect(detailSheet.getByText("Good to know")).toBeVisible();
-  await expect(detailSheet.getByRole("button", { name: "Maps" })).toBeVisible();
+  await expect(detailSheet.getByText("Good to know before you go")).toBeVisible();
+  await expect(detailSheet.getByRole("button", { name: "Open map" })).toBeVisible();
+  await expect(detailSheet.getByText("Airport")).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
 });

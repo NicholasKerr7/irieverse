@@ -1834,17 +1834,7 @@ function PlaceDetailSheet({
   const pills = isDestination
     ? uniqueStrings([liveTypePill, ...target.destination.vibes]).slice(0, 4)
     : uniqueStrings([liveTypePill, target.experience.type, target.experience.energy, target.experience.bestTime, target.experience.approxCost]).slice(0, 4);
-  const curatedFacts = isDestination
-    ? [
-        { label: "Region", value: target.destination.region },
-        { label: "Budget", value: "$".repeat(target.destination.priceLevel) },
-        { label: "Airport", value: target.destination.airportCode },
-      ]
-    : [
-        { label: "Location", value: target.experience.location },
-        { label: "Best time", value: target.experience.bestTime },
-        { label: "Cost", value: target.experience.approxCost },
-      ];
+  const planFit = buildPlanFit(target, liveDetails);
   const whatToExpect = isDestination ? target.destination.highlights.slice(0, 4) : target.experience.whatToExpect.slice(0, 4);
   const liveVisitRows = buildLiveVisitRows(liveDetails);
   const openStatusLabel = isLiveDetailsLoading
@@ -1883,6 +1873,12 @@ function PlaceDetailSheet({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-5 sm:pb-5">
           <img src={imageUrl} alt="" className="h-56 w-full rounded-3xl object-cover shadow-xl shadow-slate-200" />
+
+          <section className="mt-4 grid gap-2 sm:grid-cols-3" aria-label="Trip fit">
+            {planFit.map((fact) => (
+              <CompactPlanFact key={fact.label} icon={fact.icon} label={fact.label} value={fact.value} />
+            ))}
+          </section>
 
           <div className="mt-4 flex flex-wrap gap-2">
             {pills.map((pill) => (
@@ -1935,7 +1931,7 @@ function PlaceDetailSheet({
 
           {!!whatToExpect.length && (
             <section className="mt-3 rounded-3xl border border-slate-200 bg-white p-4">
-              <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">Good to know</h3>
+              <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">Good to know before you go</h3>
               <div className="mt-3 grid gap-2">
                 {whatToExpect.map((item) => (
                   <div key={item} className="rounded-2xl bg-slate-50 px-3 py-2 text-sm font-semibold leading-5 text-slate-600">
@@ -1944,17 +1940,6 @@ function PlaceDetailSheet({
                 ))}
               </div>
             </section>
-          )}
-
-          {!liveDetails && (
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              {curatedFacts.map((fact) => (
-                <div key={fact.label} className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
-                  <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-slate-400">{fact.label}</p>
-                  <p className="mt-1 truncate text-sm font-black text-slate-800">{fact.value}</p>
-                </div>
-              ))}
-            </div>
           )}
 
           {!!liveDetails?.weekdayDescriptions.length && (
@@ -1979,10 +1964,46 @@ function PlaceDetailSheet({
 
         <div className="grid shrink-0 grid-cols-3 gap-2 border-t border-slate-200 bg-white/95 p-4">
           <DrawerAction icon={Heart} label={isSaved ? "Saved" : "Save"} onClick={onSave} active={isSaved} />
-          <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
-          <DrawerAction icon={Plus} label="Trip" onClick={onAddToTrip} primary />
+          <DrawerAction icon={Navigation} label="Open map" onClick={onOpenMaps} />
+          <DrawerAction icon={Plus} label="Add trip" onClick={onAddToTrip} primary />
         </div>
       </article>
+    </div>
+  );
+}
+
+type CompactPlanFactProps = {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+};
+
+function buildPlanFit(target: PlaceDetailTarget, liveDetails: PlaceDetails | null): CompactPlanFactProps[] {
+  if (target.type === "destination") {
+    return [
+      { icon: MapPin, label: "Area", value: target.destination.region },
+      { icon: Clock3, label: "Best fit", value: liveDetails?.openNow === false ? "Check hours" : "Easy day stop" },
+      { icon: Sparkles, label: "Style", value: target.destination.vibes[0] ?? "Jamaica stop" },
+    ];
+  }
+
+  return [
+    { icon: MapPin, label: "Area", value: target.experience.location },
+    { icon: Clock3, label: "Best time", value: target.experience.bestTime },
+    { icon: Sparkles, label: "Cost", value: target.experience.approxCost },
+  ];
+}
+
+function CompactPlanFact({ icon: Icon, label, value }: CompactPlanFactProps) {
+  return (
+    <div className="flex min-h-16 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-50 text-sky-600">
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[0.62rem] font-black uppercase tracking-[0.14em] text-slate-400">{label}</span>
+        <span className="mt-0.5 block truncate text-sm font-black text-slate-800">{value}</span>
+      </span>
     </div>
   );
 }
