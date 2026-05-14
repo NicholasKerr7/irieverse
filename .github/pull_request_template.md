@@ -2,10 +2,8 @@
 - 
 
 ## Checks
-- [ ] `npm run typecheck`
-- [ ] `npm run build`
+- [ ] `npm run verify`
 - [ ] `npm run qa:local`
-- [ ] `npm run audit:prod`
 
 ## Dependency Update Review
 Complete this section for Dependabot or manual dependency PRs.

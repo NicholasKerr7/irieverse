@@ -37,20 +37,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Fast verification
+        run: npm run verify
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: API regression tests
-        run: npm run test:api
-
-      - name: Production dependency audit
-        run: npm run audit:prod
-
-      - name: Build
-        run: npm run build
 
       - name: Local app QA
         run: npm run qa:local

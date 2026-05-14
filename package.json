@@ -10,6 +10,8 @@
     "test:api": "node tests/api-place-details.test.cjs",
     "qa:local": "playwright test --config=playwright.local.config.cjs --reporter=line",
     "qa:production": "playwright test tests/production-qa.spec.js --reporter=line",
+    "verify": "npm run typecheck && npm run test:api && npm run audit:prod && npm run build",
+    "verify:full": "npm run verify && npm run qa:local",
     "audit:prod": "npm audit --omit=dev --audit-level=high --cache=.npm-cache",
     "audit:all": "npm audit --audit-level=moderate --cache=.npm-cache",
     "audit:fix:dry": "npm audit fix --dry-run --cache=.npm-cache",

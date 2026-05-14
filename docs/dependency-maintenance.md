@@ -13,6 +13,18 @@ This repo uses Dependabot, GitHub Actions, and npm audit scripts to keep depende
 
 ## Local Commands
 
+Run the fast pre-merge verification pass:
+
+```sh
+npm run verify
+```
+
+Run the fast pass plus local browser QA:
+
+```sh
+npm run verify:full
+```
+
 Run the normal maintenance pass:
 
 ```sh
@@ -58,7 +70,7 @@ For major updates:
 1. Create a manual branch.
 2. Update one major package family at a time.
 3. Read migration notes before changing code.
-4. Run `npm run typecheck`, `npm run build`, `npm run qa:local`, and `npm run audit:prod`.
+4. Run `npm run verify:full`.
 5. Smoke test the affected feature in the browser before merging.
 
 ## Current Known Advisory

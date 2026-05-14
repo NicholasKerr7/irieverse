@@ -56,11 +56,9 @@ See `docs/production-env.md` for production platform setup, booking API response
 - Plain static hosting: run `npm run build` and serve the `dist` folder (e.g., `npx serve dist`).
 
 ## Launch checks
-- `npm run typecheck`
-- `npm run build`
-- `npm run qa:local`
+- `npm run verify`
+- `npm run verify:full`
 - `npm run qa:production`
-- `npm run audit:prod`
 
 ## Dependency maintenance
 - Dependabot checks npm packages and GitHub Actions weekly, grouping minor/patch updates into dependency PRs.
@@ -69,6 +67,8 @@ See `docs/production-env.md` for production platform setup, booking API response
 - A weekly Dependency Maintenance workflow runs the same production audit and outdated-package report, and can be launched manually from GitHub Actions.
 - The pull request template includes a dependency update checklist for Dependabot and manual package bumps.
 - `npm run maintenance` runs the high-severity production audit and prints outdated packages.
+- `npm run verify` runs typecheck, API regression tests, production dependency audit, and production build.
+- `npm run verify:full` runs `npm run verify` plus local browser QA.
 - `npm run audit:all` checks the full dependency tree at moderate severity when doing a deeper maintenance pass.
 - `npm run audit:fix:dry` previews npm audit fixes before changing the lockfile.
 
