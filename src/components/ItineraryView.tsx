@@ -26,6 +26,7 @@ interface ItineraryViewProps {
   onSetDayNote?: (day: number, note: string) => void;
   onClearDayNote?: (day: number) => void;
   onAssignImportedIdeaToDay?: (ideaId: string, day: number) => void;
+  onAssignImportedIdeaToUnplanned?: (ideaId: string) => void;
   onClearImportedIdeaDayAssignment?: (ideaId: string) => void;
 }
 
@@ -46,6 +47,7 @@ export function ItineraryView({
   onSetDayNote,
   onClearDayNote,
   onAssignImportedIdeaToDay,
+  onAssignImportedIdeaToUnplanned,
   onClearImportedIdeaDayAssignment,
 }: ItineraryViewProps) {
   const { base, days, plannerVibe, budgetPerDay, daysPlan, routeSummary } = itinerary;
@@ -294,13 +296,15 @@ export function ItineraryView({
                         )}
                       </div>
                       <p className="mt-0.5 line-clamp-1 text-[0.68rem] text-slate-500">{idea.meta}</p>
-                      {idea.importedIdeaId && onAssignImportedIdeaToDay && onClearImportedIdeaDayAssignment && (
+                      {idea.importedIdeaId && onAssignImportedIdeaToDay && onAssignImportedIdeaToUnplanned && onClearImportedIdeaDayAssignment && (
                         <label className="mt-2 block">
                           <span className="sr-only">Move {idea.title} to day</span>
                           <select
                             value={idea.assignedDay ? String(idea.assignedDay) : ""}
                             onChange={(event) => {
-                              if (event.target.value) {
+                              if (event.target.value === "unplanned") {
+                                onAssignImportedIdeaToUnplanned(idea.importedIdeaId!);
+                              } else if (event.target.value) {
                                 onAssignImportedIdeaToDay(idea.importedIdeaId!, Number(event.target.value));
                               } else {
                                 onClearImportedIdeaDayAssignment(idea.importedIdeaId!);
@@ -310,6 +314,7 @@ export function ItineraryView({
                             aria-label={`Move ${idea.title} to day`}
                           >
                             <option value="">Auto day</option>
+                            <option value="unplanned">Unplanned</option>
                             {Array.from({ length: days }, (_, index) => index + 1).map((dayOption) => (
                               <option key={dayOption} value={dayOption}>
                                 Day {dayOption}

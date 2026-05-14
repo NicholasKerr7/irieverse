@@ -110,6 +110,9 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await expect(page.getByText("Saved ideas by day")).toBeVisible();
   await page.getByLabel("Assign Devon House stop to day").selectOption("2");
   await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments) => Object.values(assignments).includes("2"));
+  await page.getByLabel("Assign Devon House stop to day").selectOption("unplanned");
+  await expect(page.getByLabel("Assign Devon House stop to day")).toHaveValue("unplanned");
+  await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments) => Object.values(assignments).includes("unplanned"));
 
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);

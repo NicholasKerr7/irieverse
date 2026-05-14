@@ -57,10 +57,15 @@ function importedIdeaBelongsToBoardDay(
   assignments: ImportedIdeaDayAssignments,
   day?: number
 ): boolean {
+  if (isUnplannedAssignment(idea.id, assignments)) return false;
   const assignedDay = getAssignedDay(idea.id, assignments);
   if (day && assignedDay) return assignedDay === day;
   if (day && !assignedDay) return idea.linkedDestinationId === destinationId;
   return idea.linkedDestinationId === destinationId;
+}
+
+function isUnplannedAssignment(ideaId: string, assignments: ImportedIdeaDayAssignments): boolean {
+  return assignments[ideaId] === "unplanned";
 }
 
 function getAssignedDay(ideaId: string, assignments: ImportedIdeaDayAssignments): number | undefined {

@@ -648,6 +648,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                   plannerDays={app.plannerDays}
                   importedIdeaDayAssignments={app.importedIdeaDayAssignments}
                   onAssignImportedStopToDay={app.assignImportedIdeaToDay}
+                  onAssignImportedStopToUnplanned={app.assignImportedIdeaToUnplanned}
                   onClearImportedStopDay={app.clearImportedIdeaDayAssignment}
                   onOpenDestinationDetail={() => setPlaceDetail({ type: "destination", destination: activeDrawerDestination, day: activeDrawerDay })}
                   onOpenExperienceDetail={(experience) =>
@@ -806,6 +807,7 @@ function importedPinBelongsToDay(
   destinationId: string,
   assignments: Record<string, string>
 ): boolean {
+  if (isImportedIdeaUnplanned(pin.idea.id, assignments)) return false;
   const assignedDay = getAssignedImportedIdeaDay(pin.idea.id, assignments);
   if (assignedDay) return assignedDay === day;
   return pin.idea.linkedDestinationId === destinationId;
@@ -822,6 +824,10 @@ function getImportedPinRouteDay(
 function getAssignedImportedIdeaDay(ideaId: string, assignments: Record<string, string>): number | undefined {
   const day = Number(assignments[ideaId]);
   return Number.isInteger(day) && day > 0 ? day : undefined;
+}
+
+function isImportedIdeaUnplanned(ideaId: string, assignments: Record<string, string>): boolean {
+  return assignments[ideaId] === "unplanned";
 }
 
 function getImportedPlacePinCategory(idea: ImportedIdea): MapPinCategory {
@@ -1182,6 +1188,7 @@ function DayPlanPanel({
   plannerDays,
   importedIdeaDayAssignments,
   onAssignImportedStopToDay,
+  onAssignImportedStopToUnplanned,
   onClearImportedStopDay,
   onOpenDestinationDetail,
   onOpenExperienceDetail,
@@ -1208,6 +1215,7 @@ function DayPlanPanel({
   plannerDays: number;
   importedIdeaDayAssignments: Record<string, string>;
   onAssignImportedStopToDay: (ideaId: string, day: number) => void;
+  onAssignImportedStopToUnplanned: (ideaId: string) => void;
   onClearImportedStopDay: (ideaId: string) => void;
   onOpenDestinationDetail: () => void;
   onOpenExperienceDetail: (experience: Experience) => void;
@@ -1273,7 +1281,9 @@ function DayPlanPanel({
                     onOpenMaps={() => onOpenImportedStopMaps(pin)}
                     plannerDays={plannerDays}
                     assignedDay={getAssignedImportedIdeaDay(pin.idea.id, importedIdeaDayAssignments)}
+                    isUnplanned={isImportedIdeaUnplanned(pin.idea.id, importedIdeaDayAssignments)}
                     onAssignDay={(day) => onAssignImportedStopToDay(pin.idea.id, day)}
+                    onAssignUnplanned={() => onAssignImportedStopToUnplanned(pin.idea.id)}
                     onClearDay={() => onClearImportedStopDay(pin.idea.id)}
                   />
                 ))}
@@ -1473,7 +1483,9 @@ function TimelineImportedStopCard({
   onOpenMaps,
   plannerDays,
   assignedDay,
+  isUnplanned,
   onAssignDay,
+  onAssignUnplanned,
   onClearDay,
 }: {
   pin: ImportedPlacePin;
@@ -1482,7 +1494,9 @@ function TimelineImportedStopCard({
   onOpenMaps: () => void;
   plannerDays: number;
   assignedDay?: number;
+  isUnplanned: boolean;
   onAssignDay: (day: number) => void;
+  onAssignUnplanned: () => void;
   onClearDay: () => void;
 }) {
   const ratingText = typeof pin.rating === "number"
@@ -1539,9 +1553,11 @@ function TimelineImportedStopCard({
       <label className="mt-2 block">
         <span className="sr-only">Move {pin.name} to day</span>
         <select
-          value={assignedDay ? String(assignedDay) : ""}
+          value={isUnplanned ? "unplanned" : assignedDay ? String(assignedDay) : ""}
           onChange={(event) => {
-            if (event.target.value) {
+            if (event.target.value === "unplanned") {
+              onAssignUnplanned();
+            } else if (event.target.value) {
               onAssignDay(Number(event.target.value));
             } else {
               onClearDay();
@@ -1551,6 +1567,7 @@ function TimelineImportedStopCard({
           aria-label={`Move ${pin.name} to day`}
         >
           <option value="">Auto day</option>
+          <option value="unplanned">Unplanned</option>
           {Array.from({ length: plannerDays }, (_, dayIndex) => dayIndex + 1).map((dayOption) => (
             <option key={dayOption} value={dayOption}>
               Day {dayOption}

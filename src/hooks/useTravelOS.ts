@@ -1146,6 +1146,14 @@ export function useTravelOS() {
     }));
   };
 
+  const assignImportedIdeaToUnplanned = (ideaId: string) => {
+    if (!importedIdeas.some((idea) => idea.id === ideaId)) return;
+    setImportedIdeaDayAssignments((prev) => ({
+      ...prev,
+      [ideaId]: "unplanned",
+    }));
+  };
+
   const clearImportedIdeaDayAssignment = (ideaId: string) => {
     setImportedIdeaDayAssignments((prev) => {
       if (!prev[ideaId]) return prev;
@@ -1311,6 +1319,7 @@ export function useTravelOS() {
     setDayNote,
     clearDayNote,
     assignImportedIdeaToDay,
+    assignImportedIdeaToUnplanned,
     clearImportedIdeaDayAssignment,
     handleExportItinerary,
     handleShareTrip,
@@ -1385,6 +1394,7 @@ function normalizeImportedIdeaDayAssignments(
 
   return Object.fromEntries(
     Object.entries(assignments).filter(([ideaId, day]) => {
+      if (day === "unplanned") return validIdeaIds.has(ideaId);
       const dayNumber = Number(day);
       return validIdeaIds.has(ideaId) && Number.isInteger(dayNumber) && dayNumber >= 1 && dayNumber <= safeDays;
     })
