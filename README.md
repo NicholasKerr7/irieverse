@@ -67,6 +67,7 @@ See `docs/production-env.md` for production platform setup, booking API response
 - Major version updates are intentionally ignored by Dependabot so they can be planned and tested manually.
 - Dependency Review runs on dependency-changing PRs and blocks high-severity vulnerable additions.
 - A weekly Dependency Maintenance workflow runs the same production audit and outdated-package report, and can be launched manually from GitHub Actions.
+- The pull request template includes a dependency update checklist for Dependabot and manual package bumps.
 - `npm run maintenance` runs the high-severity production audit and prints outdated packages.
 - `npm run audit:all` checks the full dependency tree at moderate severity when doing a deeper maintenance pass.
 - `npm run audit:fix:dry` previews npm audit fixes before changing the lockfile.
