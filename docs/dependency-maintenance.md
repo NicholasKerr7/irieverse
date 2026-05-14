@@ -19,6 +19,12 @@ Run the fast pre-merge verification pass:
 npm run verify
 ```
 
+Check only the maintenance scripts and GitHub config wiring:
+
+```sh
+npm run check:maintenance
+```
+
 Run the fast pass plus local browser QA:
 
 ```sh
