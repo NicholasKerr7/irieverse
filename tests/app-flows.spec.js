@@ -489,8 +489,9 @@ test("map route preview keeps route notes secondary", async ({ page }) => {
   await page.getByRole("button", { name: /Day 2/ }).click();
 
   const mapDrawer = page.getByTestId("map-trip-drawer");
-  await expect(mapDrawer.getByText("Road-following preview")).toBeVisible();
-  const routeNotes = mapDrawer.getByText("Route notes");
+  await expect(mapDrawer.getByText("Road-aware planning")).toBeVisible();
+  await expect(mapDrawer.getByText("Use this to compare day flow before opening your map app.")).toBeVisible();
+  const routeNotes = mapDrawer.getByText("Drive notes");
   await expect(routeNotes).toBeVisible();
   await routeNotes.click();
   await expect(mapDrawer.getByText(/Head west on A1/)).toBeVisible();

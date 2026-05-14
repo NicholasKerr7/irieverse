@@ -1083,7 +1083,7 @@ function TripOverviewPanel({
         </div>
 
         <p className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold leading-5 text-emerald-800">
-          {getRouteStatusLabel(routeStatus)}. Use the map to compare the plan; open Maps when it is time to drive.
+          {getRouteStatusLabel(routeStatus)}. Use this map to compare the plan, then open your map app when it is time to drive.
         </p>
       </div>
     </div>
@@ -1443,8 +1443,8 @@ function TimelineDestinationCard({
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2">
         <DrawerAction icon={Heart} label={isSaved ? "Saved" : "Save"} onClick={onToggleSaved} active={isSaved} />
-        <DrawerAction icon={Plus} label="Trip" onClick={onAddToTrip} primary />
-        <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
+        <DrawerAction icon={Plus} label="Add trip" onClick={onAddToTrip} primary />
+        <DrawerAction icon={Navigation} label="Open map" onClick={onOpenMaps} />
       </div>
     </article>
   );
@@ -1548,7 +1548,7 @@ function TimelineImportedStopCard({
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <DrawerAction icon={ArrowUpRight} label="Details" onClick={onOpen} />
-        <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
+        <DrawerAction icon={Navigation} label="Open map" onClick={onOpenMaps} />
       </div>
       <label className="mt-2 block">
         <span className="sr-only">Move {pin.name} to day</span>
@@ -1772,10 +1772,10 @@ function ImportedPlaceDetailSheet({
 
         <div className="grid shrink-0 grid-cols-3 gap-2 border-t border-slate-200 bg-white/95 p-4">
           <DrawerAction icon={Heart} label="Saved" onClick={onOpenSaved} active />
-          <DrawerAction icon={Navigation} label="Maps" onClick={onOpenMaps} />
+          <DrawerAction icon={Navigation} label="Open map" onClick={onOpenMaps} />
           <DrawerAction
             icon={isPlacedIdea ? Plus : MapPin}
-            label={isPlacedIdea ? "Trip" : "Place it"}
+            label={isPlacedIdea ? "Add trip" : "Place it"}
             onClick={isPlacedIdea ? onAddToTrip : onOpenSaved}
             primary
           />
@@ -2042,8 +2042,8 @@ function buildLiveVisitRows(details: PlaceDetails | null): LiveVisitRowProps[] {
     },
     {
       icon: Navigation,
-      label: "Open in Maps",
-      value: details.mapsUrl ? "Google Maps listing" : "",
+      label: "Map listing",
+      value: details.mapsUrl ? "Open place page" : "",
       href: details.mapsUrl || undefined,
     },
   ].filter((row) => row.value);
@@ -2133,7 +2133,7 @@ function RoutePreviewCard({
       <div className="mt-4 rounded-3xl border border-sky-200 bg-sky-50 p-4">
         <p className="text-sm font-black text-sky-900">Start day</p>
         <p className="mt-1 text-xs font-semibold leading-5 text-sky-700">
-          This is the route anchor. Pick another day tab to inspect drive time between stops.
+          This is where the trip day starts. Pick another day tab to compare drive time between stops.
         </p>
       </div>
     );
@@ -2152,14 +2152,14 @@ function RoutePreviewCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-slate-500">
-            {hasRoadPreview ? "Road-following preview" : "Planning estimate"}
+            {hasRoadPreview ? "Road-aware planning" : "Planning estimate"}
           </p>
           <h3 className="mt-1 text-base font-black">
             {routeLeg.leg.fromName} to {routeLeg.leg.toName}
           </h3>
           <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
             {hasRoadPreview
-              ? "Use this to compare day flow. It is not live navigation or traffic."
+              ? "Use this to compare day flow before opening your map app."
               : routeDetail?.fallbackMessage ?? "Using an estimated planning line for this leg."}
           </p>
         </div>
@@ -2168,7 +2168,7 @@ function RoutePreviewCard({
           onClick={onOpenMaps}
           className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full bg-[#020617] px-3 py-2 text-xs font-black text-white"
         >
-          Maps <ArrowUpRight className="h-3.5 w-3.5" />
+          Open map <ArrowUpRight className="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -2184,7 +2184,7 @@ function RoutePreviewCard({
       {!!routeNotes.length && (
         <details className="mt-3 rounded-2xl border border-white/80 bg-white/85 p-3">
           <summary className="cursor-pointer list-none text-xs font-black uppercase tracking-[0.14em] text-slate-600">
-            Route notes
+            Drive notes
           </summary>
           <div className="mt-3 grid gap-2">
             {routeNotes.map((note) => (
