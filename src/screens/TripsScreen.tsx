@@ -724,14 +724,24 @@ function TripBoardPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab: 
               {routeReadyImports.slice(0, 5).map((idea) => {
                 const assignedDay = getAssignedImportDay(app, idea.id);
                 const isUnplanned = isImportedIdeaUnplanned(app, idea.id);
+                const placement = getTripBoardImportPlacement(app, idea, assignedDay, isUnplanned);
                 return (
                   <article key={idea.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="line-clamp-1 text-sm font-semibold text-slate-100">{idea.title}</p>
-                          <span className="rounded-full border border-emerald-300/25 bg-emerald-300/10 px-2 py-0.5 text-[0.56rem] font-bold uppercase tracking-[0.12em] text-emerald-100">
-                            Route-ready
+                          <span
+                            className={classNames(
+                              "rounded-full border px-2 py-0.5 text-[0.56rem] font-bold uppercase tracking-[0.12em]",
+                              placement.tone === "pinned"
+                                ? "border-cyan-300/25 bg-cyan-300/10 text-cyan-100"
+                                : placement.tone === "unplanned"
+                                  ? "border-amber-300/25 bg-amber-300/10 text-amber-100"
+                                  : "border-emerald-300/25 bg-emerald-300/10 text-emerald-100"
+                            )}
+                          >
+                            {placement.label}
                           </span>
                         </div>
                         <p className="mt-1 line-clamp-1 text-xs text-slate-500">{getTripBoardImportMeta(idea)}</p>
@@ -2618,6 +2628,23 @@ function getAssignedImportDay(app: TravelOS, ideaId: string): number | undefined
 
 function isImportedIdeaUnplanned(app: TravelOS, ideaId: string): boolean {
   return app.importedIdeaDayAssignments[ideaId] === "unplanned";
+}
+
+function getTripBoardImportPlacement(
+  app: TravelOS,
+  idea: ImportedIdea,
+  assignedDay: number | undefined,
+  isUnplanned: boolean
+): { label: string; tone: "auto" | "pinned" | "unplanned" } {
+  if (isUnplanned) return { label: "Unplanned", tone: "unplanned" };
+  if (assignedDay) return { label: `Pinned day ${assignedDay}`, tone: "pinned" };
+  const autoDay = getAutoImportDay(app, idea);
+  return { label: autoDay ? `Auto day ${autoDay}` : "Auto day", tone: "auto" };
+}
+
+function getAutoImportDay(app: TravelOS, idea: ImportedIdea): number | undefined {
+  if (!idea.linkedDestinationId) return undefined;
+  return app.itinerary.routeSummary.stops.find((stop) => stop.destinationId === idea.linkedDestinationId)?.day;
 }
 
 function getTripBoardImportMeta(idea: ImportedIdea): string {

@@ -108,9 +108,12 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await expect(page.getByText("Map anchor ready for route planning")).toBeVisible();
   await expect(page.getByText("Trip board")).toBeVisible();
   await expect(page.getByText("Saved ideas by day")).toBeVisible();
+  await expect(page.getByText("Pinned day 1")).toBeVisible();
   await page.getByLabel("Assign Devon House stop to day").selectOption("2");
+  await expect(page.getByText("Pinned day 2")).toBeVisible();
   await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments) => Object.values(assignments).includes("2"));
   await page.getByLabel("Assign Devon House stop to day").selectOption("unplanned");
+  await expect(page.getByText("Unplanned").first()).toBeVisible();
   await expect(page.getByLabel("Assign Devon House stop to day")).toHaveValue("unplanned");
   await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments) => Object.values(assignments).includes("unplanned"));
 
