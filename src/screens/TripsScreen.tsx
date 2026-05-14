@@ -229,6 +229,8 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
 
               <BoardTripContextPanel app={app} onNavigate={onNavigate} />
 
+              <TripBoardPanel app={app} onNavigate={onNavigate} />
+
               <PlanCheckPanel app={app} onNavigate={onNavigate} />
 
               <RoutePreviewPanel app={app} onNavigate={onNavigate} />
@@ -463,6 +465,8 @@ function QuickPlanExperience({
 
       <BoardTripContextPanel app={app} onNavigate={onNavigate} />
 
+      <TripBoardPanel app={app} onNavigate={onNavigate} />
+
       <PlanCheckPanel app={app} onNavigate={onNavigate} />
 
       <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
@@ -674,6 +678,155 @@ function BoardTripContextPanel({ app, onNavigate }: { app: TravelOS; onNavigate:
         </p>
       )}
     </section>
+  );
+}
+
+function TripBoardPanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab: MobileTabId) => void }) {
+  const savedDestinations = DESTINATIONS.filter((destination) => app.savedPlaces.has(destination.id));
+  const savedExperiences = EXPERIENCES.filter((experience) => app.savedExperiences.has(experience.id));
+  const routeReadyImports = app.importedIdeas.filter((idea) => Boolean(idea.linkedDestinationId));
+  const unplacedImports = app.importedIdeas.filter((idea) => !idea.linkedDestinationId);
+  const totalBoardIdeas = savedDestinations.length + savedExperiences.length + app.importedIdeas.length;
+  const assignedImportCount = routeReadyImports.filter((idea) => getAssignedImportDay(app, idea.id)).length;
+  const routeReadyCount = savedDestinations.length + savedExperiences.length + routeReadyImports.length;
+
+  if (!totalBoardIdeas) return null;
+
+  return (
+    <section className={classNames("min-w-0 overflow-hidden rounded-3xl p-4", glassPanel)}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Trip board</p>
+          <h2 className="mt-1 text-xl font-semibold">Saved ideas by day</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
+            Route-ready imports can stay automatic or be pinned to a specific day. Unplaced imports stay on the board until they get a Jamaica map anchor.
+          </p>
+        </div>
+        <div className="grid shrink-0 grid-cols-3 gap-2 text-center">
+          <TripBoardStat label="Ready" value={routeReadyCount.toString()} />
+          <TripBoardStat label="Pinned" value={assignedImportCount.toString()} />
+          <TripBoardStat label="To place" value={unplacedImports.length.toString()} />
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 xl:grid-cols-[1fr_0.72fr]">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/55 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">Route-ready imports</p>
+            <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-cyan-100">
+              {routeReadyImports.length} import{routeReadyImports.length === 1 ? "" : "s"}
+            </span>
+          </div>
+
+          {routeReadyImports.length ? (
+            <div className="mt-3 grid gap-2">
+              {routeReadyImports.slice(0, 5).map((idea) => {
+                const assignedDay = getAssignedImportDay(app, idea.id);
+                return (
+                  <article key={idea.id} className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="line-clamp-1 text-sm font-semibold text-slate-100">{idea.title}</p>
+                          <span className="rounded-full border border-emerald-300/25 bg-emerald-300/10 px-2 py-0.5 text-[0.56rem] font-bold uppercase tracking-[0.12em] text-emerald-100">
+                            Route-ready
+                          </span>
+                        </div>
+                        <p className="mt-1 line-clamp-1 text-xs text-slate-500">{getTripBoardImportMeta(idea)}</p>
+                      </div>
+                      <label className="min-w-36 shrink-0">
+                        <span className="sr-only">Assign {idea.title} to day</span>
+                        <select
+                          value={assignedDay ? String(assignedDay) : ""}
+                          onChange={(event) => {
+                            if (event.target.value) {
+                              app.assignImportedIdeaToDay(idea.id, Number(event.target.value));
+                            } else {
+                              app.clearImportedIdeaDayAssignment(idea.id);
+                            }
+                          }}
+                          aria-label={`Assign ${idea.title} to day`}
+                          className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-200"
+                        >
+                          <option value="">Auto day</option>
+                          {Array.from({ length: app.plannerDays }, (_, index) => index + 1).map((day) => (
+                            <option key={day} value={day}>
+                              Day {day}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  </article>
+                );
+              })}
+              {routeReadyImports.length > 5 && (
+                <p className="text-xs leading-5 text-slate-500">
+                  {routeReadyImports.length - 5} more route-ready import{routeReadyImports.length - 5 === 1 ? "" : "s"} will still appear in day cards.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="mt-3 rounded-2xl border border-dashed border-slate-700 p-4 text-sm leading-6 text-slate-400">
+              Imported links with Jamaica map anchors will appear here for day assignment.
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/55 p-3">
+            <p className="text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">Saved route anchors</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[...savedDestinations, ...savedExperiences.slice(0, Math.max(0, 6 - savedDestinations.length))].slice(0, 6).map((item) => (
+                <span
+                  key={item.id}
+                  className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100"
+                >
+                  {"name" in item ? item.name : item.title}
+                </span>
+              ))}
+              {!savedDestinations.length && !savedExperiences.length && (
+                <span className="text-sm text-slate-500">Save places or experiences to add more board context.</span>
+              )}
+            </div>
+          </div>
+
+          {!!unplacedImports.length && (
+            <div className="rounded-2xl border border-amber-300/25 bg-amber-300/10 p-3">
+              <p className="text-sm font-semibold text-amber-100">
+                {unplacedImports.length} import{unplacedImports.length === 1 ? "" : "s"} still need placing
+              </p>
+              <p className="mt-1 text-xs leading-5 text-amber-100/80">
+                Add a Jamaica map location in Saved before using these in route order or day planning.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {unplacedImports.slice(0, 3).map((idea) => (
+                  <span key={idea.id} className="rounded-full border border-amber-100/20 bg-slate-950/35 px-3 py-1 text-xs font-semibold text-amber-50">
+                    {idea.title}
+                  </span>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigate("saved")}
+                className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full border border-amber-200/45 px-4 py-2 text-xs font-bold text-amber-50"
+              >
+                Place in Saved
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TripBoardStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+      <p className="text-sm font-semibold text-slate-100">{value}</p>
+      <p className="mt-0.5 text-[0.58rem] uppercase tracking-[0.14em] text-slate-500">{label}</p>
+    </div>
   );
 }
 
@@ -2448,6 +2601,24 @@ function getBoardTripContext(app: TravelOS) {
       ? "Saved places, experiences, and linked imports are pinned into the plan, so the route starts from your real Jamaica board instead of a blank itinerary."
       : "Saved places, experiences, and imports are available. Add map locations to saved links when you want them to shape the route.",
   };
+}
+
+function getAssignedImportDay(app: TravelOS, ideaId: string): number | undefined {
+  const day = Number(app.importedIdeaDayAssignments[ideaId]);
+  return Number.isInteger(day) && day >= 1 && day <= app.plannerDays ? day : undefined;
+}
+
+function getTripBoardImportMeta(idea: ImportedIdea): string {
+  const linkedDestination = idea.linkedDestinationId
+    ? DESTINATIONS.find((destination) => destination.id === idea.linkedDestinationId)
+    : null;
+  const place = idea.place;
+
+  return [
+    place?.shortAddress || place?.address || linkedDestination?.name,
+    place?.primaryType,
+    idea.sourceLabel,
+  ].filter(Boolean).join(" · ") || "Saved Jamaica idea";
 }
 
 function getPlanChecks(app: TravelOS): PlanCheck[] {

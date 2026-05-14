@@ -106,6 +106,10 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await page.getByRole("button", { name: /Add ideas/ }).click();
   await expect(page.getByText("1 route-ready")).toBeVisible();
   await expect(page.getByText("Map anchor ready for route planning")).toBeVisible();
+  await expect(page.getByText("Trip board")).toBeVisible();
+  await expect(page.getByText("Saved ideas by day")).toBeVisible();
+  await page.getByLabel("Assign Devon House stop to day").selectOption("2");
+  await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments) => Object.values(assignments).includes("2"));
 
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
@@ -210,7 +214,9 @@ test("unplaced imported map ideas ask to be placed before trip use", async ({ pa
   await page.getByRole("button", { name: /Add ideas/ }).click();
   await expect(page.getByText("1 need placing")).toBeVisible();
   await expect(page.getByText("1 saved import need Jamaica map anchors")).toBeVisible();
-  await page.getByRole("button", { name: "Place in Saved" }).click();
+  await expect(page.getByText("Trip board")).toBeVisible();
+  await expect(page.getByText("1 import still need placing")).toBeVisible();
+  await page.getByRole("button", { name: "Place in Saved" }).first().click();
   await expect(page.getByRole("button", { name: "Place imports" })).toBeVisible();
   await expect(page.getByText("Needs placing").first()).toBeVisible();
   await expect(page.getByText("1 to place").first()).toBeVisible();
