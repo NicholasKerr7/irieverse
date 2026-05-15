@@ -97,6 +97,7 @@ updated_at timestamptz
 
 The migration in `supabase/migrations/20260427120000_create_trips_sharing.sql` creates the original sharing table.
 The migration in `supabase/migrations/20260429120000_secure_trip_sharing.sql` adds edit-token hashes and RPC functions for create/read/update/delete so public share links are view-only unless the browser has the local edit token.
+The migration in `supabase/migrations/20260515161350_harden_trip_share_rpc.sql` moves the privileged trip-share implementation into a private schema, keeps public RPC wrapper names for the client, narrows function search paths, validates edit-token hashes, and caps shared trip payload size.
 The app stores planner settings, saved places, saved experiences, imported ideas, and day-level experience picks in the `data` JSON payload.
 
 To apply it with the Supabase CLI:
@@ -252,4 +253,5 @@ Then test:
 - `manifest.webmanifest`, favicons, install icons, maskable icons, and `apple-touch-icon.png` return `200`.
 - Manifest shortcuts, screenshots, maskable install icons, and the PWA share target are present.
 - `?tab=saved&shared_url=...&shared_title=...&shared_text=...` opens Saved with the import form prefilled and auto-categorized, then removes the share params from the URL.
+- `/?page=privacy` and `/?page=terms` load the public launch policy pages and link back to the app.
 - App still works with any optional variable removed.

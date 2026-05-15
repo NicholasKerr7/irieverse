@@ -385,6 +385,27 @@ test("traveler-facing screens avoid integration jargon", async ({ page }) => {
   expect(issues).toEqual([]);
 });
 
+test("legal pages are reachable from the footer", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.getByRole("link", { name: "Privacy" }).click();
+  await expect(page).toHaveURL(/page=privacy/);
+  await expect(page.getByRole("heading", { name: "Privacy Policy" })).toBeVisible();
+  await expect(page.getByText("Last updated: May 15, 2026")).toBeVisible();
+
+  await page.getByRole("link", { name: "Terms" }).click();
+  await expect(page).toHaveURL(/page=terms/);
+  await expect(page.getByRole("heading", { name: "Terms of Use" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Back home" }).click();
+  await expect(page).not.toHaveURL(/page=/);
+  await expect(page.getByRole("heading", { name: "Plan Jamaica with IrieVerse" })).toBeVisible();
+
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("empty states give clear recovery actions", async ({ page }) => {
   const issues = collectPageIssues(page);
 
