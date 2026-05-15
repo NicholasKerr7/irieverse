@@ -97,7 +97,7 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
       await cleanupSharedTrip(request, supabaseRest.getCredentials(), sharedTripId, editToken, qaRunId);
     }
   } else {
-    await expect(page.getByText(/enable live sharing/i)).toBeVisible();
+    await expect(page.getByText("Share links unavailable").first()).toBeVisible();
   }
 
   expect(issues).toEqual([]);
