@@ -8,6 +8,7 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | --- | --- | --- |
 | `VITE_SUPABASE_URL` | Optional | Enables email sign-in, cloud-saved boards, and shared trip links with Supabase. |
 | `VITE_SUPABASE_ANON_KEY` | Optional | Public anon key for the Supabase project. |
+| `VITE_SUPABASE_DISABLED` | Optional | Set to `true` to keep online boards and shared trip links disabled even when Supabase env vars are present. |
 | `AVIATIONSTACK_API_KEY` | Optional | Server-only AviationStack key used by `api/flights.js`. |
 | `AVIATIONSTACK_DISABLED` | Optional | Set to `true` to force saved flight examples and avoid live AviationStack requests in an environment. |
 | `AVIATIONSTACK_CACHE_TTL_SECONDS` | Optional | Server-side live flight cache TTL. Defaults to `900` seconds. |
@@ -47,6 +48,7 @@ For Vercel:
 ```bash
 vercel env add VITE_SUPABASE_URL production
 vercel env add VITE_SUPABASE_ANON_KEY production
+vercel env add VITE_SUPABASE_DISABLED production
 vercel env add AVIATIONSTACK_API_KEY production
 vercel env add AVIATIONSTACK_CACHE_TTL_SECONDS production
 vercel env add AVIATIONSTACK_COOLDOWN_SECONDS production

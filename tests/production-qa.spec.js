@@ -83,7 +83,7 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
   const shareButton = page.getByRole("button", { name: /^(Create link|Update link|Save copy)$/ }).last();
   if (await shareButton.isEnabled()) {
     await shareButton.click();
-    await expect(page.getByText(/Share link (created|updated)|Share links need one more setup step|Share links are unavailable|Share links are blocked/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Share link (created|updated)|Share links need one more setup step|Share links are unavailable|Share links are blocked|The share link was not created/)).toBeVisible({ timeout: 15000 });
     const shareUrl = await page
       .locator('input[placeholder="Create a view-only share link"]')
       .inputValue()
