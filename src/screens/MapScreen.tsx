@@ -596,7 +596,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
           />
 
           {sheetExpanded && (
-            <div className="mt-4 max-h-[calc(82vh-16.5rem)] overflow-y-auto pr-1">
+            <div className="mt-4 max-h-[calc(82vh-16.5rem)] overflow-y-auto overflow-x-hidden pr-1">
               {activeDrawerTab === "overview" && (
                 <TripOverviewPanel
                   app={app}
@@ -1000,7 +1000,7 @@ function TripOverviewPanel({
   onOpenTrips: () => void;
 }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+    <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="min-w-0">
         <div className="flex min-h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
           <Search className="h-4 w-4 shrink-0 text-sky-600" />
@@ -1055,7 +1055,7 @@ function TripOverviewPanel({
         )}
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+      <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-slate-400">Route Flow</p>
@@ -1070,7 +1070,7 @@ function TripOverviewPanel({
           </button>
         </div>
 
-        <div className="mt-3 max-h-60 space-y-2 overflow-y-auto">
+        <div className="mt-3 max-h-60 min-w-0 space-y-2 overflow-y-auto overflow-x-hidden">
           {routeSummary.stops.map((stop, index) => (
             <RouteStopRow
               key={stop.destinationId}
@@ -1227,9 +1227,9 @@ function DayPlanPanel({
   const dayExperience = plannerDay?.experience ?? null;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+    <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="min-w-0">
-        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+        <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-sky-600">Day {day} Plan</p>
@@ -1256,7 +1256,7 @@ function DayPlanPanel({
             <DayFocusCard destination={destination} importedStops={importedStops} />
           )}
 
-          <div className="relative mt-4 pl-9">
+          <div className="relative mt-4 min-w-0 pl-7 sm:pl-9">
             <span className="absolute bottom-4 left-4 top-4 w-px border-l border-dashed border-slate-300" />
             <TimelineDestinationCard
               day={day}
@@ -1314,7 +1314,7 @@ function DayPlanPanel({
         <RoutePreviewCard routeLeg={routeLeg} routeDetail={routeDetail} routeStatus={routeStatus} onOpenMaps={onOpenMaps} />
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+      <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-slate-400">Nearby</p>
@@ -1322,11 +1322,11 @@ function DayPlanPanel({
           </div>
         </div>
 
-        <div className="mt-3 grid gap-2">
+        <div className="mt-3 grid min-w-0 gap-2">
           {nearbyExperiences.map((experience) => (
             <article
               key={experience.id}
-              className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-2 text-left"
+              className="flex min-w-0 gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 text-left"
             >
               <img src={experience.imageUrl} alt={experience.title} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
               <span className="min-w-0 flex-1 py-1">
@@ -1416,10 +1416,10 @@ function TimelineDestinationCard({
   onOpenMaps: () => void;
 }) {
   return (
-    <article className="relative rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+    <article className="relative min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
       <TimelineDot label={String(day)} />
-      <div className="flex gap-3">
-        <img src={destination.heroImage} alt={destination.name} className="h-24 w-24 shrink-0 rounded-2xl object-cover" />
+      <div className="flex min-w-0 gap-3">
+        <img src={destination.heroImage} alt={destination.name} className="h-20 w-20 shrink-0 rounded-2xl object-cover sm:h-24 sm:w-24" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -1445,7 +1445,7 @@ function TimelineDestinationCard({
           </div>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid min-w-0 grid-cols-3 gap-2">
         <DrawerAction icon={Heart} label={isSaved ? "Saved" : "Save"} onClick={onToggleSaved} active={isSaved} />
         <DrawerAction icon={Plus} label="Add trip" onClick={onAddToTrip} primary />
         <DrawerAction icon={Navigation} label="Open map" onClick={onOpenMaps} />
@@ -1467,7 +1467,7 @@ function TimelineDriveChip({
   const durationMinutes = routeDetail?.durationMinutes ?? routeLeg?.leg.driveMinutes ?? stop.driveMinutesFromPrevious;
 
   return (
-    <div className="relative mt-3 flex items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-black text-slate-700 shadow-sm">
+    <div className="relative mt-3 flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm sm:rounded-full sm:text-sm">
       <TimelineDot label="" tone="route" />
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-50 text-sky-600">
         <Route className="h-4 w-4" />
@@ -1515,9 +1515,9 @@ function TimelineImportedStopCard({
   ]).slice(0, 3);
 
   return (
-    <article className="relative rounded-3xl border border-cyan-200 bg-cyan-50/80 p-3 shadow-sm shadow-cyan-100/60">
+    <article className="relative min-w-0 overflow-hidden rounded-3xl border border-cyan-200 bg-cyan-50/80 p-3 shadow-sm shadow-cyan-100/60">
       <TimelineDot label={String(index + 1)} tone="imported" />
-      <div className="flex gap-3">
+      <div className="flex min-w-0 gap-3">
         {pin.idea.imageUrl ? (
           <img src={pin.idea.imageUrl} alt={pin.name} className="h-20 w-20 shrink-0 rounded-2xl object-cover" />
         ) : (
@@ -1550,7 +1550,7 @@ function TimelineImportedStopCard({
           </div>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid min-w-0 grid-cols-2 gap-2">
         <DrawerAction icon={ArrowUpRight} label="Details" onClick={onOpen} />
         <DrawerAction icon={Navigation} label="Open map" onClick={onOpenMaps} />
       </div>
@@ -1593,9 +1593,9 @@ function TimelineExperienceCard({
   onAddToTrip: () => void;
 }) {
   return (
-    <article className="relative mt-3 rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+    <article className="relative mt-3 min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
       <TimelineDot label="2" tone="experience" />
-      <div className="flex gap-3">
+      <div className="flex min-w-0 gap-3">
         <img src={experience.imageUrl} alt={experience.title} className="h-20 w-20 shrink-0 rounded-2xl object-cover" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
@@ -1642,7 +1642,7 @@ function TimelineDot({ label, tone = "main" }: { label: string; tone?: "main" | 
   }[tone];
 
   return (
-    <span className={classNames("absolute -left-9 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full border-4 border-slate-50 text-xs font-black", toneClass)}>
+    <span className={classNames("absolute -left-7 top-4 z-10 flex h-7 w-7 items-center justify-center rounded-full border-4 border-slate-50 text-[0.68rem] font-black sm:-left-9 sm:h-8 sm:w-8 sm:text-xs", toneClass)}>
       {label}
     </span>
   );
@@ -2154,10 +2154,10 @@ function RoutePreviewCard({
 
   return (
     <div className={classNames(
-      "mt-4 rounded-3xl border p-4",
+      "mt-4 min-w-0 overflow-hidden rounded-3xl border p-4",
       hasRoadPreview ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"
     )}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-slate-500">
             {hasRoadPreview ? "Road-aware planning" : "Planning estimate"}
@@ -2184,7 +2184,7 @@ function RoutePreviewCard({
         <p className="mt-3 text-xs font-semibold text-slate-600">Building the road preview...</p>
       )}
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid min-w-0 grid-cols-2 gap-2">
         <DrawerFact icon={Route} label="Distance" value={formatMiles(distanceKm)} />
         <DrawerFact icon={Clock3} label="Drive time" value={formatDriveTime(durationMinutes)} />
       </div>
@@ -2237,7 +2237,7 @@ function RouteStopRow({
       type="button"
       onClick={onSelect}
       className={classNames(
-        "flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left transition",
+        "flex min-w-0 w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left transition",
         selected
           ? "border-sky-400 bg-white text-slate-950 shadow-sm"
           : "border-slate-200 bg-white text-slate-600 hover:border-sky-300"
@@ -2287,7 +2287,7 @@ function DrawerAction({
       type="button"
       onClick={onClick}
       className={classNames(
-        "inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm font-black transition",
+        "inline-flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2 text-center text-[0.7rem] font-black leading-tight transition sm:flex-row sm:gap-2 sm:px-3 sm:py-3 sm:text-sm",
         primary
           ? "border-sky-500 bg-sky-500 text-white shadow-lg shadow-sky-200"
           : active
@@ -2295,8 +2295,8 @@ function DrawerAction({
             : "border-slate-200 bg-white text-slate-600 hover:border-sky-300 hover:text-sky-700"
       )}
     >
-      <Icon className={classNames("h-4 w-4", active && label === "Saved" ? "fill-current" : "")} />
-      {label}
+      <Icon className={classNames("h-4 w-4 shrink-0", active && label === "Saved" ? "fill-current" : "")} />
+      <span className="min-w-0">{label}</span>
     </button>
   );
 }
