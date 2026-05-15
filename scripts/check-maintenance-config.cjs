@@ -31,8 +31,8 @@ if (!packageJson.packageManager?.startsWith("npm@")) {
   throw new Error("package.json must declare the npm packageManager version");
 }
 
-if (packageJson.engines?.node !== ">=20 <23") {
-  throw new Error('package.json engines.node must be ">=20 <23"');
+if (packageJson.engines?.node !== "20.x") {
+  throw new Error('package.json engines.node must be "20.x"');
 }
 
 if (packageJson.engines?.npm !== ">=10") {

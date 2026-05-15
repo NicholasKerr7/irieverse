@@ -3,6 +3,7 @@ const net = require("node:net");
 
 const MAX_URL_LENGTH = 2048;
 const MAX_HTML_BYTES = 300_000;
+const MAX_REDIRECT_HOPS = 5;
 const METADATA_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const METADATA_CACHE = new Map();
 const GOOGLE_PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
@@ -195,7 +196,7 @@ async function resolveGoogleMapsMetadata(url, sourceUrl = url) {
 }
 
 async function resolveArticleMetadata(url, sourceUrl = url) {
-  const response = await fetchWithTimeout(url.toString(), {
+  const { response, finalUrl } = await fetchHtmlWithValidatedRedirects(url, {
     headers: {
       Accept: "text/html,application/xhtml+xml",
       "User-Agent": "IrieVerseBot/1.0 (+https://irieverse.app)",
@@ -212,7 +213,6 @@ async function resolveArticleMetadata(url, sourceUrl = url) {
   }
 
   const html = (await response.text()).slice(0, MAX_HTML_BYTES);
-  const finalUrl = parseSafeUrl(response.url) ?? url;
   const title = firstNonEmpty(
     getMetaContent(html, ["og:title", "twitter:title", "title"]),
     getTitleTag(html),
@@ -257,7 +257,7 @@ function buildBaseMetadata(url, overrides = {}) {
 async function resolveRedirectUrl(url) {
   let currentUrl = url;
 
-  for (let index = 0; index < 5; index += 1) {
+  for (let index = 0; index < MAX_REDIRECT_HOPS; index += 1) {
     await assertPublicHostname(currentUrl);
     const response = await fetchWithTimeout(currentUrl.toString(), {
       method: "HEAD",
@@ -280,6 +280,38 @@ async function resolveRedirectUrl(url) {
   }
 
   return currentUrl;
+}
+
+async function fetchHtmlWithValidatedRedirects(url, options = {}) {
+  let currentUrl = url;
+
+  for (let index = 0; index <= MAX_REDIRECT_HOPS; index += 1) {
+    await assertPublicHostname(currentUrl);
+    const response = await fetchWithTimeout(currentUrl.toString(), {
+      ...options,
+      redirect: "manual",
+    });
+
+    const location = response.headers.get("location");
+    if (!location || response.status < 300 || response.status >= 400) {
+      const finalUrl = parseSafeUrl(response.url) ?? currentUrl;
+      await assertPublicHostname(finalUrl);
+      return { response, finalUrl };
+    }
+
+    if (index === MAX_REDIRECT_HOPS) {
+      throw new Error("Metadata page redirected too many times");
+    }
+
+    const nextUrl = parseSafeUrl(new URL(location, currentUrl).toString());
+    if (!nextUrl) {
+      throw new Error("Blocked metadata redirect URL");
+    }
+    await assertPublicHostname(nextUrl);
+    currentUrl = nextUrl;
+  }
+
+  throw new Error("Metadata page redirected too many times");
 }
 
 async function fetchWithTimeout(url, options = {}) {
