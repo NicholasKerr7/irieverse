@@ -1,9 +1,31 @@
-const fs = require("fs");
-const path = require("path");
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = path.resolve(__dirname, "..");
+type PackageJson = {
+  packageManager?: string;
+  engines?: {
+    node?: string;
+    npm?: string;
+  };
+  scripts?: Record<string, string>;
+};
 
-const read = (relativePath) => {
+type PackageLock = {
+  packages?: Record<
+    string,
+    {
+      engines?: {
+        node?: string;
+        npm?: string;
+      };
+    }
+  >;
+};
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+const read = (relativePath: string): string => {
   const fullPath = path.join(root, relativePath);
   if (!fs.existsSync(fullPath)) {
     throw new Error(`Missing required file: ${relativePath}`);
@@ -12,14 +34,16 @@ const read = (relativePath) => {
   return fs.readFileSync(fullPath, "utf8");
 };
 
-const assertIncludes = (content, needle, label) => {
+const readJson = <T>(relativePath: string): T => JSON.parse(read(relativePath)) as T;
+
+const assertIncludes = (content: string, needle: string, label: string) => {
   if (!content.includes(needle)) {
     throw new Error(`${label} must include "${needle}"`);
   }
 };
 
-const packageJson = JSON.parse(read("package.json"));
-const packageLock = JSON.parse(read("package-lock.json"));
+const packageJson = readJson<PackageJson>("package.json");
+const packageLock = readJson<PackageLock>("package-lock.json");
 const scripts = packageJson.scripts || {};
 const nodeVersion = read(".nvmrc").trim();
 
@@ -67,14 +91,23 @@ if (lockedRoot?.engines?.npm !== packageJson.engines.npm) {
   }
 });
 
-assertIncludes(scripts.verify, "npm run typecheck", "verify script");
-assertIncludes(scripts.verify, "npm run test:api", "verify script");
-assertIncludes(scripts.verify, "npm run check:maintenance", "verify script");
-assertIncludes(scripts.verify, "npm run audit:prod", "verify script");
-assertIncludes(scripts.verify, "npm run build", "verify script");
-assertIncludes(scripts["check:maintenance"], "scripts/check-maintenance-config.cjs", "check:maintenance script");
-assertIncludes(scripts["verify:full"], "npm run verify", "verify:full script");
-assertIncludes(scripts["verify:full"], "npm run qa:local", "verify:full script");
+const getScript = (scriptName: string): string => {
+  const script = scripts[scriptName];
+  if (!script) {
+    throw new Error(`package.json is missing the "${scriptName}" script`);
+  }
+  return script;
+};
+
+const verifyScript = getScript("verify");
+assertIncludes(verifyScript, "npm run typecheck", "verify script");
+assertIncludes(verifyScript, "npm run test:api", "verify script");
+assertIncludes(verifyScript, "npm run check:maintenance", "verify script");
+assertIncludes(verifyScript, "npm run audit:prod", "verify script");
+assertIncludes(verifyScript, "npm run build", "verify script");
+assertIncludes(getScript("check:maintenance"), "scripts/check-maintenance-config.ts", "check:maintenance script");
+assertIncludes(getScript("verify:full"), "npm run verify", "verify:full script");
+assertIncludes(getScript("verify:full"), "npm run qa:local", "verify:full script");
 
 const dependabot = read(".github/dependabot.yml");
 assertIncludes(dependabot, "package-ecosystem: npm", "Dependabot config");

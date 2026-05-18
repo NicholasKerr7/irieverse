@@ -1,9 +1,9 @@
-const { defineConfig } = require("@playwright/test");
+import { defineConfig } from "@playwright/test";
 
 const baseURL = process.env.IRIEVERSE_APP_URL || "http://127.0.0.1:5173";
 const shouldStartLocalServer = !process.env.IRIEVERSE_APP_URL || baseURL.includes("127.0.0.1") || baseURL.includes("localhost");
 
-module.exports = defineConfig({
+export default defineConfig({
   testDir: "./tests",
   testMatch: /app-flows\.spec\.ts/,
   timeout: 60_000,
