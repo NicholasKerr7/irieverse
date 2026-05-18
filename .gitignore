@@ -13,4 +13,5 @@ playwright-report
 .vscode
 *.log
 .vercel
+.tmp-service-worker-check
 supabase/.temp
