@@ -87,14 +87,19 @@ function normalizeBookingResponse(payload: unknown): BookingOption[] {
 
 function getEndpointBookingMeta(payload: unknown): BookingSourceMeta {
   if (isRecord(payload) && isRecord(payload.meta)) {
-    return {
+    const meta: BookingSourceMeta = {
       source: normalizeBookingSource(payload.meta.source),
-      reason: asString(payload.meta.reason),
       endpointConfigured: true,
-      checkInDate: asString(payload.meta.checkInDate),
-      checkOutDate: asString(payload.meta.checkOutDate),
-      adults: asNumber(payload.meta.adults),
     };
+    const reason = asString(payload.meta.reason);
+    const checkInDate = asString(payload.meta.checkInDate);
+    const checkOutDate = asString(payload.meta.checkOutDate);
+    const adults = asNumber(payload.meta.adults);
+    if (reason) meta.reason = reason;
+    if (checkInDate) meta.checkInDate = checkInDate;
+    if (checkOutDate) meta.checkOutDate = checkOutDate;
+    if (adults !== undefined) meta.adults = adults;
+    return meta;
   }
 
   return {

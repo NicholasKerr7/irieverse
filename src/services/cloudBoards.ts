@@ -50,9 +50,7 @@ export async function requestCloudSignIn(email: string): Promise<void> {
     : `${window.location.origin}${window.location.pathname}?tab=saved`;
   const { error } = await supabaseClient.auth.signInWithOtp({
     email,
-    options: {
-      emailRedirectTo: redirectTo,
-    },
+    options: redirectTo ? { emailRedirectTo: redirectTo } : {},
   });
 
   if (error) throw error;

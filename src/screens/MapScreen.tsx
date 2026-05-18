@@ -155,7 +155,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       : {
           kind: "experience" as const,
           experience: placeDetail.experience,
-          linkedDestination: placeDetail.linkedDestination,
+          ...(placeDetail.linkedDestination ? { linkedDestination: placeDetail.linkedDestination } : {}),
         };
 
     fetchPlaceDetails(lookup, controller.signal)
@@ -777,7 +777,7 @@ function buildImportedPlacePins(
       if (query && !searchableText.includes(query)) return null;
       if (!importedPlaceMatchesCategory(category, activeCategory)) return null;
 
-      return {
+      const pin: ImportedPlacePin = {
         id: `import-${idea.id}`,
         name,
         subtitle: firstNonEmpty(address, linkedDestination?.name, formatImportedCategoryLabel(idea.category), "Saved Jamaica idea"),
@@ -789,11 +789,12 @@ function buildImportedPlacePins(
         mapsUrl: firstNonEmpty(place.mapsUrl, idea.canonicalUrl, idea.url),
         websiteUrl: place.websiteUrl ?? "",
         phone: place.phone ?? "",
-        rating: place.rating,
-        userRatingCount: place.userRatingCount,
         primaryType: firstNonEmpty(place.primaryType, humanizePlaceType(place.types?.[0] ?? "")),
-        linkedDestination,
-      } satisfies ImportedPlacePin;
+      };
+      if (place.rating !== undefined) pin.rating = place.rating;
+      if (place.userRatingCount !== undefined) pin.userRatingCount = place.userRatingCount;
+      if (linkedDestination) pin.linkedDestination = linkedDestination;
+      return pin;
     })
     .filter((pin): pin is ImportedPlacePin => Boolean(pin));
 }
@@ -1279,21 +1280,24 @@ function DayPlanPanel({
                 <p className="pl-1 text-[0.62rem] font-black uppercase tracking-[0.16em] text-sky-600">
                   Exact stops from your board
                 </p>
-                {importedStops.map((pin, index) => (
-                  <TimelineImportedStopCard
-                    key={pin.id}
-                    pin={pin}
-                    index={index}
-                    onOpen={() => onOpenImportedStop(pin)}
-                    onOpenMaps={() => onOpenImportedStopMaps(pin)}
-                    plannerDays={plannerDays}
-                    assignedDay={getAssignedImportedIdeaDay(pin.idea.id, importedIdeaDayAssignments)}
-                    isUnplanned={isImportedIdeaUnplanned(pin.idea.id, importedIdeaDayAssignments)}
-                    onAssignDay={(day) => onAssignImportedStopToDay(pin.idea.id, day)}
-                    onAssignUnplanned={() => onAssignImportedStopToUnplanned(pin.idea.id)}
-                    onClearDay={() => onClearImportedStopDay(pin.idea.id)}
-                  />
-                ))}
+                {importedStops.map((pin, index) => {
+                  const assignedDay = getAssignedImportedIdeaDay(pin.idea.id, importedIdeaDayAssignments);
+                  return (
+                    <TimelineImportedStopCard
+                      key={pin.id}
+                      pin={pin}
+                      index={index}
+                      onOpen={() => onOpenImportedStop(pin)}
+                      onOpenMaps={() => onOpenImportedStopMaps(pin)}
+                      plannerDays={plannerDays}
+                      {...(assignedDay !== undefined ? { assignedDay } : {})}
+                      isUnplanned={isImportedIdeaUnplanned(pin.idea.id, importedIdeaDayAssignments)}
+                      onAssignDay={(day) => onAssignImportedStopToDay(pin.idea.id, day)}
+                      onAssignUnplanned={() => onAssignImportedStopToUnplanned(pin.idea.id)}
+                      onClearDay={() => onClearImportedStopDay(pin.idea.id)}
+                    />
+                  );
+                })}
               </div>
             )}
 
@@ -2033,31 +2037,17 @@ function buildLiveVisitRows(details: PlaceDetails | null): LiveVisitRowProps[] {
   const phone = details.phone || details.internationalPhone;
 
   return [
-    {
-      icon: MapPin,
-      label: "Address",
-      value: address,
-      href: details.mapsUrl || undefined,
-    },
-    {
-      icon: Phone,
-      label: "Phone",
-      value: phone,
-      href: phone ? `tel:${phone.replace(/[^\d+]/g, "")}` : undefined,
-    },
-    {
-      icon: Globe2,
-      label: "Website",
-      value: details.websiteUrl ? readableUrl(details.websiteUrl) : "",
-      href: details.websiteUrl || undefined,
-    },
-    {
-      icon: Navigation,
-      label: "Map listing",
-      value: details.mapsUrl ? "Open place page" : "",
-      href: details.mapsUrl || undefined,
-    },
+    buildLiveVisitRow(MapPin, "Address", address, details.mapsUrl),
+    buildLiveVisitRow(Phone, "Phone", phone, phone ? `tel:${phone.replace(/[^\d+]/g, "")}` : ""),
+    buildLiveVisitRow(Globe2, "Website", details.websiteUrl ? readableUrl(details.websiteUrl) : "", details.websiteUrl),
+    buildLiveVisitRow(Navigation, "Map listing", details.mapsUrl ? "Open place page" : "", details.mapsUrl),
   ].filter((row) => row.value);
+}
+
+function buildLiveVisitRow(icon: LucideIcon, label: string, value: string, href: string): LiveVisitRowProps {
+  const row: LiveVisitRowProps = { icon, label, value };
+  if (href) row.href = href;
+  return row;
 }
 
 function LiveVisitRow({ icon: Icon, label, value, href }: LiveVisitRowProps) {

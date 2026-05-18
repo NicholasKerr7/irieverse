@@ -590,7 +590,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       url: importMetadata?.finalUrl || importForm.url,
       title,
       note: importForm.note,
-      description: importMetadata?.description,
+      ...(importMetadata?.description ? { description: importMetadata.description } : {}),
     });
 
     setImportForm((prev) => {
@@ -610,7 +610,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       url: importMetadata?.finalUrl || importForm.url,
       title: importForm.title,
       note,
-      description: importMetadata?.description,
+      ...(importMetadata?.description ? { description: importMetadata.description } : {}),
     });
 
     setImportForm((prev) => {
@@ -634,7 +634,7 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       url: importMetadata?.finalUrl || url,
       title,
       note,
-      description: importMetadata?.description,
+      ...(importMetadata?.description ? { description: importMetadata.description } : {}),
     }), importMetadata);
     const fallbackTitle = suggestion.title || importMetadata?.title || note.slice(0, 56);
 
@@ -649,16 +649,21 @@ export function SavedScreen({ app, onNavigate }: SavedScreenProps) {
       note,
       category: importForm.category,
       collectionId: importForm.collectionId,
-      linkedDestinationId: importForm.linkedDestinationId || suggestion.linkedDestinationId || undefined,
-      sourcePlatform: importMetadata?.sourcePlatform ?? suggestion.sourcePlatform,
-      sourceLabel: importMetadata?.sourceLabel || suggestion.sourceLabel,
-      extractedPlaceName: suggestion.extractedPlaceName || importForm.extractedPlaceName || undefined,
-      description: importMetadata?.description || undefined,
-      imageUrl: importMetadata?.imageUrl || undefined,
-      siteName: importMetadata?.siteName || importMetadata?.sourceLabel || undefined,
-      canonicalUrl: importMetadata?.finalUrl || undefined,
-      place: importMetadata?.place,
     };
+    const linkedDestinationId = importForm.linkedDestinationId || suggestion.linkedDestinationId;
+    const sourcePlatform = importMetadata?.sourcePlatform ?? suggestion.sourcePlatform;
+    const sourceLabel = importMetadata?.sourceLabel || suggestion.sourceLabel;
+    const extractedPlaceName = suggestion.extractedPlaceName || importForm.extractedPlaceName;
+    const siteName = importMetadata?.siteName || importMetadata?.sourceLabel;
+    if (linkedDestinationId) importedIdeaPayload.linkedDestinationId = linkedDestinationId;
+    if (sourcePlatform) importedIdeaPayload.sourcePlatform = sourcePlatform;
+    if (sourceLabel) importedIdeaPayload.sourceLabel = sourceLabel;
+    if (extractedPlaceName) importedIdeaPayload.extractedPlaceName = extractedPlaceName;
+    if (importMetadata?.description) importedIdeaPayload.description = importMetadata.description;
+    if (importMetadata?.imageUrl) importedIdeaPayload.imageUrl = importMetadata.imageUrl;
+    if (siteName) importedIdeaPayload.siteName = siteName;
+    if (importMetadata?.finalUrl) importedIdeaPayload.canonicalUrl = importMetadata.finalUrl;
+    if (importMetadata?.place) importedIdeaPayload.place = importMetadata.place;
     const existingImport = findExistingImportedIdea(app.importedIdeas, importedIdeaPayload);
     if (existingImport) {
       app.updateImportedIdea(existingImport.id, mergeImportedIdeaPayload(existingImport, importedIdeaPayload));
@@ -1837,18 +1842,26 @@ function mergeImportedIdeaPayload(
   existingIdea: ImportedIdea,
   nextIdea: Omit<ImportedIdea, "id" | "createdAt">
 ): Omit<ImportedIdea, "id" | "createdAt"> {
-  return {
-    ...nextIdea,
-    linkedDestinationId: nextIdea.linkedDestinationId ?? existingIdea.linkedDestinationId,
-    sourcePlatform: nextIdea.sourcePlatform ?? existingIdea.sourcePlatform,
-    sourceLabel: nextIdea.sourceLabel || existingIdea.sourceLabel,
-    extractedPlaceName: nextIdea.extractedPlaceName || existingIdea.extractedPlaceName,
-    description: nextIdea.description || existingIdea.description,
-    imageUrl: nextIdea.imageUrl || existingIdea.imageUrl,
-    siteName: nextIdea.siteName || existingIdea.siteName,
-    canonicalUrl: nextIdea.canonicalUrl || existingIdea.canonicalUrl,
-    place: nextIdea.place ?? existingIdea.place,
-  };
+  const merged: Omit<ImportedIdea, "id" | "createdAt"> = { ...nextIdea };
+  const linkedDestinationId = nextIdea.linkedDestinationId ?? existingIdea.linkedDestinationId;
+  const sourcePlatform = nextIdea.sourcePlatform ?? existingIdea.sourcePlatform;
+  const sourceLabel = nextIdea.sourceLabel || existingIdea.sourceLabel;
+  const extractedPlaceName = nextIdea.extractedPlaceName || existingIdea.extractedPlaceName;
+  const description = nextIdea.description || existingIdea.description;
+  const imageUrl = nextIdea.imageUrl || existingIdea.imageUrl;
+  const siteName = nextIdea.siteName || existingIdea.siteName;
+  const canonicalUrl = nextIdea.canonicalUrl || existingIdea.canonicalUrl;
+  const place = nextIdea.place ?? existingIdea.place;
+  if (linkedDestinationId) merged.linkedDestinationId = linkedDestinationId;
+  if (sourcePlatform) merged.sourcePlatform = sourcePlatform;
+  if (sourceLabel) merged.sourceLabel = sourceLabel;
+  if (extractedPlaceName) merged.extractedPlaceName = extractedPlaceName;
+  if (description) merged.description = description;
+  if (imageUrl) merged.imageUrl = imageUrl;
+  if (siteName) merged.siteName = siteName;
+  if (canonicalUrl) merged.canonicalUrl = canonicalUrl;
+  if (place) merged.place = place;
+  return merged;
 }
 
 function getImportUrlKeys(idea: Pick<ImportedIdea, "url" | "canonicalUrl">): Set<string> {

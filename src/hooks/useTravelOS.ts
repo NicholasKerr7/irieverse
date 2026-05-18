@@ -133,6 +133,12 @@ const BUDGET_PROFILES: Record<string, BudgetProfile> & { mixed: BudgetProfile } 
 
 export type ViewMode = "places" | "experiences";
 export type ThemeMode = "dark" | "light";
+type ImportedIdeaDraft = Omit<ImportedIdea, "id" | "createdAt">;
+type ImportedIdeaPatch = {
+  [Key in keyof ImportedIdeaDraft]?: undefined extends ImportedIdeaDraft[Key]
+    ? ImportedIdeaDraft[Key] | undefined
+    : ImportedIdeaDraft[Key];
+};
 
 export function useTravelOS() {
   const [viewMode, setViewMode] = useState<ViewMode>("places");
@@ -477,11 +483,13 @@ export function useTravelOS() {
       setIsLoadingBookings(true);
       setBookingError(null);
       try {
-        const { options, meta } = await fetchBookingOptions(destinationAirport, originAirportCode, {
+        const checkOutDate = addDaysToISODate(checkInDate, tripDays);
+        const searchParams = {
           checkInDate,
-          checkOutDate: addDaysToISODate(checkInDate, tripDays),
           adults: 2,
-        });
+          ...(checkOutDate ? { checkOutDate } : {}),
+        };
+        const { options, meta } = await fetchBookingOptions(destinationAirport, originAirportCode, searchParams);
         setBookingOptions(options);
         setBookingSourceMeta(meta);
       } catch (error) {
@@ -811,7 +819,7 @@ export function useTravelOS() {
     });
   };
 
-  const addImportedIdea = (idea: Omit<ImportedIdea, "id" | "createdAt">) => {
+  const addImportedIdea = (idea: ImportedIdeaDraft) => {
     const importedIdea: ImportedIdea = {
       ...idea,
       id: createImportedIdeaId(),
@@ -821,9 +829,9 @@ export function useTravelOS() {
     return importedIdea;
   };
 
-  const updateImportedIdea = (id: string, patch: Partial<Omit<ImportedIdea, "id" | "createdAt">>) => {
+  const updateImportedIdea = (id: string, patch: ImportedIdeaPatch) => {
     setImportedIdeas((prev) =>
-      prev.map((idea) => (idea.id === id ? { ...idea, ...patch } : idea))
+      prev.map((idea) => (idea.id === id ? applyImportedIdeaPatch(idea, patch) : idea))
     );
   };
 
@@ -1332,6 +1340,46 @@ export function useTravelOS() {
 }
 
 export type TravelOS = ReturnType<typeof useTravelOS>;
+
+function applyImportedIdeaPatch(idea: ImportedIdea, patch: ImportedIdeaPatch): ImportedIdea {
+  const next: ImportedIdea = {
+    id: idea.id,
+    title: patch.title ?? idea.title,
+    url: patch.url ?? idea.url,
+    note: patch.note ?? idea.note,
+    category: patch.category ?? idea.category,
+    collectionId: patch.collectionId ?? idea.collectionId,
+    createdAt: idea.createdAt,
+  };
+  const linkedDestinationId = getPatchedOptionalValue(idea.linkedDestinationId, patch, "linkedDestinationId");
+  const sourcePlatform = getPatchedOptionalValue(idea.sourcePlatform, patch, "sourcePlatform");
+  const sourceLabel = getPatchedOptionalValue(idea.sourceLabel, patch, "sourceLabel");
+  const extractedPlaceName = getPatchedOptionalValue(idea.extractedPlaceName, patch, "extractedPlaceName");
+  const description = getPatchedOptionalValue(idea.description, patch, "description");
+  const imageUrl = getPatchedOptionalValue(idea.imageUrl, patch, "imageUrl");
+  const siteName = getPatchedOptionalValue(idea.siteName, patch, "siteName");
+  const canonicalUrl = getPatchedOptionalValue(idea.canonicalUrl, patch, "canonicalUrl");
+  const place = getPatchedOptionalValue(idea.place, patch, "place");
+
+  if (linkedDestinationId) next.linkedDestinationId = linkedDestinationId;
+  if (sourcePlatform) next.sourcePlatform = sourcePlatform;
+  if (sourceLabel) next.sourceLabel = sourceLabel;
+  if (extractedPlaceName) next.extractedPlaceName = extractedPlaceName;
+  if (description) next.description = description;
+  if (imageUrl) next.imageUrl = imageUrl;
+  if (siteName) next.siteName = siteName;
+  if (canonicalUrl) next.canonicalUrl = canonicalUrl;
+  if (place) next.place = place;
+  return next;
+}
+
+function getPatchedOptionalValue<Key extends keyof ImportedIdeaPatch>(
+  currentValue: ImportedIdeaPatch[Key],
+  patch: ImportedIdeaPatch,
+  key: Key
+): ImportedIdeaPatch[Key] {
+  return Object.prototype.hasOwnProperty.call(patch, key) ? patch[key] : currentValue;
+}
 
 function getInitialTheme(): ThemeMode {
   if (typeof window === "undefined") return "dark";

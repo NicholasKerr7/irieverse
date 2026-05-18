@@ -786,7 +786,7 @@ function createRouteSegment(
   const fallbackReason = roadRoute ? undefined : fallbackInfo?.reason ?? (isLoadingRoadRoutes ? "loading" : "estimated");
   const fallbackMessage = roadRoute ? undefined : fallbackInfo?.message ?? getFallbackMessage(fallbackReason);
 
-  return {
+  const segment: RouteSegment = {
     id: request.id,
     day,
     from: request.from,
@@ -799,12 +799,13 @@ function createRouteSegment(
     },
     coordinates,
     source: roadRoute ? "road" : "fallback",
-    fallbackReason,
-    fallbackMessage,
     distanceKm,
     durationMinutes,
     steps: roadRoute?.steps ?? [],
   };
+  if (fallbackReason) segment.fallbackReason = fallbackReason;
+  if (fallbackMessage) segment.fallbackMessage = fallbackMessage;
+  return segment;
 }
 
 async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promise<RoadRouteFetchResult> {
@@ -859,7 +860,7 @@ async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promi
 }
 
 function routeSegmentToDetail(segment: RouteSegment): RouteDetail {
-  return {
+  const detail: RouteDetail = {
     id: segment.id,
     day: segment.day,
     fromName: segment.from.name,
@@ -867,10 +868,11 @@ function routeSegmentToDetail(segment: RouteSegment): RouteDetail {
     distanceKm: segment.distanceKm,
     durationMinutes: segment.durationMinutes,
     source: segment.source,
-    fallbackReason: segment.fallbackReason,
-    fallbackMessage: segment.fallbackMessage,
     steps: segment.steps,
   };
+  if (segment.fallbackReason) detail.fallbackReason = segment.fallbackReason;
+  if (segment.fallbackMessage) detail.fallbackMessage = segment.fallbackMessage;
+  return detail;
 }
 
 function normalizeRouteSteps(value: unknown): RouteStep[] {
@@ -885,7 +887,7 @@ function normalizeRouteStep(value: unknown): RouteStep | null {
   const instruction = asString(value.instruction);
   if (!instruction) return null;
 
-  return {
+  const step: RouteStep = {
     id: asString(value.id) ?? instruction,
     instruction,
     distanceKm: asNumber(value.distanceKm) ?? 0,
@@ -894,11 +896,16 @@ function normalizeRouteStep(value: unknown): RouteStep | null {
     maneuverType: asString(value.maneuverType) ?? "continue",
     modifier: asString(value.modifier) ?? "",
     direction: asString(value.direction) ?? "Continue",
-    exitNumber: asNumber(value.exitNumber),
-    location: normalizeCoordinatePair(value.location) ?? undefined,
-    ref: asString(value.ref),
-    destinations: asString(value.destinations),
   };
+  const exitNumber = asNumber(value.exitNumber);
+  const location = normalizeCoordinatePair(value.location);
+  const ref = asString(value.ref);
+  const destinations = asString(value.destinations);
+  if (exitNumber !== undefined) step.exitNumber = exitNumber;
+  if (location) step.location = location;
+  if (ref) step.ref = ref;
+  if (destinations) step.destinations = destinations;
+  return step;
 }
 
 function normalizeFallbackInfo(value: unknown): RouteFallbackInfo {

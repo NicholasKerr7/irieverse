@@ -48,7 +48,7 @@ export async function fetchPlaceDetails(
     endpoint.searchParams.set("blockedTerms", placeLookup.blockedTerms.join(","));
   }
 
-  const response = await fetch(endpoint.toString(), { signal });
+  const response = await fetch(endpoint.toString(), signal ? { signal } : {});
   if (!response.ok) {
     throw new Error(`Place details lookup failed: ${response.status}`);
   }
@@ -61,27 +61,32 @@ export async function fetchPlaceDetails(
 }
 
 function normalizePlaceDetails(data: Record<string, unknown>): PlaceDetails {
-  return {
+  const details: PlaceDetails = {
     id: asString(data.id),
     name: asString(data.name),
     address: asString(data.address),
     shortAddress: asString(data.shortAddress),
-    latitude: asNumber(data.latitude),
-    longitude: asNumber(data.longitude),
     mapsUrl: asString(data.mapsUrl),
     websiteUrl: asString(data.websiteUrl),
     phone: asString(data.phone),
     internationalPhone: asString(data.internationalPhone),
-    rating: asNumber(data.rating),
-    userRatingCount: asNumber(data.userRatingCount),
     priceLevel: asString(data.priceLevel),
-    openNow: typeof data.openNow === "boolean" ? data.openNow : undefined,
     weekdayDescriptions: asStringArray(data.weekdayDescriptions),
     businessStatus: asString(data.businessStatus),
     primaryType: asString(data.primaryType),
     types: asStringArray(data.types),
     source: "google-places",
   };
+  const latitude = asNumber(data.latitude);
+  const longitude = asNumber(data.longitude);
+  const rating = asNumber(data.rating);
+  const userRatingCount = asNumber(data.userRatingCount);
+  if (latitude !== undefined) details.latitude = latitude;
+  if (longitude !== undefined) details.longitude = longitude;
+  if (rating !== undefined) details.rating = rating;
+  if (userRatingCount !== undefined) details.userRatingCount = userRatingCount;
+  if (typeof data.openNow === "boolean") details.openNow = data.openNow;
+  return details;
 }
 
 function getBaseUrl(): string {

@@ -103,12 +103,14 @@ function normalizeEndpointFlightOptions(payload: unknown, originCode: string, de
 
 function getEndpointFlightMeta(payload: unknown): FlightSourceMeta {
   if (isRecord(payload) && isRecord(payload.meta)) {
-    return {
+    const meta: FlightSourceMeta = {
       source: normalizeFlightSource(payload.meta.source),
-      reason: asString(payload.meta.reason),
       endpointConfigured: true,
       providerConfigured: payload.meta.providerConfigured === true,
     };
+    const reason = asString(payload.meta.reason);
+    if (reason) meta.reason = reason;
+    return meta;
   }
 
   return {
@@ -137,6 +139,7 @@ function normalizeFlightItem(item: unknown, origin: string, destination: string)
   const departure = isRecord(record.departure) ? record.departure : {};
   const arrival = isRecord(record.arrival) ? record.arrival : {};
   const flight = isRecord(record.flight) ? record.flight : {};
+  const durationMinutes = asNumber(flight.duration) ?? asNumber(record.durationMinutes);
 
   return {
     flightNumber: asString(record.flight_number) ?? asString(record.flightNumber) ?? "—",
@@ -146,7 +149,7 @@ function normalizeFlightItem(item: unknown, origin: string, destination: string)
     departureTimeUTC: asString(departure.scheduled) ?? asString(record.departureTimeUTC) ?? asString(record.dep_time_utc) ?? new Date().toISOString(),
     arrivalTimeUTC: asString(arrival.scheduled) ?? asString(record.arrivalTimeUTC) ?? asString(record.arr_time_utc) ?? new Date().toISOString(),
     status: asString(record.flight_status) ?? asString(record.status) ?? "Scheduled",
-    durationMinutes: asNumber(flight.duration) ?? asNumber(record.durationMinutes) ?? undefined,
+    ...(durationMinutes !== undefined ? { durationMinutes } : {}),
   };
 }
 

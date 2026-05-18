@@ -10,7 +10,7 @@ export async function fetchImportMetadata(url: string, signal?: AbortSignal): Pr
   const endpoint = new URL("/api/import-metadata", getBaseUrl());
   endpoint.searchParams.set("url", normalizedUrl);
 
-  const response = await fetch(endpoint.toString(), { signal });
+  const response = await fetch(endpoint.toString(), signal ? { signal } : {});
   if (!response.ok) {
     throw new Error(`Import metadata lookup failed: ${response.status}`);
   }
@@ -22,7 +22,7 @@ export async function fetchImportMetadata(url: string, signal?: AbortSignal): Pr
 }
 
 function normalizeImportMetadata(data: Record<string, unknown>, fallbackUrl: string): ImportMetadata {
-  return {
+  const metadata: ImportMetadata = {
     url: asString(data.url) || fallbackUrl,
     finalUrl: asString(data.finalUrl) || asString(data.url) || fallbackUrl,
     sourcePlatform: normalizeSourcePlatform(data.sourcePlatform),
@@ -31,11 +31,14 @@ function normalizeImportMetadata(data: Record<string, unknown>, fallbackUrl: str
     description: asString(data.description),
     imageUrl: asString(data.imageUrl),
     siteName: asString(data.siteName),
-    place: normalizeImportMetadataPlace(data.place),
     confidence: normalizeConfidence(data.confidence),
-    reason: asString(data.reason) || undefined,
     cached: data.cached === true,
   };
+  const place = normalizeImportMetadataPlace(data.place);
+  const reason = asString(data.reason);
+  if (place) metadata.place = place;
+  if (reason) metadata.reason = reason;
+  return metadata;
 }
 
 function normalizeMetadataUrl(value: string): string {
@@ -76,16 +79,20 @@ function normalizeImportMetadataPlace(value: unknown): ImportMetadataPlace | und
     name: asString(value.name),
     address: asString(value.address),
     shortAddress: asString(value.shortAddress),
-    latitude: asNumber(value.latitude),
-    longitude: asNumber(value.longitude),
     mapsUrl: asString(value.mapsUrl),
     websiteUrl: asString(value.websiteUrl),
     phone: asString(value.phone),
-    rating: asNumber(value.rating),
-    userRatingCount: asNumber(value.userRatingCount),
     primaryType: asString(value.primaryType),
     types: asStringArray(value.types),
   };
+  const latitude = asNumber(value.latitude);
+  const longitude = asNumber(value.longitude);
+  const rating = asNumber(value.rating);
+  const userRatingCount = asNumber(value.userRatingCount);
+  if (latitude !== undefined) place.latitude = latitude;
+  if (longitude !== undefined) place.longitude = longitude;
+  if (rating !== undefined) place.rating = rating;
+  if (userRatingCount !== undefined) place.userRatingCount = userRatingCount;
 
   const hasUsefulPlaceData = Boolean(
     place.name ||

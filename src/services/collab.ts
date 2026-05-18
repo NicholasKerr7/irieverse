@@ -162,9 +162,7 @@ export function serializeTripState(args: {
   importedIdeas: ImportedIdea[];
 }): TripPayload {
   const now = new Date().toISOString();
-  return {
-    planningMode: args.planningMode,
-    planningTemplateId: args.planningTemplateId,
+  const payload: TripPayload = {
     plannerBaseId: args.plannerBaseId,
     plannerDays: args.plannerDays,
     plannerVibe: args.plannerVibe,
@@ -181,6 +179,9 @@ export function serializeTripState(args: {
     importedIdeas: args.importedIdeas,
     updatedAt: now,
   };
+  if (args.planningMode) payload.planningMode = args.planningMode;
+  if (args.planningTemplateId) payload.planningTemplateId = args.planningTemplateId;
+  return payload;
 }
 
 type SupabaseFailure = {
@@ -289,10 +290,10 @@ function readStoredEditTokens(): Record<string, string> {
 function readSupabaseFailure(error: unknown): SupabaseFailure {
   if (typeof error !== "object" || error === null) return {};
   const record = error as Record<string, unknown>;
-  return {
-    code: typeof record.code === "string" ? record.code : undefined,
-    message: typeof record.message === "string" ? record.message : undefined,
-    details: typeof record.details === "string" ? record.details : undefined,
-    hint: typeof record.hint === "string" ? record.hint : undefined,
-  };
+  const failure: SupabaseFailure = {};
+  if (typeof record.code === "string") failure.code = record.code;
+  if (typeof record.message === "string") failure.message = record.message;
+  if (typeof record.details === "string") failure.details = record.details;
+  if (typeof record.hint === "string") failure.hint = record.hint;
+  return failure;
 }

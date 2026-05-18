@@ -18,12 +18,14 @@ export default defineConfig({
     isMobile: true,
     viewport: { width: 390, height: 844 },
   },
-  webServer: shouldStartLocalServer
+  ...(shouldStartLocalServer
     ? {
-        command: "npm run dev -- --host 127.0.0.1",
-        url: baseURL,
-        reuseExistingServer: true,
-        timeout: 120_000,
+        webServer: {
+          command: "npm run dev -- --host 127.0.0.1",
+          url: baseURL,
+          reuseExistingServer: true,
+          timeout: 120_000,
+        },
       }
-    : undefined,
+    : {}),
 });
