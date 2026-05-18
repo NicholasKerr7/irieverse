@@ -65,7 +65,7 @@ async function runLocalApiHandler(handler: ApiHandler, req: IncomingMessage, res
   const requestUrl = new URL(req.url ?? "", "http://localhost");
   await handler(
     {
-      method: req.method,
+      method: req.method ?? "GET",
       query: readQueryParams(requestUrl.searchParams),
     },
     createResponseAdapter(res)

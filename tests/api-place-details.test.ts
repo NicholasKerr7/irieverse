@@ -85,7 +85,10 @@ async function invokePlaceDetails(query: ApiRequest["query"], places: TestPlace[
 
   try {
     const response = createResponse();
-    await placeDetailsHandler({ method: "GET", query }, response);
+    await placeDetailsHandler({
+      method: "GET",
+      ...(query ? { query } : {}),
+    }, response);
     return response;
   } finally {
     globalThis.fetch = originalFetch;

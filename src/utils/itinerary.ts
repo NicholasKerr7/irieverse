@@ -1,5 +1,5 @@
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
-import type { DayExperienceOverrides, Destination, Experience, ImportedIdea, ItineraryPlan, Vibe, WeatherPlanDay } from "../types/travel";
+import type { DayExperienceOverrides, Destination, Experience, ImportedIdea, ItineraryPlan, PlannerDay, Vibe, WeatherPlanDay } from "../types/travel";
 import { formatDriveTime } from "./format";
 
 const EARTH_RADIUS_KM = 6371;
@@ -102,7 +102,7 @@ export function buildItineraryPlan({
       matchedExperiences[0] ??
       expPool[index % expPool.length];
 
-    return {
+    const plannerDay: PlannerDay = {
       day: index + 1,
       destinationId: tripDestination.id,
       destName: tripDestination.name,
@@ -116,10 +116,12 @@ export function buildItineraryPlan({
       driveMinutesFromPrevious,
       transferSeverity,
       energyLevel: weatherAdjustedEnergyLevel,
-      weather,
-      weatherNote: buildWeatherNote(weather, energyLevel !== weatherAdjustedEnergyLevel),
-      experience,
     };
+    const weatherNote = buildWeatherNote(weather, energyLevel !== weatherAdjustedEnergyLevel);
+    if (weather) plannerDay.weather = weather;
+    if (weatherNote) plannerDay.weatherNote = weatherNote;
+    if (experience) plannerDay.experience = experience;
+    return plannerDay;
   });
 
   return {

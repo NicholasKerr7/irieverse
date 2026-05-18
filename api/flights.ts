@@ -160,7 +160,7 @@ class AviationStackError extends Error {
   constructor(status: number | undefined, message: string) {
     super(message);
     this.name = "AviationStackError";
-    this.status = status;
+    if (status !== undefined) this.status = status;
   }
 }
 
@@ -254,6 +254,7 @@ function normalizeFlightItem(item: unknown, origin: string, destination: string)
   const departure = isRecord(record.departure) ? record.departure : {};
   const arrival = isRecord(record.arrival) ? record.arrival : {};
   const flight = isRecord(record.flight) ? record.flight : {};
+  const durationMinutes = asNumber(flight.duration) ?? asNumber(record.durationMinutes);
 
   return {
     flightNumber: asString(record.flight_number) ?? asString(record.flightNumber) ?? "—",
@@ -263,7 +264,7 @@ function normalizeFlightItem(item: unknown, origin: string, destination: string)
     departureTimeUTC: asString(departure.scheduled) ?? asString(record.departureTimeUTC) ?? asString(record.dep_time_utc) ?? new Date().toISOString(),
     arrivalTimeUTC: asString(arrival.scheduled) ?? asString(record.arrivalTimeUTC) ?? asString(record.arr_time_utc) ?? new Date().toISOString(),
     status: asString(record.flight_status) ?? asString(record.status) ?? "Scheduled",
-    durationMinutes: asNumber(flight.duration) ?? asNumber(record.durationMinutes) ?? undefined,
+    ...(durationMinutes !== undefined ? { durationMinutes } : {}),
   };
 }
 

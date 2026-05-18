@@ -265,7 +265,7 @@ async function resolveArticleMetadata(url: URL, sourceUrl = url): Promise<Import
 
 function buildBaseMetadata(url: URL, overrides: BaseMetadataOverrides = {}): ImportMetadataApiData {
   const sourcePlatform = detectSourcePlatform(url);
-  return {
+  const metadata: ImportMetadataApiData = {
     url: overrides.sourceUrl || url.toString(),
     finalUrl: overrides.finalUrl || url.toString(),
     sourcePlatform,
@@ -274,11 +274,13 @@ function buildBaseMetadata(url: URL, overrides: BaseMetadataOverrides = {}): Imp
     description: cleanText(overrides.description ?? ""),
     imageUrl: overrides.imageUrl || "",
     siteName: cleanText(overrides.siteName ?? ""),
-    place: normalizeMetadataPlace(overrides.place),
     confidence: overrides.confidence || "low",
-    reason: overrides.reason,
     cached: false,
   };
+  const place = normalizeMetadataPlace(overrides.place);
+  if (place) metadata.place = place;
+  if (overrides.reason) metadata.reason = overrides.reason;
+  return metadata;
 }
 
 async function resolveRedirectUrl(url: URL): Promise<URL> {
@@ -685,8 +687,10 @@ function asNumber(value: unknown): number | undefined {
   return Number.isFinite(number) ? number : undefined;
 }
 
-function stripEmptyValues<T extends Record<string, unknown>>(value: T): Partial<T> {
-  const next: Partial<T> = {};
+function stripEmptyValues<T extends Record<string, unknown>>(
+  value: T
+): Partial<{ [Key in keyof T]: Exclude<T[Key], null | undefined> }> {
+  const next: Partial<{ [Key in keyof T]: Exclude<T[Key], null | undefined> }> = {};
   Object.entries(value).forEach(([key, entryValue]) => {
     if (entryValue === undefined || entryValue === null || entryValue === "") return;
     if (Array.isArray(entryValue) && !entryValue.length) return;

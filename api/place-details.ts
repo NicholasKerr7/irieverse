@@ -248,7 +248,9 @@ function normalizePlaceDetailsQuery(rawQuery: QueryRecord = {}): PlaceDetailsQue
   const name = cleanText(getFirstQueryValue(rawQuery.name));
   if (!name) return null;
 
-  return {
+  const latitude = asNumber(getFirstQueryValue(rawQuery.latitude));
+  const longitude = asNumber(getFirstQueryValue(rawQuery.longitude));
+  const query: PlaceDetailsQuery = {
     kind: cleanText(getFirstQueryValue(rawQuery.kind)) === "experience" ? "experience" : "destination",
     name,
     placeQuery: cleanText(getFirstQueryValue(rawQuery.placeQuery)),
@@ -256,9 +258,10 @@ function normalizePlaceDetailsQuery(rawQuery: QueryRecord = {}): PlaceDetailsQue
     location: cleanText(getFirstQueryValue(rawQuery.location)),
     requiredTerms: parseTermList(getFirstQueryValue(rawQuery.requiredTerms)),
     blockedTerms: parseTermList(getFirstQueryValue(rawQuery.blockedTerms)),
-    latitude: asNumber(getFirstQueryValue(rawQuery.latitude)),
-    longitude: asNumber(getFirstQueryValue(rawQuery.longitude)),
   };
+  if (latitude !== undefined) query.latitude = latitude;
+  if (longitude !== undefined) query.longitude = longitude;
+  return query;
 }
 
 function buildTextQuery(query: PlaceDetailsQuery): string {
@@ -464,8 +467,10 @@ function humanizeEnum(value: unknown): string {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function stripEmptyValues<T extends Record<string, unknown>>(value: T): Partial<T> {
-  const next: Partial<T> = {};
+function stripEmptyValues<T extends Record<string, unknown>>(
+  value: T
+): Partial<{ [Key in keyof T]: Exclude<T[Key], null | undefined> }> {
+  const next: Partial<{ [Key in keyof T]: Exclude<T[Key], null | undefined> }> = {};
   Object.entries(value).forEach(([key, entryValue]) => {
     if (entryValue === undefined || entryValue === null || entryValue === "") return;
     if (Array.isArray(entryValue) && !entryValue.length) return;

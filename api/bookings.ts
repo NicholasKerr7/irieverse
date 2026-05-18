@@ -131,7 +131,7 @@ export default async function bookingsHandler(req: ApiRequest, res: ApiResponse)
       data: amadeusOptions.length ? amadeusOptions : getFallbackBookings(cityCode),
       meta: {
         source: amadeusOptions.length ? "amadeus" : "fallback",
-        reason: amadeusOptions.length ? undefined : "no-amadeus-offers",
+        ...(amadeusOptions.length ? {} : { reason: "no-amadeus-offers" }),
         checkInDate,
         checkOutDate,
         adults,

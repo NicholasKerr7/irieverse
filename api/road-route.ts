@@ -218,7 +218,7 @@ function mapOsrmStep(step: unknown, index: number): RoadRouteStep | null {
 
   if (!instruction) return null;
 
-  return {
+  const routeStep: RoadRouteStep = {
     id: `${index}-${maneuverType}-${modifier}-${displayRoadName}`,
     instruction,
     distanceKm,
@@ -227,11 +227,12 @@ function mapOsrmStep(step: unknown, index: number): RoadRouteStep | null {
     maneuverType,
     modifier,
     direction: buildDirectionLabel(maneuverType, modifier, exitNumber),
-    exitNumber,
-    location: location || undefined,
-    ref: roadRef || undefined,
-    destinations: destinations || undefined,
   };
+  if (exitNumber !== undefined) routeStep.exitNumber = exitNumber;
+  if (location) routeStep.location = location;
+  if (roadRef) routeStep.ref = roadRef;
+  if (destinations) routeStep.destinations = destinations;
+  return routeStep;
 }
 
 function isUsefulStep(step: RoadRouteStep): boolean {
