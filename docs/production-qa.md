@@ -2,16 +2,16 @@
 
 ## Supabase sharing check
 
-Date: 2026-04-29
+Date: 2026-05-17
 
-Result: Passed secure sharing RPC probe after applying `20260429120000_secure_trip_sharing.sql`.
+Result: Passed production sharing and cloud board setup on the replacement Supabase project.
 
-- Linked project: `divgxhxckrthasurbdqz` (`irieverse`).
+- Linked project: `xvfyljebjwfccfthbzcl`.
 - Remote migration history now includes:
-  `20260427120000`, `20260427195500`, and `20260429120000`.
-- The Supabase probe created a `trips` row, read it back through the trip-share RPC, denied an update with the wrong edit token, updated it with the correct local edit token, deleted it through the protected cleanup RPC, and verified the row was gone.
-- Cloud board storage now also needs `20260506120000_create_user_boards.sql` applied before testing signed-in board save/load.
-- `supabase db lint --linked` and `supabase db push --dry-run` still need a valid direct Postgres CLI login; the linked CLI login currently returns password authentication failure for `cli_login_postgres`.
+  `20260427120000`, `20260427195500`, `20260429120000`, `20260506120000`, and `20260515161350`.
+- The Supabase probe created a `trips` row, read it back through the trip-share RPC, updated it with the correct local edit token, deleted it through the protected cleanup RPC, and verified the row was gone.
+- Cloud board storage is migrated through `20260506120000_create_user_boards.sql`; the table has row-level security enabled and authenticated-only grants.
+- The trip-share RPC hardening migration, `20260515161350_harden_trip_share_rpc.sql`, is applied and keeps privileged implementation functions in the private schema.
 
 ## Full QA run
 

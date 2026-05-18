@@ -23,16 +23,16 @@ const packageLock = JSON.parse(read("package-lock.json"));
 const scripts = packageJson.scripts || {};
 const nodeVersion = read(".nvmrc").trim();
 
-if (!nodeVersion.startsWith("20")) {
-  throw new Error(".nvmrc must keep the repo on the Node 20 maintenance line");
+if (!nodeVersion.startsWith("22")) {
+  throw new Error(".nvmrc must keep the repo on the Node 22 LTS line");
 }
 
 if (!packageJson.packageManager?.startsWith("npm@")) {
   throw new Error("package.json must declare the npm packageManager version");
 }
 
-if (packageJson.engines?.node !== "20.x") {
-  throw new Error('package.json engines.node must be "20.x"');
+if (packageJson.engines?.node !== "22.x") {
+  throw new Error('package.json engines.node must be "22.x"');
 }
 
 if (packageJson.engines?.npm !== ">=10") {

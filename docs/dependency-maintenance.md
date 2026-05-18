@@ -7,7 +7,7 @@ This repo uses Dependabot, GitHub Actions, and npm audit scripts to keep depende
 - Dependabot opens weekly npm update PRs for minor and patch updates.
 - Dependabot opens weekly GitHub Actions update PRs for minor and patch updates.
 - Major version updates are ignored by Dependabot and should be planned manually.
-- Local and CI installs use the Node 20 maintenance line from `.nvmrc`.
+- Local and CI installs use the Node 22 LTS line from `.nvmrc`.
 - CI runs typecheck, API regression tests, production dependency audit, build, and local QA.
 - Dependency Review runs on dependency-changing PRs and blocks high-severity vulnerable additions.
 - The Dependency Maintenance workflow runs weekly and can also be started manually from GitHub Actions.
