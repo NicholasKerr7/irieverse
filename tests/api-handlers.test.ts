@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { promises as dns } from "node:dns";
 import bookingsHandler from "../api/bookings";
+import flightsHandler from "../api/flights";
 import importMetadataHandler from "../api/import-metadata";
 import roadRouteHandler from "../api/road-route";
 import type { ApiRequest, ApiResponse } from "../src/types/api";
@@ -14,11 +15,153 @@ type TestResponse = ApiResponse & {
 async function main() {
   await testBookingsFallbackWithoutCredentials();
   await testBookingsLiveAmadeusNormalization();
+  await testFlightsLiveAviationStackNormalization();
+  await testFlightsRateLimitFallbackAndCooldown();
   await testImportMetadataBlocksPrivateUrls();
   await testImportMetadataArticlePreview();
   await testRoadRouteNormalization();
 
   console.log("API handler checks passed.");
+}
+
+async function testFlightsLiveAviationStackNormalization() {
+  const restoreEnv = withEnv({
+    AVIATIONSTACK_API_KEY: "test-aviationstack-key",
+    VITE_AVIATIONSTACK_API_KEY: undefined,
+    AVIATIONSTACK_DISABLED: undefined,
+    IRIEVERSE_DISABLE_LIVE_FLIGHTS: undefined,
+  });
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (url) => {
+    const requestUrl = new URL(String(url));
+    assert.equal(requestUrl.origin + requestUrl.pathname, "https://api.aviationstack.com/v1/flights");
+    assert.equal(requestUrl.searchParams.get("access_key"), "test-aviationstack-key");
+    assert.equal(requestUrl.searchParams.get("dep_iata"), "JFK");
+    assert.equal(requestUrl.searchParams.get("arr_iata"), "MBJ");
+    assert.equal(requestUrl.searchParams.get("flight_status"), "scheduled");
+
+    return jsonResponse({
+      data: [
+        {
+          airline: {
+            name: "Island Air",
+          },
+          departure: {
+            iata: "JFK",
+            scheduled: "2026-06-01T12:00:00+00:00",
+          },
+          arrival: {
+            iata: "MBJ",
+            scheduled: "2026-06-01T15:45:00+00:00",
+          },
+          flight: {
+            iata: "IA123",
+            duration: 225,
+          },
+          flight_number: "IA123",
+          flight_status: "scheduled",
+        },
+      ],
+    });
+  };
+
+  try {
+    const response = createResponse();
+    await flightsHandler(
+      {
+        method: "GET",
+        query: {
+          origin: "JFK",
+          destination: "MBJ",
+        },
+      },
+      response
+    );
+
+    assert.equal(response.statusCode, 200);
+    assertBodyRecord(response.body);
+    assert.equal(response.body.meta?.source, "aviationstack");
+    assert.equal(response.body.meta?.providerConfigured, true);
+    assert.equal(response.body.meta?.origin, "JFK");
+    assert.equal(response.body.meta?.destination, "MBJ");
+    assert.ok(Array.isArray(response.body.data));
+    assert.equal(response.body.data[0]?.flightNumber, "IA123");
+    assert.equal(response.body.data[0]?.airline, "Island Air");
+    assert.equal(response.body.data[0]?.durationMinutes, 225);
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreEnv();
+  }
+}
+
+async function testFlightsRateLimitFallbackAndCooldown() {
+  const restoreEnv = withEnv({
+    AVIATIONSTACK_API_KEY: "test-aviationstack-key",
+    VITE_AVIATIONSTACK_API_KEY: undefined,
+    AVIATIONSTACK_DISABLED: undefined,
+    IRIEVERSE_DISABLE_LIVE_FLIGHTS: undefined,
+    AVIATIONSTACK_COOLDOWN_SECONDS: "60",
+  });
+  const originalFetch = globalThis.fetch;
+  const originalWarn = console.warn;
+  let fetchCount = 0;
+  console.warn = () => {};
+
+  globalThis.fetch = async () => {
+    fetchCount += 1;
+    return jsonResponse({
+      error: {
+        type: "rate_limit_reached",
+        message: "Rate limit exceeded",
+      },
+    });
+  };
+
+  try {
+    const rateLimitedResponse = createResponse();
+    await flightsHandler(
+      {
+        method: "GET",
+        query: {
+          origin: "ATL",
+          destination: "MBJ",
+        },
+      },
+      rateLimitedResponse
+    );
+
+    assert.equal(rateLimitedResponse.statusCode, 200);
+    assertBodyRecord(rateLimitedResponse.body);
+    assert.equal(rateLimitedResponse.body.meta?.source, "fallback");
+    assert.equal(rateLimitedResponse.body.meta?.reason, "aviationstack-rate-limited");
+    assert.equal(rateLimitedResponse.body.meta?.providerConfigured, true);
+    assert.deepEqual(rateLimitedResponse.body.data, []);
+    assert.equal(fetchCount, 1);
+
+    const cooldownResponse = createResponse();
+    await flightsHandler(
+      {
+        method: "GET",
+        query: {
+          origin: "BOS",
+          destination: "MBJ",
+        },
+      },
+      cooldownResponse
+    );
+
+    assert.equal(cooldownResponse.statusCode, 200);
+    assertBodyRecord(cooldownResponse.body);
+    assert.equal(cooldownResponse.body.meta?.source, "fallback");
+    assert.equal(cooldownResponse.body.meta?.reason, "aviationstack-rate-limited");
+    assert.equal(typeof cooldownResponse.body.meta?.retryAfterSeconds, "number");
+    assert.equal(fetchCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    console.warn = originalWarn;
+    restoreEnv();
+  }
 }
 
 async function testBookingsFallbackWithoutCredentials() {
