@@ -23,6 +23,7 @@
   "include": [
     "api",
     "src",
+    "tests/**/*.ts",
     "vite.config.ts"
   ]
 }

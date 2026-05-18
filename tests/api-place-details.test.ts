@@ -26,8 +26,9 @@ async function main() {
   ]);
 
   assert.equal(addressOnlyMatch.statusCode, 200);
-  assert.equal(addressOnlyMatch.body.data, null);
-  assert.equal(addressOnlyMatch.body.meta.source, "curated");
+  const addressOnlyMatchBody = assertBodyRecord(addressOnlyMatch.body);
+  assert.equal(addressOnlyMatchBody.data, null);
+  assert.equal(addressOnlyMatchBody.meta.source, "curated");
 
   const blockedBusinessMatch = await invokePlaceDetails(query, [
     buildPlace({
@@ -39,8 +40,9 @@ async function main() {
   ]);
 
   assert.equal(blockedBusinessMatch.statusCode, 200);
-  assert.equal(blockedBusinessMatch.body.data, null);
-  assert.equal(blockedBusinessMatch.body.meta.source, "curated");
+  const blockedBusinessMatchBody = assertBodyRecord(blockedBusinessMatch.body);
+  assert.equal(blockedBusinessMatchBody.data, null);
+  assert.equal(blockedBusinessMatchBody.meta.source, "curated");
 
   const trustedPlaceMatch = await invokePlaceDetails(query, [
     buildPlace({
@@ -59,9 +61,10 @@ async function main() {
   ]);
 
   assert.equal(trustedPlaceMatch.statusCode, 200);
-  assert.equal(trustedPlaceMatch.body.meta.source, "google-places");
-  assert.equal(trustedPlaceMatch.body.data.name, "Doctor's Cave Beach");
-  assert.equal(trustedPlaceMatch.body.data.primaryType, "Beach");
+  const trustedPlaceMatchBody = assertBodyRecord(trustedPlaceMatch.body);
+  assert.equal(trustedPlaceMatchBody.meta.source, "google-places");
+  assert.equal(trustedPlaceMatchBody.data.name, "Doctor's Cave Beach");
+  assert.equal(trustedPlaceMatchBody.data.primaryType, "Beach");
 
   console.log("API place-details trust checks passed.");
 }
@@ -141,6 +144,12 @@ function createResponse(): TestResponse {
       return this;
     },
   };
+}
+
+function assertBodyRecord(value: unknown): Record<string, any> {
+  assert.equal(typeof value, "object");
+  assert.notEqual(value, null);
+  return value as Record<string, any>;
 }
 
 main().catch((error) => {
