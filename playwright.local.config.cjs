@@ -5,7 +5,7 @@ const shouldStartLocalServer = !process.env.IRIEVERSE_APP_URL || baseURL.include
 
 module.exports = defineConfig({
   testDir: "./tests",
-  testMatch: /app-flows\.spec\.js/,
+  testMatch: /app-flows\.spec\.ts/,
   timeout: 60_000,
   expect: {
     timeout: 10_000,

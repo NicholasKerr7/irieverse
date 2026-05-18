@@ -1,10 +1,41 @@
-const fs = require("node:fs");
-const path = require("node:path");
-const crypto = require("node:crypto");
-const { test, expect } = require("@playwright/test");
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import type {
+  FlightApiResponse,
+  ImportMetadataApiResponse,
+  PlaceDetailsApiResponse,
+  RoadRouteApiResponse,
+} from "../src/types/api";
 
 const BASE_URL = process.env.IRIEVERSE_PRODUCTION_URL ?? "https://irieverse.vercel.app";
 const SCREENSHOT_DIR = path.join(process.cwd(), "public", "screenshots");
+
+type SupabaseRestCredentials = {
+  origin: string;
+  apiKey: string;
+  authorization: string;
+};
+
+type SupabaseRestTracker = {
+  getCredentials: () => SupabaseRestCredentials | null;
+};
+
+type WebManifest = {
+  icons: Array<{ src: string; purpose?: string }>;
+  shortcuts: Array<{ url: string }>;
+  share_target: {
+    action: string;
+    method: string;
+    params: {
+      title: string;
+      text: string;
+      url: string;
+    };
+  };
+  screenshots: Array<{ src: string }>;
+};
 
 test.setTimeout(120_000);
 
@@ -144,14 +175,14 @@ test("production desktop home uses hero navigation", async ({ browser }) => {
   await page.close();
 });
 
-async function openTab(page, tab) {
+async function openTab(page: Page, tab: string) {
   const url = tab ? `${BASE_URL}/?tab=${tab}` : BASE_URL;
   await page.goto(url, { waitUntil: "domcontentloaded" });
   await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
   await expectVisibleNavigation(page);
 }
 
-async function openSharedIdea(page) {
+async function openSharedIdea(page: Page) {
   const params = new URLSearchParams({
     tab: "saved",
     source: "share-target",
@@ -165,7 +196,7 @@ async function openSharedIdea(page) {
   await expectVisibleNavigation(page);
 }
 
-async function expectVisibleNavigation(page) {
+async function expectVisibleNavigation(page: Page) {
   const viewport = page.viewportSize();
   if (viewport && viewport.width >= 768) {
     const tab = new URL(page.url()).searchParams.get("tab");
@@ -185,7 +216,7 @@ async function expectVisibleNavigation(page) {
   await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
 }
 
-async function screenshot(page, filename) {
+async function screenshot(page: Page, filename: string) {
   await page.waitForTimeout(350);
   await page.screenshot({
     path: path.join(SCREENSHOT_DIR, filename),
@@ -193,8 +224,8 @@ async function screenshot(page, filename) {
   });
 }
 
-function collectPageIssues(page) {
-  const issues = [];
+function collectPageIssues(page: Page): string[] {
+  const issues: string[] = [];
 
   page.on("request", (request) => {
     const url = request.url();
@@ -226,8 +257,8 @@ function collectPageIssues(page) {
   return issues;
 }
 
-function trackSupabaseRest(page) {
-  let credentials = null;
+function trackSupabaseRest(page: Page): SupabaseRestTracker {
+  let credentials: SupabaseRestCredentials | null = null;
 
   page.on("request", (request) => {
     const requestUrl = request.url();
@@ -248,7 +279,7 @@ function trackSupabaseRest(page) {
   };
 }
 
-function extractSharedTripId(shareUrl) {
+function extractSharedTripId(shareUrl: string): string | null {
   if (!shareUrl) return null;
   try {
     return new URL(shareUrl).searchParams.get("trip");
@@ -257,9 +288,19 @@ function extractSharedTripId(shareUrl) {
   }
 }
 
-async function cleanupSharedTrip(request, credentials, tripId, editToken, qaRunId) {
-  expect(credentials, "Supabase REST request credentials should be captured").toBeTruthy();
-  expect(editToken, "local edit token should be stored for QA cleanup").toBeTruthy();
+async function cleanupSharedTrip(
+  request: APIRequestContext,
+  credentials: SupabaseRestCredentials | null,
+  tripId: string,
+  editToken: string,
+  qaRunId: string
+) {
+  if (!credentials) {
+    throw new Error("Supabase REST request credentials should be captured.");
+  }
+  if (!editToken) {
+    throw new Error("local edit token should be stored for QA cleanup.");
+  }
 
   const rpcEndpoint = `${credentials.origin}/rest/v1/rpc`;
   const headers = {
@@ -311,7 +352,7 @@ async function cleanupSharedTrip(request, credentials, tripId, editToken, qaRunI
   expect(verifyResponse.ok(), "deleted QA trip should no longer be readable").toBe(false);
 }
 
-async function verifyProductionAssets(request) {
+async function verifyProductionAssets(request: APIRequestContext) {
   const assetPaths = [
     "/",
     "/?tab=map",
@@ -337,7 +378,7 @@ async function verifyProductionAssets(request) {
     expect(response.ok(), `${assetPath} should return 2xx`).toBe(true);
   }
 
-  const manifest = await (await request.get(`${BASE_URL}/manifest.webmanifest`)).json();
+  const manifest = await (await request.get(`${BASE_URL}/manifest.webmanifest`)).json() as WebManifest;
   expect(manifest.icons.map((icon) => icon.src)).toEqual(
     expect.arrayContaining([
       "/icon-72.png",
@@ -377,16 +418,20 @@ async function verifyProductionAssets(request) {
   );
 }
 
-async function verifyRoadRouteApi(request) {
+async function verifyRoadRouteApi(request: APIRequestContext) {
   const response = await request.get(
     `${BASE_URL}/api/road-route?from=-77.8939,18.4762&to=-78.3488,18.2728`
   );
   expect(response.ok()).toBe(true);
-  const payload = await response.json();
+  const payload = await response.json() as RoadRouteApiResponse;
   expect(payload.data?.source).toBe("osrm");
-  expect(payload.data?.coordinates?.length).toBeGreaterThan(100);
-  expect(payload.data?.distanceKm).toBeGreaterThan(1);
-  expect(Array.isArray(payload.data?.steps)).toBe(true);
+  expect(payload.meta.source).toBe("osrm");
+  if (!payload.data || payload.meta.source !== "osrm") {
+    throw new Error("Expected OSRM road route response.");
+  }
+  expect(payload.data.coordinates.length).toBeGreaterThan(100);
+  expect(payload.data.distanceKm).toBeGreaterThan(1);
+  expect(Array.isArray(payload.data.steps)).toBe(true);
   expect(payload.data.steps.length).toBeGreaterThan(1);
   expect(payload.data.steps[0]).toEqual(
     expect.objectContaining({
@@ -395,15 +440,15 @@ async function verifyRoadRouteApi(request) {
       maneuverType: expect.any(String),
     })
   );
-  expect(payload.meta?.stepCount).toBeGreaterThan(1);
+  expect(payload.meta.stepCount).toBeGreaterThan(1);
 }
 
-async function verifyPlaceDetailsApi(request) {
+async function verifyPlaceDetailsApi(request: APIRequestContext) {
   const response = await request.get(
     `${BASE_URL}/api/place-details?kind=destination&name=Negril&region=West%20Coast&latitude=18.2728&longitude=-78.3488&placeQuery=${encodeURIComponent("Seven Mile Beach, Negril, Jamaica")}&requiredTerms=seven,mile`
   );
   expect(response.ok()).toBe(true);
-  const payload = await response.json();
+  const payload = await response.json() as PlaceDetailsApiResponse;
   expect(["google-places", "curated"]).toContain(payload.meta?.source);
   expect(typeof payload.meta?.providerConfigured).toBe("boolean");
   if (payload.data) {
@@ -419,7 +464,7 @@ async function verifyPlaceDetailsApi(request) {
     `${BASE_URL}/api/place-details?kind=destination&name=Montego%20Bay&region=North%20Coast&latitude=18.4762&longitude=-77.8939&placeQuery=${encodeURIComponent("Doctor's Cave Beach, Montego Bay, Jamaica")}&requiredTerms=doctor,cave&blockedTerms=imaging,diagnostic,medical,clinic,radiology`
   );
   expect(mobayResponse.ok()).toBe(true);
-  const mobayPayload = await mobayResponse.json();
+  const mobayPayload = await mobayResponse.json() as PlaceDetailsApiResponse;
   expect(["google-places", "curated"]).toContain(mobayPayload.meta?.source);
   if (mobayPayload.data) {
     const resultText = [
@@ -433,12 +478,12 @@ async function verifyPlaceDetailsApi(request) {
   }
 }
 
-async function verifyImportMetadataApi(request) {
+async function verifyImportMetadataApi(request: APIRequestContext) {
   const response = await request.get(
     `${BASE_URL}/api/import-metadata?url=${encodeURIComponent("https://www.google.com/maps/place/Devon+House,+Kingston,+Jamaica")}`
   );
   expect(response.ok()).toBe(true);
-  const payload = await response.json();
+  const payload = await response.json() as ImportMetadataApiResponse;
   expect(payload.data).toEqual(
     expect.objectContaining({
       sourcePlatform: "google-maps",
@@ -456,12 +501,12 @@ async function verifyImportMetadataApi(request) {
   expect(["high", "medium", "low"]).toContain(payload.data?.confidence);
 }
 
-async function verifyFlightApi(request) {
+async function verifyFlightApi(request: APIRequestContext) {
   const response = await request.get(
     `${BASE_URL}/api/flights?origin=JFK&destination=MBJ`
   );
   expect(response.ok()).toBe(true);
-  const payload = await response.json();
+  const payload = await response.json() as FlightApiResponse;
   expect(Array.isArray(payload.data)).toBe(true);
   expect(["aviationstack", "fallback"]).toContain(payload.meta?.source);
   expect(typeof payload.meta?.providerConfigured).toBe("boolean");

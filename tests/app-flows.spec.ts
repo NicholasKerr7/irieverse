@@ -1,4 +1,5 @@
-const { test, expect } = require("@playwright/test");
+import { expect, test, type Page } from "@playwright/test";
+import type { ImportedIdea } from "../src/types/travel";
 
 const PREVIEW_IMAGE_URL = [
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 80'%3E",
@@ -69,8 +70,12 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
     page,
     (items) => items.length === 1 && items[0].title === "Devon House stop" && items[0].note.includes("Updated note")
   );
+  const devonHouseIdea = ideas[0];
+  if (!devonHouseIdea?.extractedPlaceName) {
+    throw new Error("Expected Devon House imported idea metadata.");
+  }
 
-  expect(ideas[0]).toEqual(
+  expect(devonHouseIdea).toEqual(
     expect.objectContaining({
       sourcePlatform: "google-maps",
       linkedDestinationId: "kingston",
@@ -81,7 +86,7 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
       }),
     })
   );
-  expect(ideas[0].extractedPlaceName.toLowerCase()).toContain("devon house");
+  expect(devonHouseIdea.extractedPlaceName.toLowerCase()).toContain("devon house");
   await expect(page.getByText("Imported idea updated")).toBeVisible();
 
   await openCleanTab(page, "map", []);
@@ -103,7 +108,7 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await expect(mapDrawer.getByText("Exact stops from your board")).toBeVisible();
   await expect(mapDrawer.getByRole("button", { name: "Open exact stop Devon House" })).toBeVisible();
   await mapDrawer.getByLabel("Move Devon House to day").selectOption("1");
-  await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments) => Object.values(assignments).includes("1"));
+  await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments: Record<string, string>) => Object.values(assignments).includes("1"));
   await mapDrawer.getByRole("button", { name: /Day 1/ }).click();
   await expect(mapDrawer.getByRole("button", { name: "Open exact stop Devon House" })).toBeVisible();
   await expect(mapDrawer.getByText("1 saved stop pinned into this day.")).toBeVisible();
@@ -121,11 +126,11 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await expect(page.getByText("Pinned day 1")).toBeVisible();
   await page.getByLabel("Assign Devon House stop to day").selectOption("2");
   await expect(page.getByText("Pinned day 2")).toBeVisible();
-  await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments) => Object.values(assignments).includes("2"));
+  await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments: Record<string, string>) => Object.values(assignments).includes("2"));
   await page.getByLabel("Assign Devon House stop to day").selectOption("unplanned");
   await expect(page.getByText("Unplanned").first()).toBeVisible();
   await expect(page.getByLabel("Assign Devon House stop to day")).toHaveValue("unplanned");
-  await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments) => Object.values(assignments).includes("unplanned"));
+  await expectLocalStorage(page, "irieverse_imported_idea_days", (assignments: Record<string, string>) => Object.values(assignments).includes("unplanned"));
 
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
@@ -288,23 +293,23 @@ test("trip day cards support area edits, locks, and single-day add-on refresh", 
   await dayAreaLabel.scrollIntoViewIfNeeded();
   const firstDayAreaSelect = dayAreaLabel.locator("xpath=ancestor::label[1]").locator("select");
   await firstDayAreaSelect.selectOption("kingston");
-  await expectLocalStorage(page, "irieverse_manual_route", (route) => route[0] === "kingston");
+  await expectLocalStorage(page, "irieverse_manual_route", (route: string[]) => route[0] === "kingston");
 
   await page.getByRole("button", { name: "Keep day" }).first().click();
-  await expectLocalStorage(page, "irieverse_locked_route", (locked) => locked.includes("kingston"));
+  await expectLocalStorage(page, "irieverse_locked_route", (locked: string[]) => locked.includes("kingston"));
 
   await page.getByRole("button", { name: "Unlock day" }).first().click();
-  await expectLocalStorage(page, "irieverse_locked_route", (locked) => !locked.includes("kingston"));
+  await expectLocalStorage(page, "irieverse_locked_route", (locked: string[]) => !locked.includes("kingston"));
 
   await page.getByRole("button", { name: "Try another" }).first().click();
   await expectLocalStorage(
     page,
     "irieverse_day_experiences",
-    (overrides) => typeof overrides["1"] === "string" && overrides["1"].length > 0
+    (overrides: Record<string, string>) => typeof overrides["1"] === "string" && overrides["1"].length > 0
   );
 
   await page.getByRole("button", { name: "Use auto" }).first().click();
-  await expectLocalStorage(page, "irieverse_day_experiences", (overrides) => !overrides["1"]);
+  await expectLocalStorage(page, "irieverse_day_experiences", (overrides: Record<string, string>) => !overrides["1"]);
 
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
@@ -325,6 +330,9 @@ test("trip route order controls move, lock, remove, and reset stops", async ({ p
   const firstLaterButton = page.locator('button[aria-label^="Move "][aria-label$=" later"]:not([disabled])').first();
   const laterLabel = await firstLaterButton.getAttribute("aria-label");
   expect(laterLabel).toMatch(/^Move .+ later$/);
+  if (!laterLabel) {
+    throw new Error("Expected enabled route move button to have a label.");
+  }
   const movedStopName = laterLabel.replace(/^Move /, "").replace(/ later$/, "");
 
   await firstLaterButton.click();
@@ -582,7 +590,7 @@ test("map place details surface live visit data when available", async ({ page }
 
 test("map place details reject mismatched live data", async ({ page }) => {
   const issues = collectPageIssues(page);
-  const placeDetailRequests = [];
+  const placeDetailRequests: string[] = [];
 
   await page.route("**/api/place-details**", async (route) => {
     const url = new URL(route.request().url());
@@ -628,7 +636,7 @@ test("map place details reject mismatched live data", async ({ page }) => {
   expect(issues).toEqual([]);
 });
 
-async function openCleanTab(page, tab, storageKeys) {
+async function openCleanTab(page: Page, tab: string, storageKeys: string[]) {
   await page.goto(`/?tab=${tab}`, { waitUntil: "domcontentloaded" });
   await page.evaluate((keys) => {
     keys.forEach((key) => window.localStorage.removeItem(key));
@@ -636,7 +644,10 @@ async function openCleanTab(page, tab, storageKeys) {
   await page.reload({ waitUntil: "domcontentloaded" });
 }
 
-async function waitForImportedIdeas(page, predicate) {
+async function waitForImportedIdeas(
+  page: Page,
+  predicate: (ideas: ImportedIdea[]) => boolean
+): Promise<ImportedIdea[]> {
   await page.waitForFunction(
     ({ predicateSource }) => {
       const ideas = JSON.parse(window.localStorage.getItem("irieverse_imported_ideas") || "[]");
@@ -648,7 +659,7 @@ async function waitForImportedIdeas(page, predicate) {
   return page.evaluate(() => JSON.parse(window.localStorage.getItem("irieverse_imported_ideas") || "[]"));
 }
 
-async function expectLocalStorage(page, key, predicate) {
+async function expectLocalStorage<T>(page: Page, key: string, predicate: (value: T) => boolean) {
   await page.waitForFunction(
     ({ storageKey, predicateSource }) => {
       const value = JSON.parse(window.localStorage.getItem(storageKey) || "null");
@@ -658,12 +669,16 @@ async function expectLocalStorage(page, key, predicate) {
   );
 }
 
-async function waitForLocalStorageValue(page, key, predicate) {
+async function waitForLocalStorageValue<T>(
+  page: Page,
+  key: string,
+  predicate: (value: T) => boolean
+): Promise<T> {
   await expectLocalStorage(page, key, predicate);
   return page.evaluate((storageKey) => JSON.parse(window.localStorage.getItem(storageKey) || "null"), key);
 }
 
-async function expectNoHorizontalOverflow(page) {
+async function expectNoHorizontalOverflow(page: Page) {
   const sizes = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
     clientWidth: document.documentElement.clientWidth,
@@ -671,8 +686,8 @@ async function expectNoHorizontalOverflow(page) {
   expect(sizes.scrollWidth).toBeLessThanOrEqual(sizes.clientWidth);
 }
 
-function collectPageIssues(page) {
-  const issues = [];
+function collectPageIssues(page: Page): string[] {
+  const issues: string[] = [];
 
   page.on("console", (message) => {
     const text = message.text();

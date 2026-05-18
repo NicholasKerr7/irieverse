@@ -14,7 +14,7 @@
     "preview": "vite preview",
     "test:api": "tsx tests/api-place-details.test.ts && tsx tests/api-handlers.test.ts",
     "qa:local": "playwright test --config=playwright.local.config.cjs --reporter=line",
-    "qa:production": "playwright test tests/production-qa.spec.js --reporter=line",
+    "qa:production": "playwright test tests/production-qa.spec.ts --reporter=line",
     "check:maintenance": "node scripts/check-maintenance-config.cjs",
     "verify": "npm run typecheck && npm run test:api && npm run check:maintenance && npm run audit:prod && npm run build",
     "verify:full": "npm run verify && npm run qa:local",
