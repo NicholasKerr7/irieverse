@@ -25,7 +25,7 @@ export const PLANNING_MODE_LABELS: Record<
   },
 };
 
-export const PLANNING_TEMPLATES: PlanningTemplate[] = [
+export const PLANNING_TEMPLATES: [PlanningTemplate, ...PlanningTemplate[]] = [
   {
     id: "first-jamaica-trip",
     mode: "visitor",

@@ -80,6 +80,7 @@ export function getDestinationPinCategory(destination: Destination): MapPinCateg
 
 export function getNearbyExperiences(destination: Destination) {
   const selectedName = destination.name.toLowerCase();
+  const selectedNameLead = selectedName.split(" ")[0] ?? selectedName;
   const selectedRegion = destination.region.toLowerCase();
 
   return EXPERIENCES.filter((experience) => {
@@ -88,7 +89,7 @@ export function getNearbyExperiences(destination: Destination) {
       experience.linkedDestinationId === destination.id ||
       experienceRegion === selectedRegion ||
       selectedName.includes(experienceRegion) ||
-      experienceRegion.includes(selectedName.split(" ")[0])
+      experienceRegion.includes(selectedNameLead)
     );
   });
 }
@@ -116,7 +117,7 @@ export function getRouteStatusLabel(routeStatus: {
 }
 
 export function getRouteColor(index: number): string {
-  return ROUTE_COLORS[index % ROUTE_COLORS.length];
+  return ROUTE_COLORS[index % ROUTE_COLORS.length] ?? ROUTE_COLORS[0] ?? "#22d3ee";
 }
 
 export function getLegDistance(
@@ -136,6 +137,7 @@ export function mergeDestinations(primary: Destination[], secondary: Destination
 export function buildDrivingGuideUrl(routeDestinations: Destination[]): string {
   const [origin, ...rest] = routeDestinations;
   const destination = rest[rest.length - 1];
+  if (!origin || !destination) return "https://www.google.com/maps";
   const waypoints = rest.slice(0, -1);
   const params = new URLSearchParams({
     api: "1",

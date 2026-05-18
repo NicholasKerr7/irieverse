@@ -443,6 +443,7 @@ function isBlockedHostname(hostname: string): boolean {
 function isPrivateIp(address: string): boolean {
   if (isIPv4(address)) {
     const [first, second] = address.split(".").map(Number);
+    if (first === undefined || second === undefined) return false;
     return (
       first === 10 ||
       first === 127 ||
@@ -511,8 +512,9 @@ function extractGoogleMapsPlaceName(url: URL): string {
     const normalizedSegment = segment.toLowerCase();
     return normalizedSegment === "place" || normalizedSegment === "search";
   });
-  if (placeIndex >= 0 && segments[placeIndex + 1]) {
-    return cleanGoogleMapsPlaceName(segments[placeIndex + 1]);
+  const placeSegment = placeIndex >= 0 ? segments[placeIndex + 1] : undefined;
+  if (placeSegment) {
+    return cleanGoogleMapsPlaceName(placeSegment);
   }
 
   const candidate = segments

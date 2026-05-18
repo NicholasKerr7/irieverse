@@ -87,7 +87,8 @@ export function buildItineraryPlan({
     );
     const highlight =
       tripDestination.highlights[index % tripDestination.highlights.length] ??
-      tripDestination.highlights[0];
+      tripDestination.highlights[0] ??
+      tripDestination.headline;
     const matchedExperiences = rankExperiencesForDay(
       expPool,
       tripDestination,
@@ -197,15 +198,16 @@ export function buildRouteOrder(
 
   while (route.length < maxStops && remaining.length) {
     const current = route[route.length - 1];
+    if (!current) break;
     const nextIndex = remaining.reduce((bestIndex, candidate, index) => {
-      const best = remaining[bestIndex];
+      const best = remaining[bestIndex] ?? candidate;
       return routeCandidateScore(current, candidate, preferredDestinationIds, plannerVibe) <
         routeCandidateScore(current, best, preferredDestinationIds, plannerVibe)
         ? index
         : bestIndex;
     }, 0);
     const [next] = remaining.splice(nextIndex, 1);
-    route.push(next);
+    if (next) route.push(next);
   }
 
   return route;
@@ -459,6 +461,9 @@ function buildRouteSummary(
   });
   const legs = stops.slice(1).map((stop, index) => {
     const previousStop = stops[index];
+    if (!previousStop) {
+      throw new Error("Expected previous route stop while building route legs.");
+    }
     return {
       fromDestinationId: previousStop.destinationId,
       toDestinationId: stop.destinationId,

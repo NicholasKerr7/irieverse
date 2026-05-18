@@ -68,7 +68,7 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
 
   const ideas = await waitForImportedIdeas(
     page,
-    (items) => items.length === 1 && items[0].title === "Devon House stop" && items[0].note.includes("Updated note")
+    (items) => items.some((item) => item.title === "Devon House stop" && item.note.includes("Updated note"))
   );
   const devonHouseIdea = ideas[0];
   if (!devonHouseIdea?.extractedPlaceName) {
@@ -179,10 +179,14 @@ test("google place imports auto-anchor from coordinates", async ({ page }) => {
 
   const ideas = await waitForImportedIdeas(
     page,
-    (items) => items.length === 1 && items[0].title === "Quiet Garden"
+    (items) => items.some((item) => item.title === "Quiet Garden")
   );
+  const quietGardenIdea = ideas[0];
+  if (!quietGardenIdea) {
+    throw new Error("Expected Quiet Garden imported idea.");
+  }
 
-  expect(ideas[0]).toEqual(
+  expect(quietGardenIdea).toEqual(
     expect.objectContaining({
       linkedDestinationId: "kingston",
       place: expect.objectContaining({

@@ -1,6 +1,6 @@
-import { Destination, Experience } from "../types/travel";
+import type { Destination, Experience } from "../types/travel";
 
-export const DESTINATIONS: Destination[] = [
+export const DESTINATIONS: [Destination, ...Destination[]] = [
   {
     id: "mobay",
     name: "Montego Bay",
@@ -196,7 +196,7 @@ export const DESTINATIONS: Destination[] = [
   },
 ];
 
-export const EXPERIENCES: Experience[] = [
+export const EXPERIENCES: [Experience, ...Experience[]] = [
   {
     id: "boston-bay-jerk-trail",
     title: "Boston Bay Jerk Trail",

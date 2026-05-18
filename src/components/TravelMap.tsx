@@ -353,6 +353,7 @@ export const TravelMap = memo(function TravelMap({
     if (!mapReady || !fitTargets.length || !mapRef.current) return;
     if (fitTargets.length === 1) {
       const destination = fitTargets[0];
+      if (!destination) return;
       const isExactMarker = focusExtraMarkers.some((marker) => marker.id === destination.id);
       mapRef.current.easeTo({
         center: [destination.longitude, destination.latitude],
@@ -739,13 +740,17 @@ function buildRouteRequests(routeDestinations: Destination[], routeLegs: RouteLe
       .filter((request): request is RouteRequest => Boolean(request));
   }
 
-  return routeDestinations.slice(1).map((destination, index) => ({
-    id: `${routeDestinations[index].id}-${destination.id}-${index}`,
-    from: routeDestinations[index],
-    to: destination,
-    fallbackDistanceKm: 0,
-    fallbackDurationMinutes: 0,
-  }));
+  return routeDestinations.slice(1).flatMap((destination, index) => {
+    const from = routeDestinations[index];
+    if (!from) return [];
+    return [{
+      id: `${from.id}-${destination.id}-${index}`,
+      from,
+      to: destination,
+      fallbackDistanceKm: 0,
+      fallbackDurationMinutes: 0,
+    }];
+  });
 }
 
 function buildRouteSegments(

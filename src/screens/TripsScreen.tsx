@@ -37,7 +37,7 @@ import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCES, VIBE_OPTIONS } from "../data/content";
 import { PLANNING_MODE_LABELS } from "../data/plannerTemplates";
 import { formatLocalTime, type TravelOS } from "../hooks/useTravelOS";
-import type { Experience, ImportedIdea, PlanningMode, PlanningTemplate, RouteStop, Vibe } from "../types/travel";
+import type { Destination, Experience, ImportedIdea, PlanningMode, PlanningTemplate, RouteStop, Vibe } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
 import { getBoardIdeasForDestination } from "../utils/boardIdeas";
@@ -389,7 +389,7 @@ function QuickPlanExperience({
 }: {
   app: TravelOS;
   onNavigate: (tab: MobileTabId) => void;
-  savedDestinations: typeof DESTINATIONS;
+  savedDestinations: Destination[];
   savedExperiences: Experience[];
   importedIdeas: ImportedIdea[];
 }) {
@@ -1254,7 +1254,7 @@ function QuickSavedIdeasPanel({
   onExplore,
   onSaved,
 }: {
-  savedDestinations: typeof DESTINATIONS;
+  savedDestinations: Destination[];
   savedExperiences: Experience[];
   importedIdeas: ImportedIdea[];
   onExplore: () => void;
@@ -1374,7 +1374,7 @@ function WizardPanel({
   app: TravelOS;
   activeStep: WizardStepId;
   setActiveStep: (step: WizardStepId) => void;
-  savedDestinations: typeof DESTINATIONS;
+  savedDestinations: Destination[];
   savedExperiences: Experience[];
   importedIdeas: ImportedIdea[];
   onNavigate: (tab: MobileTabId) => void;
@@ -2672,6 +2672,9 @@ function getPlanChecks(app: TravelOS): PlanCheck[] {
 
   if (routeWarnings.length) {
     const firstWarning = routeWarnings[0];
+    if (!firstWarning) {
+      return checks;
+    }
     checks.push({
       id: "route-warning",
       title: routeWarnings.length === 1 ? firstWarning.title : `${routeWarnings.length} route pacing flags`,
@@ -2831,10 +2834,10 @@ function getCompletedStepIndex(app: TravelOS) {
 
 function nextStep(step: WizardStepId): WizardStepId {
   const index = WIZARD_STEPS.findIndex((item) => item.id === step);
-  return WIZARD_STEPS[Math.min(index + 1, WIZARD_STEPS.length - 1)].id;
+  return WIZARD_STEPS[Math.min(index + 1, WIZARD_STEPS.length - 1)]?.id ?? step;
 }
 
 function previousStep(step: WizardStepId): WizardStepId {
   const index = WIZARD_STEPS.findIndex((item) => item.id === step);
-  return WIZARD_STEPS[Math.max(index - 1, 0)].id;
+  return WIZARD_STEPS[Math.max(index - 1, 0)]?.id ?? step;
 }

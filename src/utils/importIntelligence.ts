@@ -137,8 +137,9 @@ function extractGoogleMapsPlace(url: URL): string {
     .map((segment) => decodeUrlPart(segment))
     .filter(Boolean);
   const placeIndex = segments.findIndex((segment) => segment.toLowerCase() === "place" || segment.toLowerCase() === "search");
-  if (placeIndex >= 0 && segments[placeIndex + 1]) {
-    return cleanPlaceName(segments[placeIndex + 1]);
+  const placeSegment = placeIndex >= 0 ? segments[placeIndex + 1] : undefined;
+  if (placeSegment) {
+    return cleanPlaceName(placeSegment);
   }
 
   const candidate = segments
@@ -213,7 +214,8 @@ function inferLinkedDestinationId(text: string): string {
     score: getDestinationMatchScore(destination, normalized),
   })).sort((first, second) => second.score - first.score);
 
-  return scored[0]?.score > 0 ? scored[0].destination.id : "";
+  const bestMatch = scored[0];
+  return bestMatch && bestMatch.score > 0 ? bestMatch.destination.id : "";
 }
 
 function getDestinationMatchScore(destination: Destination, normalizedText: string): number {

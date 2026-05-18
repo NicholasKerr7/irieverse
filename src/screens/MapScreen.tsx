@@ -121,7 +121,10 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   useEffect(() => {
     if (!visibleDestinations.length) return;
     if (visibleDestinations.some((destination) => destination.id === focusedDestinationId)) return;
-    setFocusedDestinationId(visibleDestinations[0].id);
+    const firstVisibleDestination = visibleDestinations[0];
+    if (firstVisibleDestination) {
+      setFocusedDestinationId(firstVisibleDestination.id);
+    }
   }, [focusedDestinationId, visibleDestinations]);
 
   useEffect(() => {
@@ -1048,7 +1051,7 @@ function TripOverviewPanel({
           <DrawerFact icon={Layers3} label="Pins" value={visiblePins.toString()} />
         </div>
 
-        {!!routeSummary.warnings.length && (
+        {routeSummary.warnings[0] && (
           <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-800">
             {routeSummary.warnings[0].title}
           </div>
@@ -1441,7 +1444,7 @@ function TimelineDestinationCard({
           <div className="mt-2 flex flex-wrap gap-1.5">
             <MiniPill>{`${destination.rating.toFixed(1)} rating`}</MiniPill>
             <MiniPill>{"$".repeat(destination.priceLevel)}</MiniPill>
-            <MiniPill>{plannerDay?.vibe ?? destination.vibes[0]}</MiniPill>
+            <MiniPill>{plannerDay?.vibe ?? destination.vibes[0] ?? "Jamaica stop"}</MiniPill>
           </div>
         </div>
       </div>

@@ -99,7 +99,7 @@ const AIRPORT_TIMEZONES: Record<string, string> = {
   OCJ: "America/Jamaica",
 };
 
-export const ORIGIN_AIRPORTS: OriginAirport[] = [
+export const ORIGIN_AIRPORTS: [OriginAirport, ...OriginAirport[]] = [
   { id: "jfk", name: "New York, USA (JFK)", code: "JFK", shortLabel: "NYC", latitude: 40.6413, longitude: -73.7781 },
   { id: "mia", name: "Miami, USA (MIA)", code: "MIA", shortLabel: "Miami", latitude: 25.7959, longitude: -80.287 },
   { id: "yyz", name: "Toronto, CA (YYZ)", code: "YYZ", shortLabel: "Toronto", latitude: 43.6777, longitude: -79.6248 },
@@ -112,15 +112,14 @@ export const ORIGIN_AIRPORTS: OriginAirport[] = [
 
 const DEFAULT_ORIGIN_AIRPORT_ID = ORIGIN_AIRPORTS[0].id;
 
-const BUDGET_PROFILES: Record<
-  string,
-  {
-    lodging: number;
-    dining: number;
-    experiences: number;
-    transport: number;
-  }
-> = {
+type BudgetProfile = {
+  lodging: number;
+  dining: number;
+  experiences: number;
+  transport: number;
+};
+
+const BUDGET_PROFILES: Record<string, BudgetProfile> & { mixed: BudgetProfile } = {
   chill: { lodging: 210, dining: 75, experiences: 95, transport: 60 },
   nightlife: { lodging: 240, dining: 95, experiences: 130, transport: 65 },
   adventure: { lodging: 185, dining: 70, experiences: 110, transport: 70 },
@@ -160,7 +159,7 @@ export function useTravelOS() {
   const [plannerVibe, setPlannerVibe] = useState<Vibe>("mixed");
   const [plannerBudget, setPlannerBudget] = useState(150);
   const [plannerStartDate, setPlannerStartDate] = useState(() =>
-    new Date().toISOString().split("T")[0]
+    new Date().toISOString().slice(0, 10)
   );
   const [manualRouteDestinationIds, setManualRouteDestinationIds] = useState<string[]>(() =>
     readJsonFromStorage(STORAGE_KEY_MANUAL_ROUTE, [], isStringArray)
@@ -939,9 +938,12 @@ export function useTravelOS() {
       const targetIndex = index + direction;
 
       if (index < 0 || targetIndex < 0 || targetIndex >= next.length) return next;
-      if (lockedIds.has(next[targetIndex])) return next;
+      const currentDestinationId = next[index];
+      const targetDestinationId = next[targetIndex];
+      if (!currentDestinationId || !targetDestinationId || lockedIds.has(targetDestinationId)) return next;
 
-      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      next[index] = targetDestinationId;
+      next[targetIndex] = currentDestinationId;
       return next;
     });
   };
@@ -1458,7 +1460,16 @@ function setRouteDestinationAtIndex(
 
   const existingIndex = nextRouteIds.indexOf(destinationId);
   if (existingIndex >= 0) {
-    [nextRouteIds[targetIndex], nextRouteIds[existingIndex]] = [nextRouteIds[existingIndex], nextRouteIds[targetIndex]];
+    const existingDestinationId = nextRouteIds[existingIndex];
+    const targetDestinationId = nextRouteIds[targetIndex];
+    if (!existingDestinationId) return currentRouteIds;
+    if (!targetDestinationId) {
+      nextRouteIds.splice(existingIndex, 1);
+      nextRouteIds.push(existingDestinationId);
+      return nextRouteIds;
+    }
+    nextRouteIds[targetIndex] = existingDestinationId;
+    nextRouteIds[existingIndex] = targetDestinationId;
     return nextRouteIds;
   }
 
@@ -1476,7 +1487,8 @@ function setRouteDestinationAtIndex(
 
 function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
   for (let index = items.length - 1; index >= 0; index -= 1) {
-    if (predicate(items[index])) return index;
+    const item = items[index];
+    if (item !== undefined && predicate(item)) return index;
   }
   return -1;
 }
@@ -1594,7 +1606,7 @@ function readNumberArray(value: unknown): number[] {
 
 function getNumberAt(values: number[], index: number, fallback: number): number {
   const value = values[index];
-  return Number.isFinite(value) ? value : fallback;
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 function describeWeatherCode(code: number): string {
