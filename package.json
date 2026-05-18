@@ -9,8 +9,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "typecheck": "tsc --noEmit",
-    "build": "vite build",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.service-worker.json --noEmit",
+    "build": "npm run build:sw && vite build",
+    "build:sw": "tsc -p tsconfig.service-worker.json",
     "preview": "vite preview",
     "test:api": "tsx tests/api-place-details.test.ts && tsx tests/api-handlers.test.ts",
     "qa:local": "playwright test --config=playwright.local.config.ts --reporter=line",

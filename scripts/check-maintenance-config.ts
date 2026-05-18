@@ -74,6 +74,8 @@ if (lockedRoot?.engines?.npm !== packageJson.engines.npm) {
 }
 
 [
+  "build",
+  "build:sw",
   "typecheck",
   "test:api",
   "qa:local",
@@ -100,6 +102,10 @@ const getScript = (scriptName: string): string => {
 };
 
 const verifyScript = getScript("verify");
+assertIncludes(getScript("build"), "npm run build:sw", "build script");
+assertIncludes(getScript("build"), "vite build", "build script");
+assertIncludes(getScript("build:sw"), "tsconfig.service-worker.json", "build:sw script");
+assertIncludes(getScript("typecheck"), "tsconfig.service-worker.json", "typecheck script");
 assertIncludes(verifyScript, "npm run typecheck", "verify script");
 assertIncludes(verifyScript, "npm run test:api", "verify script");
 assertIncludes(verifyScript, "npm run check:maintenance", "verify script");
