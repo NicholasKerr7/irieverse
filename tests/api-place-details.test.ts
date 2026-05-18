@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import placeDetailsHandler from "../api/place-details";
-import type { ApiRequest, ApiResponse } from "../src/types/api";
+import type { ApiRequest, ApiResponse, PlaceDetailsApiResponse } from "../src/types/api";
 
 const query = {
   kind: "destination",
@@ -26,7 +26,7 @@ async function main() {
   ]);
 
   assert.equal(addressOnlyMatch.statusCode, 200);
-  const addressOnlyMatchBody = assertBodyRecord(addressOnlyMatch.body);
+  const addressOnlyMatchBody = assertBody<PlaceDetailsApiResponse>(addressOnlyMatch.body);
   assert.equal(addressOnlyMatchBody.data, null);
   assert.equal(addressOnlyMatchBody.meta.source, "curated");
 
@@ -40,7 +40,7 @@ async function main() {
   ]);
 
   assert.equal(blockedBusinessMatch.statusCode, 200);
-  const blockedBusinessMatchBody = assertBodyRecord(blockedBusinessMatch.body);
+  const blockedBusinessMatchBody = assertBody<PlaceDetailsApiResponse>(blockedBusinessMatch.body);
   assert.equal(blockedBusinessMatchBody.data, null);
   assert.equal(blockedBusinessMatchBody.meta.source, "curated");
 
@@ -61,8 +61,12 @@ async function main() {
   ]);
 
   assert.equal(trustedPlaceMatch.statusCode, 200);
-  const trustedPlaceMatchBody = assertBodyRecord(trustedPlaceMatch.body);
+  const trustedPlaceMatchBody = assertBody<PlaceDetailsApiResponse>(trustedPlaceMatch.body);
   assert.equal(trustedPlaceMatchBody.meta.source, "google-places");
+  assert.notEqual(trustedPlaceMatchBody.data, null);
+  if (!trustedPlaceMatchBody.data) {
+    throw new Error("Expected trusted place details.");
+  }
   assert.equal(trustedPlaceMatchBody.data.name, "Doctor's Cave Beach");
   assert.equal(trustedPlaceMatchBody.data.primaryType, "Beach");
 
@@ -146,10 +150,11 @@ function createResponse(): TestResponse {
   };
 }
 
-function assertBodyRecord(value: unknown): Record<string, any> {
+function assertBody<T extends object>(value: unknown): T {
   assert.equal(typeof value, "object");
   assert.notEqual(value, null);
-  return value as Record<string, any>;
+  assert.equal(Array.isArray(value), false);
+  return value as T;
 }
 
 main().catch((error) => {

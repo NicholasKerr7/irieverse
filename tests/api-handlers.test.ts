@@ -1,16 +1,29 @@
 import assert from "node:assert/strict";
 import { promises as dns } from "node:dns";
 import bookingsHandler from "../api/bookings";
-import flightsHandler from "../api/flights";
+import flightsHandler, { resetFlightsHandlerStateForTest } from "../api/flights";
 import importMetadataHandler from "../api/import-metadata";
 import roadRouteHandler from "../api/road-route";
-import type { ApiRequest, ApiResponse } from "../src/types/api";
+import type {
+  ApiRequest,
+  ApiResponse,
+  BookingApiResponse,
+  FlightApiResponse,
+  ImportMetadataApiResponse,
+  RoadRouteApiResponse,
+} from "../src/types/api";
 
 type TestResponse = ApiResponse & {
   statusCode: number;
   headers: Record<string, string>;
   body?: unknown;
 };
+
+type ErrorApiResponse = {
+  error: string;
+};
+
+type OsrmRoadRouteApiResponse = Extract<RoadRouteApiResponse, { meta: { source: "osrm" } }>;
 
 async function main() {
   await testBookingsFallbackWithoutCredentials();
@@ -25,6 +38,7 @@ async function main() {
 }
 
 async function testFlightsLiveAviationStackNormalization() {
+  resetFlightsHandlerStateForTest();
   const restoreEnv = withEnv({
     AVIATIONSTACK_API_KEY: "test-aviationstack-key",
     VITE_AVIATIONSTACK_API_KEY: undefined,
@@ -80,22 +94,24 @@ async function testFlightsLiveAviationStackNormalization() {
     );
 
     assert.equal(response.statusCode, 200);
-    assertBodyRecord(response.body);
-    assert.equal(response.body.meta?.source, "aviationstack");
-    assert.equal(response.body.meta?.providerConfigured, true);
-    assert.equal(response.body.meta?.origin, "JFK");
-    assert.equal(response.body.meta?.destination, "MBJ");
-    assert.ok(Array.isArray(response.body.data));
-    assert.equal(response.body.data[0]?.flightNumber, "IA123");
-    assert.equal(response.body.data[0]?.airline, "Island Air");
-    assert.equal(response.body.data[0]?.durationMinutes, 225);
+    const body = assertBody<FlightApiResponse>(response.body);
+    assert.equal(body.meta.source, "aviationstack");
+    assert.equal(body.meta.providerConfigured, true);
+    assert.equal(body.meta.origin, "JFK");
+    assert.equal(body.meta.destination, "MBJ");
+    assert.ok(Array.isArray(body.data));
+    assert.equal(body.data[0]?.flightNumber, "IA123");
+    assert.equal(body.data[0]?.airline, "Island Air");
+    assert.equal(body.data[0]?.durationMinutes, 225);
   } finally {
+    resetFlightsHandlerStateForTest();
     globalThis.fetch = originalFetch;
     restoreEnv();
   }
 }
 
 async function testFlightsRateLimitFallbackAndCooldown() {
+  resetFlightsHandlerStateForTest();
   const restoreEnv = withEnv({
     AVIATIONSTACK_API_KEY: "test-aviationstack-key",
     VITE_AVIATIONSTACK_API_KEY: undefined,
@@ -132,11 +148,11 @@ async function testFlightsRateLimitFallbackAndCooldown() {
     );
 
     assert.equal(rateLimitedResponse.statusCode, 200);
-    assertBodyRecord(rateLimitedResponse.body);
-    assert.equal(rateLimitedResponse.body.meta?.source, "fallback");
-    assert.equal(rateLimitedResponse.body.meta?.reason, "aviationstack-rate-limited");
-    assert.equal(rateLimitedResponse.body.meta?.providerConfigured, true);
-    assert.deepEqual(rateLimitedResponse.body.data, []);
+    const rateLimitedBody = assertBody<FlightApiResponse>(rateLimitedResponse.body);
+    assert.equal(rateLimitedBody.meta.source, "fallback");
+    assert.equal(rateLimitedBody.meta.reason, "aviationstack-rate-limited");
+    assert.equal(rateLimitedBody.meta.providerConfigured, true);
+    assert.deepEqual(rateLimitedBody.data, []);
     assert.equal(fetchCount, 1);
 
     const cooldownResponse = createResponse();
@@ -152,12 +168,13 @@ async function testFlightsRateLimitFallbackAndCooldown() {
     );
 
     assert.equal(cooldownResponse.statusCode, 200);
-    assertBodyRecord(cooldownResponse.body);
-    assert.equal(cooldownResponse.body.meta?.source, "fallback");
-    assert.equal(cooldownResponse.body.meta?.reason, "aviationstack-rate-limited");
-    assert.equal(typeof cooldownResponse.body.meta?.retryAfterSeconds, "number");
+    const cooldownBody = assertBody<FlightApiResponse>(cooldownResponse.body);
+    assert.equal(cooldownBody.meta.source, "fallback");
+    assert.equal(cooldownBody.meta.reason, "aviationstack-rate-limited");
+    assert.equal(typeof cooldownBody.meta.retryAfterSeconds, "number");
     assert.equal(fetchCount, 1);
   } finally {
+    resetFlightsHandlerStateForTest();
     globalThis.fetch = originalFetch;
     console.warn = originalWarn;
     restoreEnv();
@@ -186,11 +203,11 @@ async function testBookingsFallbackWithoutCredentials() {
     );
 
     assert.equal(response.statusCode, 200);
-    assertBodyRecord(response.body);
-    assert.equal(response.body.meta?.source, "fallback");
-    assert.equal(response.body.meta?.reason, "missing-amadeus-credentials");
-    assert.ok(Array.isArray(response.body.data));
-    assert.equal(response.body.data.length, 2);
+    const body = assertBody<BookingApiResponse>(response.body);
+    assert.equal(body.meta.source, "fallback");
+    assert.equal(body.meta.reason, "missing-amadeus-credentials");
+    assert.ok(Array.isArray(body.data));
+    assert.equal(body.data.length, 2);
   } finally {
     restoreEnv();
   }
@@ -283,13 +300,13 @@ async function testBookingsLiveAmadeusNormalization() {
     );
 
     assert.equal(response.statusCode, 200);
-    assertBodyRecord(response.body);
-    assert.equal(response.body.meta?.source, "amadeus");
-    assert.equal(response.body.meta?.adults, 2);
-    assert.ok(Array.isArray(response.body.data));
-    assert.equal(response.body.data[0]?.title, "Harbour View Stay");
-    assert.equal(response.body.data[0]?.price, 312);
-    assert.deepEqual(response.body.data[0]?.perks, [
+    const body = assertBody<BookingApiResponse>(response.body);
+    assert.equal(body.meta.source, "amadeus");
+    assert.equal(body.meta.adults, 2);
+    assert.ok(Array.isArray(body.data));
+    assert.equal(body.data[0]?.title, "Harbour View Stay");
+    assert.equal(body.data[0]?.price, 312);
+    assert.deepEqual(body.data[0]?.perks, [
       "Current availability",
       "Breakfast",
       "Cancellation by 2026-06-01",
@@ -314,8 +331,8 @@ async function testImportMetadataBlocksPrivateUrls() {
   );
 
   assert.equal(response.statusCode, 400);
-  assertBodyRecord(response.body);
-  assert.equal(response.body.error, "Expected a public http(s) URL.");
+  const body = assertBody<ErrorApiResponse>(response.body);
+  assert.equal(body.error, "Expected a public http(s) URL.");
 }
 
 async function testImportMetadataArticlePreview() {
@@ -359,13 +376,13 @@ async function testImportMetadataArticlePreview() {
     );
 
     assert.equal(response.statusCode, 200);
-    assertBodyRecord(response.body);
-    assert.equal(response.body.data?.sourcePlatform, "article");
-    assert.equal(response.body.data?.title, "Jamaica Food Guide");
-    assert.equal(response.body.data?.description, "Where to eat well");
-    assert.equal(response.body.data?.imageUrl, "https://example.com/hero.jpg");
-    assert.equal(response.body.data?.siteName, "Island Notes");
-    assert.equal(response.body.data?.confidence, "high");
+    const body = assertBody<ImportMetadataApiResponse>(response.body);
+    assert.equal(body.data.sourcePlatform, "article");
+    assert.equal(body.data.title, "Jamaica Food Guide");
+    assert.equal(body.data.description, "Where to eat well");
+    assert.equal(body.data.imageUrl, "https://example.com/hero.jpg");
+    assert.equal(body.data.siteName, "Island Notes");
+    assert.equal(body.data.confidence, "high");
   } finally {
     dns.lookup = originalLookup;
     globalThis.fetch = originalFetch;
@@ -429,13 +446,13 @@ async function testRoadRouteNormalization() {
     );
 
     assert.equal(response.statusCode, 200);
-    assertBodyRecord(response.body);
-    assert.equal(response.body.meta?.source, "osrm");
-    assert.equal(response.body.meta?.stepCount, 2);
-    assert.equal(response.body.data?.distanceKm, 82.4);
-    assert.equal(response.body.data?.durationMinutes, 104);
-    assert.equal(response.body.data?.steps[0]?.instruction, "Start on Queens Drive");
-    assert.equal(response.body.data?.steps[1]?.instruction, "Turn left onto A1");
+    const body = assertBody<OsrmRoadRouteApiResponse>(response.body);
+    assert.equal(body.meta.source, "osrm");
+    assert.equal(body.meta.stepCount, 2);
+    assert.equal(body.data.distanceKm, 82.4);
+    assert.equal(body.data.durationMinutes, 104);
+    assert.equal(body.data.steps[0]?.instruction, "Start on Queens Drive");
+    assert.equal(body.data.steps[1]?.instruction, "Turn left onto A1");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -473,9 +490,11 @@ function jsonResponse(payload: unknown): Response {
   });
 }
 
-function assertBodyRecord(value: unknown): asserts value is Record<string, any> {
+function assertBody<T extends object>(value: unknown): T {
   assert.equal(typeof value, "object");
   assert.notEqual(value, null);
+  assert.equal(Array.isArray(value), false);
+  return value as T;
 }
 
 function withEnv(values: Record<string, string | undefined>) {

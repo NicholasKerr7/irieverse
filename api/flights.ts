@@ -10,6 +10,12 @@ const FLIGHT_CACHE = new Map<string, { payload: FlightApiResponse; expiresAt: nu
 let aviationStackCooldownUntil = 0;
 let aviationStackCooldownReason = "";
 
+export function resetFlightsHandlerStateForTest() {
+  FLIGHT_CACHE.clear();
+  aviationStackCooldownUntil = 0;
+  aviationStackCooldownReason = "";
+}
+
 export default async function flightsHandler(req: ApiRequest, res: ApiResponse) {
   setResponseHeaders(res);
 
