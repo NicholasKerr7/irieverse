@@ -12,6 +12,8 @@ Result: Passed production sharing and cloud board setup on the replacement Supab
 - The Supabase probe created a `trips` row, read it back through the trip-share RPC, updated it with the correct local edit token, deleted it through the protected cleanup RPC, and verified the row was gone.
 - Cloud board storage is migrated through `20260506120000_create_user_boards.sql`; the table has row-level security enabled and authenticated-only grants.
 - The trip-share RPC hardening migration, `20260515161350_harden_trip_share_rpc.sql`, is applied and keeps privileged implementation functions in the private schema.
+- `supabase db push --dry-run` reports the remote database is up to date.
+- `supabase db lint --linked --schema public,private --fail-on error` reports no schema errors.
 
 ## Full QA run
 
