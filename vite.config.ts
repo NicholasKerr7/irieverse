@@ -1,12 +1,12 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type ViteDevServer } from "vite";
 import react from "@vitejs/plugin-react-swc";
-import { createRequire } from "node:module";
-
-const require = createRequire(import.meta.url);
-const flightsHandler = require("./api/flights.js");
-const importMetadataHandler = require("./api/import-metadata.js");
-const placeDetailsHandler = require("./api/place-details.js");
-const roadRouteHandler = require("./api/road-route.js");
+import type { IncomingMessage, ServerResponse } from "node:http";
+import bookingsHandler from "./api/bookings";
+import flightsHandler from "./api/flights";
+import importMetadataHandler from "./api/import-metadata";
+import placeDetailsHandler from "./api/place-details";
+import roadRouteHandler from "./api/road-route";
+import type { ApiHandler, ApiResponse, QueryRecord } from "./src/types/api";
 
 export default defineConfig(({ mode }) => {
   Object.assign(process.env, loadEnv(mode, process.cwd(), ""));
@@ -41,7 +41,10 @@ export default defineConfig(({ mode }) => {
 function localApiRoutes() {
   return {
     name: "irieverse-local-api-routes",
-    configureServer(server) {
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use("/api/bookings", async (req, res) => {
+        await runLocalApiHandler(bookingsHandler, req, res);
+      });
       server.middlewares.use("/api/flights", async (req, res) => {
         await runLocalApiHandler(flightsHandler, req, res);
       });
@@ -58,7 +61,7 @@ function localApiRoutes() {
   };
 }
 
-async function runLocalApiHandler(handler, req, res) {
+async function runLocalApiHandler(handler: ApiHandler, req: IncomingMessage, res: ServerResponse) {
   const requestUrl = new URL(req.url ?? "", "http://localhost");
   await handler(
     {
@@ -69,8 +72,8 @@ async function runLocalApiHandler(handler, req, res) {
   );
 }
 
-function readQueryParams(searchParams: URLSearchParams): Record<string, string | string[]> {
-  const query: Record<string, string | string[]> = {};
+function readQueryParams(searchParams: URLSearchParams): QueryRecord {
+  const query: QueryRecord = {};
   searchParams.forEach((value, key) => {
     const existingValue = query[key];
     if (Array.isArray(existingValue)) {
@@ -84,24 +87,24 @@ function readQueryParams(searchParams: URLSearchParams): Record<string, string |
   return query;
 }
 
-function createResponseAdapter(res) {
-  const adapter = {
-    setHeader(name, value) {
+function createResponseAdapter(res: ServerResponse): ApiResponse {
+  const adapter: ApiResponse = {
+    setHeader(name: string, value: string) {
       res.setHeader(name, value);
       return adapter;
     },
-    status(statusCode) {
+    status(statusCode: number) {
       res.statusCode = statusCode;
       return adapter;
     },
-    json(payload) {
+    json(payload: unknown) {
       if (!res.getHeader("Content-Type")) {
         res.setHeader("Content-Type", "application/json");
       }
       res.end(JSON.stringify(payload));
       return adapter;
     },
-    end(payload) {
+    end(payload?: string) {
       res.end(payload);
       return adapter;
     },

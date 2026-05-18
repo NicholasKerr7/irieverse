@@ -610,11 +610,13 @@ export function useTravelOS() {
   );
 
   const applyTripPayload = useCallback((payload: TripPayload) => {
-    if (isPlanningMode(payload.planningMode ?? null)) {
-      setPlanningModeState(payload.planningMode);
+    const planningMode = payload.planningMode ?? null;
+    if (isPlanningMode(planningMode)) {
+      setPlanningModeState(planningMode);
     }
-    if (isPlanningTemplateId(payload.planningTemplateId ?? null)) {
-      setPlanningTemplateId(payload.planningTemplateId);
+    const planningTemplateId = payload.planningTemplateId ?? null;
+    if (isPlanningTemplateId(planningTemplateId)) {
+      setPlanningTemplateId(planningTemplateId);
     }
     setPlannerBaseId(payload.plannerBaseId ?? "mobay");
     setPlannerDays(clampPlannerDays(payload.plannerDays ?? 5));

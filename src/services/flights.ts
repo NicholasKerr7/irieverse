@@ -1,11 +1,12 @@
 import { FlightOption } from "../types/travel";
+import type { FlightApiMeta } from "../types/api";
 
 let cachedSampleFlights: Record<string, FlightOption[]> | null = null;
 
 const FLIGHTS_API = import.meta.env.VITE_FLIGHTS_API_URL?.trim() || "/api/flights";
 
 export type FlightSourceMeta = {
-  source: "aviationstack" | "fallback" | "local";
+  source: FlightApiMeta["source"] | "local";
   reason?: string;
   endpointConfigured: boolean;
   providerConfigured: boolean;

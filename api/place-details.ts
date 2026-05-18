@@ -1,6 +1,14 @@
+import type {
+  ApiRequest,
+  ApiResponse,
+  PlaceDetailsApiData,
+  PlaceDetailsApiResponse,
+  QueryRecord,
+} from "../src/types/api";
+
 const GOOGLE_PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 const PLACE_DETAILS_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
-const PLACE_DETAILS_CACHE = new Map();
+const PLACE_DETAILS_CACHE = new Map<string, { timestamp: number; data: PlaceDetailsApiData }>();
 const PLACE_DETAILS_FIELD_MASK = [
   "places.id",
   "places.displayName",
@@ -31,7 +39,35 @@ const DEFAULT_BLOCKED_PLACE_TERMS = [
   "xray",
 ];
 
-module.exports = async function placeDetailsHandler(req, res) {
+type PlaceDetailsQuery = {
+  kind: "destination" | "experience";
+  name: string;
+  placeQuery: string;
+  region: string;
+  location: string;
+  requiredTerms: string[];
+  blockedTerms: string[];
+  latitude?: number;
+  longitude?: number;
+};
+
+type GooglePlaceSearchBody = {
+  textQuery: string;
+  languageCode: "en";
+  regionCode: "JM";
+  pageSize: number;
+  locationBias?: {
+    circle: {
+      center: {
+        latitude: number;
+        longitude: number;
+      };
+      radius: number;
+    };
+  };
+};
+
+export default async function placeDetailsHandler(req: ApiRequest, res: ApiResponse) {
   setResponseHeaders(res);
 
   if (req.method === "OPTIONS") {
@@ -57,27 +93,29 @@ module.exports = async function placeDetailsHandler(req, res) {
 
   const apiKey = getGooglePlacesApiKey();
   if (!apiKey) {
-    res.status(200).json({
+    const payload: PlaceDetailsApiResponse = {
       data: null,
       meta: {
         source: "curated",
         providerConfigured: false,
       },
-    });
+    };
+    res.status(200).json(payload);
     return;
   }
 
   const cacheKey = buildCacheKey(query);
   const cached = getCachedPlaceDetails(cacheKey);
   if (cached) {
-    res.status(200).json({
+    const payload: PlaceDetailsApiResponse = {
       data: cached,
       meta: {
         source: "google-places",
         providerConfigured: true,
         cached: true,
       },
-    });
+    };
+    res.status(200).json(payload);
     return;
   }
 
@@ -87,43 +125,45 @@ module.exports = async function placeDetailsHandler(req, res) {
       setCachedPlaceDetails(cacheKey, details);
     }
 
-    res.status(200).json({
+    const payload: PlaceDetailsApiResponse = {
       data: details,
       meta: {
         source: details ? "google-places" : "curated",
         providerConfigured: true,
         cached: false,
       },
-    });
+    };
+    res.status(200).json(payload);
   } catch (error) {
     console.warn(`Place details lookup unavailable; using curated details. ${formatErrorForLog(error)}`);
-    res.status(200).json({
+    const payload: PlaceDetailsApiResponse = {
       data: null,
       meta: {
         source: "curated",
         providerConfigured: true,
         reason: "lookup-unavailable",
       },
-    });
+    };
+    res.status(200).json(payload);
   }
-};
+}
 
-function setResponseHeaders(res) {
+function setResponseHeaders(res: ApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Cache-Control", "s-maxage=43200, stale-while-revalidate=86400");
 }
 
-async function fetchGooglePlaceDetails(apiKey, query) {
-  const body = {
+async function fetchGooglePlaceDetails(apiKey: string, query: PlaceDetailsQuery): Promise<PlaceDetailsApiData | null> {
+  const body: GooglePlaceSearchBody = {
     textQuery: buildTextQuery(query),
     languageCode: "en",
     regionCode: "JM",
     pageSize: 5,
   };
 
-  if (Number.isFinite(query.latitude) && Number.isFinite(query.longitude)) {
+  if (isFiniteNumber(query.latitude) && isFiniteNumber(query.longitude)) {
     body.locationBias = {
       circle: {
         center: {
@@ -149,12 +189,13 @@ async function fetchGooglePlaceDetails(apiKey, query) {
     throw new Error(`Google Places lookup failed: ${response.status}`);
   }
 
-  const payload = await response.json();
-  const place = chooseBestPlaceMatch(Array.isArray(payload.places) ? payload.places : [], query);
+  const payload: unknown = await response.json();
+  const payloadRecord = isRecord(payload) ? payload : {};
+  const place = chooseBestPlaceMatch(Array.isArray(payloadRecord.places) ? payloadRecord.places : [], query);
   return place ? normalizeGooglePlace(place) : null;
 }
 
-async function fetchWithTimeout(url, options = {}) {
+async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5500);
 
@@ -168,11 +209,11 @@ async function fetchWithTimeout(url, options = {}) {
   }
 }
 
-function formatErrorForLog(error) {
+function formatErrorForLog(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function normalizeGooglePlace(place) {
+function normalizeGooglePlace(place: Record<string, unknown>): PlaceDetailsApiData {
   const currentHours = isRecord(place.currentOpeningHours) ? place.currentOpeningHours : null;
   const regularHours = isRecord(place.regularOpeningHours) ? place.regularOpeningHours : null;
   const openingHours = currentHours ?? regularHours;
@@ -200,10 +241,10 @@ function normalizeGooglePlace(place) {
     primaryType: localizedText(place.primaryTypeDisplayName),
     types: Array.isArray(place.types) ? place.types.filter((type) => typeof type === "string").slice(0, 6) : [],
     source: "google-places",
-  });
+  }) as PlaceDetailsApiData;
 }
 
-function normalizePlaceDetailsQuery(rawQuery = {}) {
+function normalizePlaceDetailsQuery(rawQuery: QueryRecord = {}): PlaceDetailsQuery | null {
   const name = cleanText(getFirstQueryValue(rawQuery.name));
   if (!name) return null;
 
@@ -220,7 +261,7 @@ function normalizePlaceDetailsQuery(rawQuery = {}) {
   };
 }
 
-function buildTextQuery(query) {
+function buildTextQuery(query: PlaceDetailsQuery): string {
   if (query.placeQuery) return query.placeQuery;
 
   return [query.name, query.location, query.region, "Jamaica"]
@@ -228,8 +269,9 @@ function buildTextQuery(query) {
     .join(", ");
 }
 
-function chooseBestPlaceMatch(places, query) {
+function chooseBestPlaceMatch(places: unknown[], query: PlaceDetailsQuery): Record<string, unknown> | null {
   return places
+    .filter(isRecord)
     .map((place) => ({
       place,
       score: scorePlaceMatch(place, query),
@@ -238,7 +280,7 @@ function chooseBestPlaceMatch(places, query) {
     .sort((a, b) => b.score - a.score)[0]?.place ?? null;
 }
 
-function scorePlaceMatch(place, query) {
+function scorePlaceMatch(place: Record<string, unknown>, query: PlaceDetailsQuery): number {
   const searchableText = buildSearchablePlaceText(place);
   if (!searchableText) return -1;
 
@@ -278,7 +320,7 @@ function scorePlaceMatch(place, query) {
   return score;
 }
 
-function isBlockedPlaceMatch(searchableText, query) {
+function isBlockedPlaceMatch(searchableText: string, query: PlaceDetailsQuery): boolean {
   const blockedTerms = [
     ...DEFAULT_BLOCKED_PLACE_TERMS,
     ...query.blockedTerms,
@@ -287,11 +329,11 @@ function isBlockedPlaceMatch(searchableText, query) {
   return blockedTerms.some((term) => searchTextIncludes(searchableText, term));
 }
 
-function buildPlaceNameText(place) {
+function buildPlaceNameText(place: Record<string, unknown>): string {
   return normalizeSearchText(localizedText(place.displayName));
 }
 
-function buildSearchablePlaceText(place) {
+function buildSearchablePlaceText(place: Record<string, unknown>): string {
   return normalizeSearchText([
     localizedText(place.displayName),
     asString(place.formattedAddress),
@@ -301,7 +343,7 @@ function buildSearchablePlaceText(place) {
   ].join(" "));
 }
 
-function getSignificantTerms(value) {
+function getSignificantTerms(value: string): string[] {
   const ignoredTerms = new Set([
     "and",
     "bay",
@@ -326,8 +368,20 @@ function getSignificantTerms(value) {
     .slice(0, 8);
 }
 
-function calculateDistanceKm(fromLatitude, fromLongitude, toLatitude, toLongitude) {
-  if (![fromLatitude, fromLongitude, toLatitude, toLongitude].every(Number.isFinite)) return NaN;
+function calculateDistanceKm(
+  fromLatitude: number | undefined,
+  fromLongitude: number | undefined,
+  toLatitude: number | undefined,
+  toLongitude: number | undefined
+): number {
+  if (
+    !isFiniteNumber(fromLatitude) ||
+    !isFiniteNumber(fromLongitude) ||
+    !isFiniteNumber(toLatitude) ||
+    !isFiniteNumber(toLongitude)
+  ) {
+    return NaN;
+  }
 
   const earthRadiusKm = 6371;
   const latitudeDelta = degreesToRadians(toLatitude - fromLatitude);
@@ -341,11 +395,11 @@ function calculateDistanceKm(fromLatitude, fromLongitude, toLatitude, toLongitud
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
-function degreesToRadians(value) {
+function degreesToRadians(value: number): number {
   return value * (Math.PI / 180);
 }
 
-function buildCacheKey(query) {
+function buildCacheKey(query: PlaceDetailsQuery): string {
   return [
     query.kind,
     query.name.toLowerCase(),
@@ -354,12 +408,12 @@ function buildCacheKey(query) {
     query.location.toLowerCase(),
     query.requiredTerms.join(",").toLowerCase(),
     query.blockedTerms.join(",").toLowerCase(),
-    Number.isFinite(query.latitude) ? query.latitude.toFixed(3) : "",
-    Number.isFinite(query.longitude) ? query.longitude.toFixed(3) : "",
+    isFiniteNumber(query.latitude) ? query.latitude.toFixed(3) : "",
+    isFiniteNumber(query.longitude) ? query.longitude.toFixed(3) : "",
   ].join(":");
 }
 
-function getCachedPlaceDetails(cacheKey) {
+function getCachedPlaceDetails(cacheKey: string): PlaceDetailsApiData | null {
   const cached = PLACE_DETAILS_CACHE.get(cacheKey);
   if (!cached) return null;
   if (Date.now() - cached.timestamp > PLACE_DETAILS_CACHE_TTL_MS) {
@@ -369,14 +423,14 @@ function getCachedPlaceDetails(cacheKey) {
   return cached.data;
 }
 
-function setCachedPlaceDetails(cacheKey, data) {
+function setCachedPlaceDetails(cacheKey: string, data: PlaceDetailsApiData) {
   PLACE_DETAILS_CACHE.set(cacheKey, {
     timestamp: Date.now(),
     data,
   });
 }
 
-function getGooglePlacesApiKey() {
+function getGooglePlacesApiKey(): string {
   return (
     process.env.GOOGLE_PLACES_API_KEY ||
     process.env.GOOGLE_MAPS_API_KEY ||
@@ -385,7 +439,7 @@ function getGooglePlacesApiKey() {
   ).trim();
 }
 
-function normalizePriceLevel(value) {
+function normalizePriceLevel(value: unknown): string {
   const text = asString(value);
   if (!text || text === "PRICE_LEVEL_UNSPECIFIED") return "";
   if (text === "PRICE_LEVEL_FREE") return "Free";
@@ -396,13 +450,13 @@ function normalizePriceLevel(value) {
   return humanizeEnum(text);
 }
 
-function localizedText(value) {
+function localizedText(value: unknown): string {
   if (typeof value === "string") return cleanText(value);
   if (isRecord(value)) return cleanText(value.text);
   return "";
 }
 
-function humanizeEnum(value) {
+function humanizeEnum(value: unknown): string {
   return asString(value)
     .replace(/^PRICE_LEVEL_/, "")
     .replace(/_/g, " ")
@@ -410,21 +464,22 @@ function humanizeEnum(value) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function stripEmptyValues(value) {
-  const next = {};
+function stripEmptyValues<T extends Record<string, unknown>>(value: T): Partial<T> {
+  const next: Partial<T> = {};
   Object.entries(value).forEach(([key, entryValue]) => {
     if (entryValue === undefined || entryValue === null || entryValue === "") return;
     if (Array.isArray(entryValue) && !entryValue.length) return;
-    next[key] = entryValue;
+    (next as Record<string, unknown>)[key] = entryValue;
   });
   return next;
 }
 
-function getFirstQueryValue(value) {
-  return Array.isArray(value) ? value[0] : value;
+function getFirstQueryValue(value: unknown): string | undefined {
+  const firstValue = Array.isArray(value) ? value[0] : value;
+  return typeof firstValue === "string" ? firstValue : undefined;
 }
 
-function parseTermList(value) {
+function parseTermList(value: unknown): string[] {
   return asString(value)
     .split(",")
     .map((term) => cleanText(term))
@@ -432,11 +487,11 @@ function parseTermList(value) {
     .slice(0, 12);
 }
 
-function cleanText(value) {
+function cleanText(value: unknown): string {
   return asString(value).replace(/\s+/g, " ").trim();
 }
 
-function normalizeSearchText(value) {
+function normalizeSearchText(value: unknown): string {
   return cleanText(value)
     .toLowerCase()
     .normalize("NFD")
@@ -445,19 +500,23 @@ function normalizeSearchText(value) {
     .trim();
 }
 
-function searchTextIncludes(searchableText, term) {
+function searchTextIncludes(searchableText: string, term: string): boolean {
   return searchableText.includes(term);
 }
 
-function asString(value) {
+function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function asNumber(value) {
+function asNumber(value: unknown): number | undefined {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) ? number : undefined;
 }
 
-function isRecord(value) {
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

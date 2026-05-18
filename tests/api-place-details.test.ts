@@ -1,5 +1,6 @@
-const assert = require("node:assert/strict");
-const placeDetailsHandler = require("../api/place-details.js");
+import assert from "node:assert/strict";
+import placeDetailsHandler from "../api/place-details";
+import type { ApiRequest, ApiResponse } from "../src/types/api";
 
 const query = {
   kind: "destination",
@@ -65,20 +66,22 @@ async function main() {
   console.log("API place-details trust checks passed.");
 }
 
-async function invokePlaceDetails(query, places) {
-  const originalFetch = global.fetch;
-  global.fetch = async () => ({
+type TestPlace = ReturnType<typeof buildPlace>;
+
+async function invokePlaceDetails(query: ApiRequest["query"], places: TestPlace[]) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
     ok: true,
     status: 200,
     json: async () => ({ places }),
-  });
+  }) as Response;
 
   try {
     const response = createResponse();
     await placeDetailsHandler({ method: "GET", query }, response);
     return response;
   } finally {
-    global.fetch = originalFetch;
+    globalThis.fetch = originalFetch;
   }
 }
 
@@ -88,6 +91,12 @@ function buildPlace({
   primaryType,
   types,
   rating,
+}: {
+  name: string;
+  address: string;
+  primaryType: string;
+  types: string[];
+  rating?: number;
 }) {
   return {
     id: `places/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
@@ -106,19 +115,25 @@ function buildPlace({
   };
 }
 
-function createResponse() {
+type TestResponse = ApiResponse & {
+  statusCode: number;
+  headers: Record<string, string>;
+  body?: unknown;
+};
+
+function createResponse(): TestResponse {
   return {
     statusCode: 200,
     headers: {},
     body: undefined,
-    setHeader(name, value) {
+    setHeader(name: string, value: string) {
       this.headers[name.toLowerCase()] = value;
     },
-    status(statusCode) {
+    status(statusCode: number) {
       this.statusCode = statusCode;
       return this;
     },
-    json(body) {
+    json(body: unknown) {
       this.body = body;
       return this;
     },

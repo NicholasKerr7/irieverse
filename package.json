@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "build": "vite build",
     "preview": "vite preview",
-    "test:api": "node tests/api-place-details.test.cjs",
+    "test:api": "tsx tests/api-place-details.test.ts",
     "qa:local": "playwright test --config=playwright.local.config.cjs --reporter=line",
     "qa:production": "playwright test tests/production-qa.spec.js --reporter=line",
     "check:maintenance": "node scripts/check-maintenance-config.cjs",
@@ -34,12 +34,14 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
+    "@types/node": "^22.19.19",
     "@types/react": "^18.3.2",
     "@types/react-dom": "^18.3.2",
     "@vitejs/plugin-react-swc": "^3.7.0",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
+    "tsx": "^4.22.1",
     "typescript": "^5.6.3",
     "vite": "^6.0.5"
   }

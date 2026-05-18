@@ -9,19 +9,19 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | `VITE_SUPABASE_URL` | Optional | Enables email sign-in, cloud-saved boards, and shared trip links with Supabase. |
 | `VITE_SUPABASE_ANON_KEY` | Optional | Public anon key for the Supabase project. |
 | `VITE_SUPABASE_DISABLED` | Optional | Set to `true` to keep online boards and shared trip links disabled even when Supabase env vars are present. |
-| `AVIATIONSTACK_API_KEY` | Optional | Server-only AviationStack key used by `api/flights.js`. |
+| `AVIATIONSTACK_API_KEY` | Optional | Server-only AviationStack key used by `api/flights.ts`. |
 | `AVIATIONSTACK_DISABLED` | Optional | Set to `true` to force saved flight examples and avoid live AviationStack requests in an environment. |
 | `AVIATIONSTACK_CACHE_TTL_SECONDS` | Optional | Server-side live flight cache TTL. Defaults to `900` seconds. |
 | `AVIATIONSTACK_COOLDOWN_SECONDS` | Optional | Server-side cooldown after AviationStack rate limits. Defaults to `1800` seconds. |
 | `VITE_FLIGHTS_API_URL` | Optional | Browser-visible flight proxy URL. Defaults to `/api/flights`. |
 | `VITE_BOOKING_API_URL` | Optional | Enables live booking recommendations from the server booking endpoint. |
-| `AMADEUS_CLIENT_ID` | Optional | Server-only Amadeus API key used by `api/bookings.js`. |
-| `AMADEUS_CLIENT_SECRET` | Optional | Server-only Amadeus API secret used by `api/bookings.js`. |
+| `AMADEUS_CLIENT_ID` | Optional | Server-only Amadeus API key used by `api/bookings.ts`. |
+| `AMADEUS_CLIENT_SECRET` | Optional | Server-only Amadeus API secret used by `api/bookings.ts`. |
 | `AMADEUS_BASE_URL` | Optional | Amadeus base URL. Defaults to `https://test.api.amadeus.com`; use `https://api.amadeus.com` for production credentials. |
-| `ROUTING_API_BASE_URL` | Optional | Server-only OSRM-compatible routing base URL used by `api/road-route.js`. Defaults to `https://router.project-osrm.org`. |
+| `ROUTING_API_BASE_URL` | Optional | Server-only OSRM-compatible routing base URL used by `api/road-route.ts`. Defaults to `https://router.project-osrm.org`. |
 | `ROUTING_API_TIMEOUT_MS` | Optional | Max server wait for one routing-provider request. Defaults to `4500` ms. |
 | `ROUTING_PROVIDER_COOLDOWN_SECONDS` | Optional | Server-side pause after routing-provider failures before retrying live geometry. Defaults to `45` seconds. |
-| `GOOGLE_PLACES_API_KEY` | Optional | Server-only Google Places key used by `api/place-details.js` for live place address, hours, phone, website, and map links. |
+| `GOOGLE_PLACES_API_KEY` | Optional | Server-only Google Places key used by `api/place-details.ts` for live place address, hours, phone, website, and map links. |
 
 Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack, Amadeus, Places, and routing credentials server-only.
 
@@ -115,7 +115,7 @@ If the app reports share setup incomplete, run `supabase/schema.sql` or push all
 
 ## Booking API Contract
 
-This repo includes a Vercel serverless booking endpoint at `api/bookings.js`. It proxies Amadeus Hotels so Amadeus secrets never ship to the browser. When `VITE_BOOKING_API_URL` is set, IrieVerse calls:
+This repo includes a Vercel serverless booking endpoint at `api/bookings.ts`. It proxies Amadeus Hotels so Amadeus secrets never ship to the browser. When `VITE_BOOKING_API_URL` is set, IrieVerse calls:
 
 ```text
 GET {VITE_BOOKING_API_URL}?destination={airportCode}&origin={airportCode}&checkInDate={YYYY-MM-DD}&checkOutDate={YYYY-MM-DD}&adults=2
@@ -171,7 +171,7 @@ The endpoint uses Amadeus OAuth client credentials, then looks up hotels by Jama
 
 ## Flight API
 
-The browser calls `api/flights.js`, which proxies AviationStack with the server-only `AVIATIONSTACK_API_KEY`. For the Vercel app, `VITE_FLIGHTS_API_URL` can be omitted because it defaults to `/api/flights`.
+The browser calls `api/flights.ts`, which proxies AviationStack with the server-only `AVIATIONSTACK_API_KEY`. For the Vercel app, `VITE_FLIGHTS_API_URL` can be omitted because it defaults to `/api/flights`.
 
 ```text
 GET /api/flights?origin={airportCode}&destination={airportCode}
@@ -187,7 +187,7 @@ The flight proxy also protects the AviationStack quota:
 
 ## Import Metadata API
 
-Saved imports call `api/import-metadata.js` after a user pastes a URL. The endpoint fetches public Open Graph metadata for normal articles, uses YouTube oEmbed for YouTube links, and follows safe public redirects so shortened links can keep a cleaner final URL. Google Maps links use the server-only `GOOGLE_PLACES_API_KEY` when available to improve the saved title, address-style description, canonical Maps URL, and structured place facts such as address, coordinates, rating, type, phone, and website. TikTok and Instagram stay heuristic-first because those platforms commonly restrict metadata access.
+Saved imports call `api/import-metadata.ts` after a user pastes a URL. The endpoint fetches public Open Graph metadata for normal articles, uses YouTube oEmbed for YouTube links, and follows safe public redirects so shortened links can keep a cleaner final URL. Google Maps links use the server-only `GOOGLE_PLACES_API_KEY` when available to improve the saved title, address-style description, canonical Maps URL, and structured place facts such as address, coordinates, rating, type, phone, and website. TikTok and Instagram stay heuristic-first because those platforms commonly restrict metadata access.
 
 ```text
 GET /api/import-metadata?url={encodedPublicUrl}
@@ -197,7 +197,7 @@ The endpoint accepts public `http`/`https` URLs only, blocks localhost/private-n
 
 ## Road Routing
 
-The map uses `api/road-route.js` to request real driving geometry for each route leg. By default, the endpoint calls the public OSRM demo server:
+The map uses `api/road-route.ts` to request real driving geometry for each route leg. By default, the endpoint calls the public OSRM demo server:
 
 ```text
 https://router.project-osrm.org/route/v1/driving/{lon,lat};{lon,lat}?overview=full&geometries=geojson
@@ -209,7 +209,7 @@ For production scale, set `ROUTING_API_BASE_URL` to your own OSRM-compatible ser
 
 ## Place Details API
 
-The map detail sheet calls `api/place-details.js` when a user opens a destination or experience. The endpoint uses the server-only `GOOGLE_PLACES_API_KEY` with Google Places Text Search, then returns a normalized place object:
+The map detail sheet calls `api/place-details.ts` when a user opens a destination or experience. The endpoint uses the server-only `GOOGLE_PLACES_API_KEY` with Google Places Text Search, then returns a normalized place object:
 
 ```text
 GET /api/place-details?kind=destination&name=Negril&region=West%20Coast&latitude=18.2728&longitude=-78.3488&placeQuery=Seven%20Mile%20Beach%2C%20Negril%2C%20Jamaica&requiredTerms=seven,mile
@@ -232,7 +232,7 @@ Trips includes a compact planning confidence panel for launch QA:
 | Share links | `Ready` when `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and the trip-share RPC functions are reachable. | `Setup needed` and export still works. |
 | Stays | `Live stays` when the configured booking source returns live data. | `Curated picks` with Jamaica stay ideas. |
 | Flights | `Live schedule` when `/api/flights` returns AviationStack data. | `Saved examples` from `public/data/flights-sample.json`. |
-| Road planning | `Road-aware` through `api/road-route.js`. | The map keeps preview route lines if the proxy fails. |
+| Road planning | `Road-aware` through `api/road-route.ts`. | The map keeps preview route lines if the proxy fails. |
 | Island events | Live provider if one is added later. | `Curated calendar` from `public/data/events.json`. |
 
 Use this panel after each deploy to confirm the app is honest about which trip services are live, estimated, or curated.

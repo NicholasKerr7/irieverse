@@ -1,11 +1,19 @@
-const dns = require("node:dns").promises;
-const net = require("node:net");
+import { promises as dns } from "node:dns";
+import { isIP, isIPv4 } from "node:net";
+import type {
+  ApiRequest,
+  ApiResponse,
+  ImportMetadataApiData,
+  ImportMetadataApiResponse,
+  ImportMetadataPlace,
+} from "../src/types/api";
+import type { ImportedIdeaSourcePlatform } from "../src/types/travel";
 
 const MAX_URL_LENGTH = 2048;
 const MAX_HTML_BYTES = 300_000;
 const MAX_REDIRECT_HOPS = 5;
 const METADATA_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const METADATA_CACHE = new Map();
+const METADATA_CACHE = new Map<string, { metadata: ImportMetadataApiData; expiresAt: number }>();
 const GOOGLE_PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 const GOOGLE_PLACES_IMPORT_FIELD_MASK = [
   "places.displayName",
@@ -22,7 +30,19 @@ const GOOGLE_PLACES_IMPORT_FIELD_MASK = [
   "places.types",
 ].join(",");
 
-module.exports = async function importMetadataHandler(req, res) {
+type BaseMetadataOverrides = {
+  sourceUrl?: string;
+  finalUrl?: string;
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  siteName?: string;
+  place?: unknown;
+  confidence?: ImportMetadataApiData["confidence"];
+  reason?: string;
+};
+
+export default async function importMetadataHandler(req: ApiRequest, res: ApiResponse) {
   setResponseHeaders(res);
 
   if (req.method === "OPTIONS") {
@@ -50,7 +70,8 @@ module.exports = async function importMetadataHandler(req, res) {
   const cacheKey = parsedUrl.toString();
   const cached = getCachedMetadata(cacheKey);
   if (cached) {
-    res.status(200).json({ data: { ...cached, cached: true } });
+    const payload: ImportMetadataApiResponse = { data: { ...cached, cached: true } };
+    res.status(200).json(payload);
     return;
   }
 
@@ -58,28 +79,30 @@ module.exports = async function importMetadataHandler(req, res) {
     await assertPublicHostname(parsedUrl);
     const metadata = await resolveMetadata(parsedUrl);
     setCachedMetadata(cacheKey, metadata);
-    res.status(200).json({ data: metadata });
+    const payload: ImportMetadataApiResponse = { data: metadata };
+    res.status(200).json(payload);
   } catch (error) {
     if (!isAbortError(error)) {
       console.warn(`Import metadata unavailable; using local link preview. ${formatErrorForLog(error)}`);
     }
-    res.status(200).json({
+    const payload: ImportMetadataApiResponse = {
       data: buildBaseMetadata(parsedUrl, {
         confidence: "low",
         reason: "metadata-unavailable",
       }),
-    });
+    };
+    res.status(200).json(payload);
   }
-};
+}
 
-function setResponseHeaders(res) {
+function setResponseHeaders(res: ApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate=604800");
 }
 
-async function resolveMetadata(url) {
+async function resolveMetadata(url: URL): Promise<ImportMetadataApiData> {
   const metadataUrl = await resolveRedirectUrl(url).catch(() => url);
   const sourcePlatform = detectSourcePlatform(metadataUrl);
 
@@ -118,7 +141,7 @@ async function resolveMetadata(url) {
   return resolveArticleMetadata(metadataUrl, url);
 }
 
-async function resolveYouTubeMetadata(url, sourceUrl = url) {
+async function resolveYouTubeMetadata(url: URL, sourceUrl = url): Promise<ImportMetadataApiData> {
   const oembedUrl = new URL("https://www.youtube.com/oembed");
   oembedUrl.searchParams.set("url", url.toString());
   oembedUrl.searchParams.set("format", "json");
@@ -134,19 +157,20 @@ async function resolveYouTubeMetadata(url, sourceUrl = url) {
     throw new Error(`YouTube oEmbed failed: ${response.status}`);
   }
 
-  const payload = await response.json();
+  const payload: unknown = await response.json();
+  const payloadRecord = isRecord(payload) ? payload : {};
   return buildBaseMetadata(url, {
     sourceUrl: sourceUrl.toString(),
     finalUrl: url.toString(),
-    title: asString(payload.title),
-    description: asString(payload.author_name),
-    imageUrl: asString(payload.thumbnail_url),
+    title: asString(payloadRecord.title),
+    description: asString(payloadRecord.author_name),
+    imageUrl: asString(payloadRecord.thumbnail_url),
     siteName: "YouTube",
-    confidence: asString(payload.title) ? "high" : "medium",
+    confidence: asString(payloadRecord.title) ? "high" : "medium",
   });
 }
 
-async function resolveGoogleMapsMetadata(url, sourceUrl = url) {
+async function resolveGoogleMapsMetadata(url: URL, sourceUrl = url): Promise<ImportMetadataApiData | null> {
   const apiKey = getGooglePlacesApiKey();
   const placeQuery = extractGoogleMapsPlaceName(url);
   if (!apiKey || !placeQuery) return null;
@@ -170,8 +194,11 @@ async function resolveGoogleMapsMetadata(url, sourceUrl = url) {
     throw new Error(`Google Places import lookup failed: ${response.status}`);
   }
 
-  const payload = await response.json();
-  const place = Array.isArray(payload.places) ? payload.places[0] : null;
+  const payload: unknown = await response.json();
+  const payloadRecord = isRecord(payload) ? payload : {};
+  const place = Array.isArray(payloadRecord.places) && isRecord(payloadRecord.places[0])
+    ? payloadRecord.places[0]
+    : null;
   if (!place) return null;
 
   const displayName = localizedText(place.displayName) || placeQuery;
@@ -195,7 +222,7 @@ async function resolveGoogleMapsMetadata(url, sourceUrl = url) {
   });
 }
 
-async function resolveArticleMetadata(url, sourceUrl = url) {
+async function resolveArticleMetadata(url: URL, sourceUrl = url): Promise<ImportMetadataApiData> {
   const { response, finalUrl } = await fetchHtmlWithValidatedRedirects(url, {
     headers: {
       Accept: "text/html,application/xhtml+xml",
@@ -236,7 +263,7 @@ async function resolveArticleMetadata(url, sourceUrl = url) {
   });
 }
 
-function buildBaseMetadata(url, overrides = {}) {
+function buildBaseMetadata(url: URL, overrides: BaseMetadataOverrides = {}): ImportMetadataApiData {
   const sourcePlatform = detectSourcePlatform(url);
   return {
     url: overrides.sourceUrl || url.toString(),
@@ -254,7 +281,7 @@ function buildBaseMetadata(url, overrides = {}) {
   };
 }
 
-async function resolveRedirectUrl(url) {
+async function resolveRedirectUrl(url: URL): Promise<URL> {
   let currentUrl = url;
 
   for (let index = 0; index < MAX_REDIRECT_HOPS; index += 1) {
@@ -282,7 +309,10 @@ async function resolveRedirectUrl(url) {
   return currentUrl;
 }
 
-async function fetchHtmlWithValidatedRedirects(url, options = {}) {
+async function fetchHtmlWithValidatedRedirects(
+  url: URL,
+  options: RequestInit = {}
+): Promise<{ response: Response; finalUrl: URL }> {
   let currentUrl = url;
 
   for (let index = 0; index <= MAX_REDIRECT_HOPS; index += 1) {
@@ -314,7 +344,7 @@ async function fetchHtmlWithValidatedRedirects(url, options = {}) {
   throw new Error("Metadata page redirected too many times");
 }
 
-async function fetchWithTimeout(url, options = {}) {
+async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5500);
 
@@ -329,13 +359,13 @@ async function fetchWithTimeout(url, options = {}) {
   }
 }
 
-function formatErrorForLog(error) {
+function formatErrorForLog(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function isAbortError(error) {
+function isAbortError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
-  const record = error;
+  const record = isRecord(error) ? error : {};
   const name = typeof record.name === "string" ? record.name : "";
   const code = typeof record.code === "string" ? record.code : "";
   const message = error instanceof Error ? error.message : "";
@@ -346,7 +376,7 @@ function isAbortError(error) {
   );
 }
 
-function getMetaContent(html, names) {
+function getMetaContent(html: string, names: string[]): string {
   for (const name of names) {
     const escapedName = escapeRegExp(name);
     const metaPattern = new RegExp(
@@ -360,18 +390,18 @@ function getMetaContent(html, names) {
   return "";
 }
 
-function getTitleTag(html) {
+function getTitleTag(html: string): string {
   const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   return match?.[1] ? decodeHtml(match[1]) : "";
 }
 
-function readAttribute(tag, attribute) {
+function readAttribute(tag: string, attribute: string): string {
   if (!tag) return "";
   const pattern = new RegExp(`${attribute}=["']([^"']+)["']`, "i");
   return tag.match(pattern)?.[1] ?? "";
 }
 
-function parseSafeUrl(value) {
+function parseSafeUrl(value: unknown): URL | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed || trimmed.length > MAX_URL_LENGTH) return null;
@@ -387,9 +417,9 @@ function parseSafeUrl(value) {
   }
 }
 
-async function assertPublicHostname(url) {
+async function assertPublicHostname(url: URL): Promise<void> {
   const hostname = url.hostname.toLowerCase();
-  if (net.isIP(hostname)) {
+  if (isIP(hostname)) {
     if (isPrivateIp(hostname)) throw new Error("Blocked private IP URL");
     return;
   }
@@ -400,7 +430,7 @@ async function assertPublicHostname(url) {
   }
 }
 
-function isBlockedHostname(hostname) {
+function isBlockedHostname(hostname: string): boolean {
   const normalized = hostname.toLowerCase();
   return (
     normalized === "localhost" ||
@@ -410,8 +440,8 @@ function isBlockedHostname(hostname) {
   );
 }
 
-function isPrivateIp(address) {
-  if (net.isIPv4(address)) {
+function isPrivateIp(address: string): boolean {
+  if (isIPv4(address)) {
     const [first, second] = address.split(".").map(Number);
     return (
       first === 10 ||
@@ -427,7 +457,7 @@ function isPrivateIp(address) {
   return normalized === "::1" || normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80:");
 }
 
-function detectSourcePlatform(url) {
+function detectSourcePlatform(url: URL): ImportedIdeaSourcePlatform {
   const host = url.hostname.replace(/^www\./, "").toLowerCase();
   const path = url.pathname.toLowerCase();
 
@@ -440,7 +470,7 @@ function detectSourcePlatform(url) {
   return "article";
 }
 
-function getSourceLabel(source, url) {
+function getSourceLabel(source: ImportedIdeaSourcePlatform, url: URL): string {
   if (source === "google-maps") return "Google Maps";
   if (source === "tiktok") return "TikTok";
   if (source === "instagram") return "Instagram";
@@ -449,7 +479,7 @@ function getSourceLabel(source, url) {
   return "Saved note";
 }
 
-function titleFromUrl(url, sourcePlatform) {
+function titleFromUrl(url: URL, sourcePlatform: ImportedIdeaSourcePlatform): string {
   if (sourcePlatform === "google-maps") {
     const query = extractGoogleMapsPlaceName(url);
     if (query) return titleCase(cleanText(query));
@@ -464,7 +494,7 @@ function titleFromUrl(url, sourcePlatform) {
   return titleCase(cleanText(pathTitle || readableHost(url.hostname)));
 }
 
-function extractGoogleMapsPlaceName(url) {
+function extractGoogleMapsPlaceName(url: URL): string {
   const queryValue = firstNonEmpty(
     url.searchParams.get("query") ?? "",
     url.searchParams.get("q") ?? "",
@@ -492,7 +522,7 @@ function extractGoogleMapsPlaceName(url) {
   return cleanGoogleMapsPlaceName(candidate ?? "");
 }
 
-function cleanGoogleMapsPlaceName(value) {
+function cleanGoogleMapsPlaceName(value: string): string {
   return cleanText(decodeUrlPart(value))
     .replace(/\s*-\s*google maps$/i, "")
     .replace(/\s*\|\s*google maps$/i, "")
@@ -502,7 +532,7 @@ function cleanGoogleMapsPlaceName(value) {
     .trim();
 }
 
-function buildGooglePlaceDescription(place) {
+function buildGooglePlaceDescription(place: Record<string, unknown>): string {
   const address = firstNonEmpty(asString(place.shortFormattedAddress), asString(place.formattedAddress));
   const primaryType = localizedText(place.primaryTypeDisplayName);
   const rating = asNumber(place.rating);
@@ -514,7 +544,10 @@ function buildGooglePlaceDescription(place) {
   return [address, primaryType, ratingLabel].filter(Boolean).join(" · ");
 }
 
-function buildGoogleImportPlace(place, fallback = {}) {
+function buildGoogleImportPlace(
+  place: Record<string, unknown>,
+  fallback: Partial<ImportMetadataPlace> = {}
+): Partial<ImportMetadataPlace> | undefined {
   const location = isRecord(place.location) ? place.location : {};
   return stripEmptyValues({
     name: fallback.name || localizedText(place.displayName),
@@ -532,7 +565,7 @@ function buildGoogleImportPlace(place, fallback = {}) {
   });
 }
 
-function normalizeMetadataPlace(value) {
+function normalizeMetadataPlace(value: unknown): Partial<ImportMetadataPlace> | undefined {
   if (!isRecord(value)) return undefined;
   const place = stripEmptyValues({
     name: asString(value.name),
@@ -552,13 +585,13 @@ function normalizeMetadataPlace(value) {
   return Object.keys(place).length ? place : undefined;
 }
 
-function localizedText(value) {
+function localizedText(value: unknown): string {
   if (typeof value === "string") return cleanText(value);
-  if (value && typeof value === "object" && typeof value.text === "string") return cleanText(value.text);
+  if (isRecord(value) && typeof value.text === "string") return cleanText(value.text);
   return "";
 }
 
-function normalizeImageUrl(value, baseUrl) {
+function normalizeImageUrl(value: string, baseUrl: URL): string {
   if (!value) return "";
   try {
     const imageUrl = new URL(value, baseUrl);
@@ -568,7 +601,7 @@ function normalizeImageUrl(value, baseUrl) {
   }
 }
 
-function getCachedMetadata(cacheKey) {
+function getCachedMetadata(cacheKey: string): ImportMetadataApiData | null {
   const entry = METADATA_CACHE.get(cacheKey);
   if (!entry) return null;
   if (entry.expiresAt <= Date.now()) {
@@ -578,28 +611,29 @@ function getCachedMetadata(cacheKey) {
   return entry.metadata;
 }
 
-function setCachedMetadata(cacheKey, metadata) {
+function setCachedMetadata(cacheKey: string, metadata: ImportMetadataApiData) {
   METADATA_CACHE.set(cacheKey, {
     metadata,
     expiresAt: Date.now() + METADATA_CACHE_TTL_MS,
   });
 }
 
-function getFirstQueryValue(value) {
-  return Array.isArray(value) ? value[0] : value;
+function getFirstQueryValue(value: unknown): string | undefined {
+  const firstValue = Array.isArray(value) ? value[0] : value;
+  return typeof firstValue === "string" ? firstValue : undefined;
 }
 
-function firstNonEmpty(...values) {
+function firstNonEmpty(...values: string[]): string {
   return values.find((value) => typeof value === "string" && value.trim())?.trim() ?? "";
 }
 
-function cleanText(value) {
+function cleanText(value: unknown): string {
   return decodeHtml(String(value ?? ""))
     .replace(/\s+/g, " ")
     .trim();
 }
 
-function decodeHtml(value) {
+function decodeHtml(value: unknown): string {
   return String(value ?? "")
     .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, "\"")
@@ -609,7 +643,7 @@ function decodeHtml(value) {
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
 }
 
-function decodeUrlPart(value) {
+function decodeUrlPart(value: string): string {
   const normalized = value.replace(/\+/g, " ").replace(/[-_]+/g, " ");
   try {
     return decodeURIComponent(normalized);
@@ -618,7 +652,7 @@ function decodeUrlPart(value) {
   }
 }
 
-function readableHost(host) {
+function readableHost(host: string): string {
   return host
     .replace(/^www\./, "")
     .split(".")
@@ -627,11 +661,11 @@ function readableHost(host) {
     .join(" ");
 }
 
-function titleCase(value) {
+function titleCase(value: string): string {
   return cleanText(value).replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function getGooglePlacesApiKey() {
+function getGooglePlacesApiKey(): string {
   return (
     process.env.GOOGLE_PLACES_API_KEY ||
     process.env.GOOGLE_MAPS_API_KEY ||
@@ -640,36 +674,36 @@ function getGooglePlacesApiKey() {
   ).trim();
 }
 
-function asString(value) {
+function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function asNumber(value) {
+function asNumber(value: unknown): number | undefined {
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) ? number : undefined;
 }
 
-function stripEmptyValues(value) {
-  const next = {};
+function stripEmptyValues<T extends Record<string, unknown>>(value: T): Partial<T> {
+  const next: Partial<T> = {};
   Object.entries(value).forEach(([key, entryValue]) => {
     if (entryValue === undefined || entryValue === null || entryValue === "") return;
     if (Array.isArray(entryValue) && !entryValue.length) return;
-    next[key] = entryValue;
+    (next as Record<string, unknown>)[key] = entryValue;
   });
   return next;
 }
 
-function isRecord(value) {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function formatCompactCount(value) {
+function formatCompactCount(value: number): string {
   return new Intl.NumberFormat("en-US", {
     notation: "compact",
     maximumFractionDigits: 1,
   }).format(value);
 }
 
-function escapeRegExp(value) {
+function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

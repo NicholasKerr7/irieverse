@@ -1,3 +1,11 @@
+import type {
+  ApiRequest,
+  ApiResponse,
+  RoadRoute,
+  RoadRouteApiResponse,
+  RoadRouteStep,
+} from "../src/types/api";
+
 const DEFAULT_ROUTING_BASE_URL = "https://router.project-osrm.org";
 const MAX_ROUTE_DISTANCE_KM = 400;
 const MAX_ROUTE_STEPS = 32;
@@ -7,7 +15,12 @@ const DEFAULT_ROUTING_COOLDOWN_SECONDS = 45;
 let routingProviderCooldownUntil = 0;
 let routingProviderLastWarningAt = 0;
 
-module.exports = async function roadRouteHandler(req, res) {
+type Coordinate = {
+  longitude: number;
+  latitude: number;
+};
+
+export default async function roadRouteHandler(req: ApiRequest, res: ApiResponse) {
   setResponseHeaders(res);
 
   if (req.method === "OPTIONS") {
@@ -47,13 +60,14 @@ module.exports = async function roadRouteHandler(req, res) {
   try {
     const route = await fetchOsrmRoute(from, to);
     routingProviderCooldownUntil = 0;
-    res.status(200).json({
+    const payload: RoadRouteApiResponse = {
       data: route,
       meta: {
         source: route.source,
         stepCount: route.steps.length,
       },
-    });
+    };
+    res.status(200).json(payload);
   } catch (error) {
     routingProviderCooldownUntil = Date.now() + getRoutingCooldownMs();
     if (!isAbortError(error) && shouldLogRoutingProviderFailure()) {
@@ -61,16 +75,16 @@ module.exports = async function roadRouteHandler(req, res) {
     }
     sendRouteFallback(res, "Road preview is unavailable right now, so the app is keeping a simple route line for this leg.");
   }
-};
+}
 
-function setResponseHeaders(res) {
+function setResponseHeaders(res: ApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate=604800");
 }
 
-async function fetchOsrmRoute(from, to) {
+async function fetchOsrmRoute(from: Coordinate, to: Coordinate): Promise<RoadRoute> {
   const baseUrl = (process.env.ROUTING_API_BASE_URL || DEFAULT_ROUTING_BASE_URL).replace(/\/$/, "");
   const coordinates = `${from.longitude},${from.latitude};${to.longitude},${to.latitude}`;
   const url = new URL(`${baseUrl}/route/v1/driving/${coordinates}`);
@@ -85,16 +99,22 @@ async function fetchOsrmRoute(from, to) {
     throw new Error(`OSRM route failed: ${response.status}`);
   }
 
-  const payload = await response.json();
-  const route = Array.isArray(payload.routes) ? payload.routes[0] : null;
-  const coordinatesList = route?.geometry?.coordinates;
+  const payload: unknown = await response.json();
+  const payloadRecord = isRecord(payload) ? payload : {};
+  const route = Array.isArray(payloadRecord.routes) && isRecord(payloadRecord.routes[0])
+    ? payloadRecord.routes[0]
+    : null;
+  const geometry = route && isRecord(route.geometry) ? route.geometry : {};
+  const coordinatesList = geometry.coordinates;
 
-  if (!Array.isArray(coordinatesList) || coordinatesList.length < 2) {
+  if (!route || !Array.isArray(coordinatesList) || coordinatesList.length < 2) {
     throw new Error("OSRM did not return route geometry");
   }
 
   return {
-    coordinates: coordinatesList.map(normalizeCoordinatePair).filter(Boolean),
+    coordinates: coordinatesList
+      .map(normalizeCoordinatePair)
+      .filter((coordinate): coordinate is [number, number] => Boolean(coordinate)),
     distanceKm: roundTo(Number(route.distance ?? 0) / 1000, 1),
     durationMinutes: Math.max(1, Math.round(Number(route.duration ?? 0) / 60)),
     summary: buildRouteSummary(route.legs),
@@ -103,18 +123,19 @@ async function fetchOsrmRoute(from, to) {
   };
 }
 
-function sendRouteFallback(res, message) {
-  res.status(200).json({
+function sendRouteFallback(res: ApiResponse, message: string) {
+  const payload: RoadRouteApiResponse = {
     data: null,
     meta: {
       source: "fallback",
       reason: "road-route-unavailable",
       message,
     },
-  });
+  };
+  res.status(200).json(payload);
 }
 
-async function fetchWithTimeout(url, timeoutMs) {
+async function fetchWithTimeout(url: URL, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -125,34 +146,35 @@ async function fetchWithTimeout(url, timeoutMs) {
   }
 }
 
-function getRoutingTimeoutMs() {
+function getRoutingTimeoutMs(): number {
   return getPositiveEnvNumber("ROUTING_API_TIMEOUT_MS", DEFAULT_ROUTING_TIMEOUT_MS);
 }
 
-function getRoutingCooldownMs() {
+function getRoutingCooldownMs(): number {
   return getPositiveEnvNumber("ROUTING_PROVIDER_COOLDOWN_SECONDS", DEFAULT_ROUTING_COOLDOWN_SECONDS) * 1000;
 }
 
-function shouldLogRoutingProviderFailure() {
+function shouldLogRoutingProviderFailure(): boolean {
   const now = Date.now();
   if (now - routingProviderLastWarningAt < getRoutingCooldownMs()) return false;
   routingProviderLastWarningAt = now;
   return true;
 }
 
-function getPositiveEnvNumber(name, fallback) {
+function getPositiveEnvNumber(name: string, fallback: number): number {
   const value = Number(process.env[name]);
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
-function formatErrorForLog(error) {
+function formatErrorForLog(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function isAbortError(error) {
+function isAbortError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
-  const name = typeof error.name === "string" ? error.name : "";
-  const code = typeof error.code === "string" ? error.code : "";
+  const record = isRecord(error) ? error : {};
+  const name = typeof record.name === "string" ? record.name : "";
+  const code = typeof record.code === "string" ? record.code : "";
   const message = error instanceof Error ? error.message : "";
   return (
     name === "AbortError" ||
@@ -161,11 +183,14 @@ function isAbortError(error) {
   );
 }
 
-function normalizeRouteSteps(legs) {
+function normalizeRouteSteps(legs: unknown): RoadRouteStep[] {
   const steps = (Array.isArray(legs) ? legs : [])
-    .flatMap((leg) => Array.isArray(leg?.steps) ? leg.steps : [])
+    .flatMap((leg) => {
+      const legRecord = isRecord(leg) ? leg : {};
+      return Array.isArray(legRecord.steps) ? legRecord.steps : [];
+    })
     .map((step, index) => mapOsrmStep(step, index))
-    .filter(Boolean)
+    .filter((step): step is RoadRouteStep => Boolean(step))
     .filter((step) => isUsefulStep(step));
 
   if (steps.length <= MAX_ROUTE_STEPS) return steps;
@@ -175,15 +200,16 @@ function normalizeRouteSteps(legs) {
   ];
 }
 
-function mapOsrmStep(step, index) {
-  const distanceKm = roundTo(Number(step?.distance ?? 0) / 1000, 1);
-  const durationMinutes = Math.max(0, Math.round(Number(step?.duration ?? 0) / 60));
-  const roadName = cleanRoadName(step?.name);
-  const roadRef = cleanRoadName(step?.ref);
-  const destinations = cleanRoadName(step?.destinations);
-  const rotaryName = cleanRoadName(step?.rotary_name);
+function mapOsrmStep(step: unknown, index: number): RoadRouteStep | null {
+  const record = isRecord(step) ? step : {};
+  const distanceKm = roundTo(Number(record.distance ?? 0) / 1000, 1);
+  const durationMinutes = Math.max(0, Math.round(Number(record.duration ?? 0) / 60));
+  const roadName = cleanRoadName(record.name);
+  const roadRef = cleanRoadName(record.ref);
+  const destinations = cleanRoadName(record.destinations);
+  const rotaryName = cleanRoadName(record.rotary_name);
   const displayRoadName = roadName || roadRef || destinations || rotaryName;
-  const maneuver = step?.maneuver ?? {};
+  const maneuver = isRecord(record.maneuver) ? record.maneuver : {};
   const maneuverType = typeof maneuver.type === "string" ? maneuver.type : "continue";
   const modifier = typeof maneuver.modifier === "string" ? maneuver.modifier : "";
   const exitNumber = Number.isFinite(Number(maneuver.exit)) ? Number(maneuver.exit) : undefined;
@@ -208,14 +234,14 @@ function mapOsrmStep(step, index) {
   };
 }
 
-function isUsefulStep(step) {
+function isUsefulStep(step: RoadRouteStep): boolean {
   if (step.maneuverType === "depart" || step.maneuverType === "arrive") return true;
   if (step.maneuverType === "roundabout" || step.maneuverType === "rotary") return true;
   if (step.instruction !== "Continue") return true;
   return step.distanceKm >= 0.2;
 }
 
-function buildInstruction(type, modifier, roadName, exitNumber) {
+function buildInstruction(type: string, modifier: string, roadName: string, exitNumber?: number): string {
   const direction = humanizeModifier(modifier);
 
   if (type === "depart") {
@@ -257,38 +283,40 @@ function buildInstruction(type, modifier, roadName, exitNumber) {
   return roadName ? `${action} onto ${roadName}` : action;
 }
 
-function buildDirectionLabel(type, modifier, exitNumber) {
+function buildDirectionLabel(type: string, modifier: string, exitNumber?: number): string {
   if ((type === "roundabout" || type === "rotary") && exitNumber) return `Exit ${exitNumber}`;
   if (modifier) return titleCase(humanizeModifier(modifier));
   return titleCase(type.replace(/_/g, " "));
 }
 
-function humanizeModifier(value) {
+function humanizeModifier(value: unknown): string {
   return typeof value === "string" ? value.replace(/_/g, " ").trim() : "";
 }
 
-function buildRouteSummary(legs) {
-  const roadNames = [];
+function buildRouteSummary(legs: unknown): string {
+  const roadNames: string[] = [];
   (Array.isArray(legs) ? legs : []).forEach((leg) => {
-    (Array.isArray(leg?.steps) ? leg.steps : []).forEach((step) => {
-      const name = cleanRoadName(step?.ref || step?.name || step?.destinations);
+    const legRecord = isRecord(leg) ? leg : {};
+    (Array.isArray(legRecord.steps) ? legRecord.steps : []).forEach((step) => {
+      const stepRecord = isRecord(step) ? step : {};
+      const name = cleanRoadName(stepRecord.ref || stepRecord.name || stepRecord.destinations);
       if (name && !roadNames.includes(name)) roadNames.push(name);
     });
   });
   return roadNames.slice(0, 4).join(" · ");
 }
 
-function cleanRoadName(value) {
+function cleanRoadName(value: unknown): string {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
 }
 
-function roundTo(value, places) {
+function roundTo(value: number, places: number): number {
   if (!Number.isFinite(value) || value <= 0) return 0;
   const multiplier = 10 ** places;
   return Math.round(value * multiplier) / multiplier;
 }
 
-function titleCase(value) {
+function titleCase(value: string): string {
   return value
     .split(" ")
     .filter(Boolean)
@@ -296,7 +324,7 @@ function titleCase(value) {
     .join(" ");
 }
 
-function parseCoordinate(value) {
+function parseCoordinate(value: unknown): Coordinate | null {
   const firstValue = Array.isArray(value) ? value[0] : value;
   if (typeof firstValue !== "string") return null;
 
@@ -310,7 +338,7 @@ function parseCoordinate(value) {
   return { longitude, latitude };
 }
 
-function isCoordinatePair(value) {
+function isCoordinatePair(value: unknown): value is [unknown, unknown, ...unknown[]] {
   return (
     Array.isArray(value) &&
     value.length >= 2 &&
@@ -319,14 +347,14 @@ function isCoordinatePair(value) {
   );
 }
 
-function normalizeCoordinatePair(value) {
+function normalizeCoordinatePair(value: unknown): [number, number] | null {
   if (!isCoordinatePair(value)) return null;
   return [Number(value[0]), Number(value[1])];
 }
 
-function haversineDistanceKm(from, to) {
+function haversineDistanceKm(from: Coordinate, to: Coordinate): number {
   const earthRadiusKm = 6371;
-  const toRadians = (value) => (value * Math.PI) / 180;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
   const lat1 = toRadians(from.latitude);
   const lat2 = toRadians(to.latitude);
   const deltaLat = toRadians(to.latitude - from.latitude);
@@ -338,4 +366,8 @@ function haversineDistanceKm(from, to) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return earthRadiusKm * c;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

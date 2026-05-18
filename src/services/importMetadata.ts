@@ -1,34 +1,7 @@
 import type { ImportedIdeaSourcePlatform } from "../types/travel";
+import type { ImportMetadata, ImportMetadataPlace } from "../types/api";
 
-export type ImportMetadataPlace = {
-  name: string;
-  address: string;
-  shortAddress: string;
-  latitude?: number;
-  longitude?: number;
-  mapsUrl: string;
-  websiteUrl: string;
-  phone: string;
-  rating?: number;
-  userRatingCount?: number;
-  primaryType: string;
-  types: string[];
-};
-
-export type ImportMetadata = {
-  url: string;
-  finalUrl: string;
-  sourcePlatform: ImportedIdeaSourcePlatform;
-  sourceLabel: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-  siteName: string;
-  place?: ImportMetadataPlace;
-  confidence: "high" | "medium" | "low";
-  reason?: string;
-  cached?: boolean;
-};
+export type { ImportMetadata, ImportMetadataPlace } from "../types/api";
 
 export async function fetchImportMetadata(url: string, signal?: AbortSignal): Promise<ImportMetadata | null> {
   const normalizedUrl = normalizeMetadataUrl(url);

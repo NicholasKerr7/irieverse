@@ -1,4 +1,5 @@
 import { BookingOption } from "../types/travel";
+import type { BookingApiMeta } from "../types/api";
 
 const BOOKINGS_API = import.meta.env.VITE_BOOKING_API_URL?.trim();
 
@@ -9,7 +10,7 @@ interface BookingSearchParams {
 }
 
 export type BookingSourceMeta = {
-  source: "amadeus" | "api" | "fallback" | "local";
+  source: BookingApiMeta["source"] | "api" | "local";
   reason?: string;
   endpointConfigured: boolean;
   checkInDate?: string;

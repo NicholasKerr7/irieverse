@@ -1,3 +1,6 @@
+import type { ApiRequest, ApiResponse, BookingApiResponse } from "../src/types/api";
+import type { BookingOption } from "../src/types/travel";
+
 const AMADEUS_TEST_BASE_URL = "https://test.api.amadeus.com";
 const AMADEUS_PRODUCTION_BASE_URL = "https://api.amadeus.com";
 const DEFAULT_ADULTS = 2;
@@ -6,7 +9,7 @@ const HOTEL_SEARCH_RADIUS_KM = 45;
 const MAX_HOTELS_FOR_OFFERS = 16;
 const MAX_BOOKING_OPTIONS = 4;
 
-const CITY_CODE_BY_DESTINATION = {
+const CITY_CODE_BY_DESTINATION: Record<string, CityCode> = {
   KIN: "KIN",
   MBJ: "MBJ",
   NEG: "MBJ",
@@ -16,7 +19,9 @@ const CITY_CODE_BY_DESTINATION = {
 const DESTINATION_LABELS = {
   KIN: "Kingston, Jamaica",
   MBJ: "Montego Bay, Jamaica",
-};
+} as const;
+
+type CityCode = keyof typeof DESTINATION_LABELS;
 
 const FALLBACK_BOOKINGS = {
   MBJ: [
@@ -58,11 +63,11 @@ const FALLBACK_BOOKINGS = {
       perks: ["Studio drop-in", "Night market shuttle", "Rooftop bar"],
     },
   ],
-};
+} satisfies Record<CityCode, BookingOption[]>;
 
-let cachedToken = null;
+let cachedToken: { accessToken: string; expiresAt: number } | null = null;
 
-module.exports = async function bookingsHandler(req, res) {
+export default async function bookingsHandler(req: ApiRequest, res: ApiResponse) {
   setResponseHeaders(res);
 
   if (req.method === "OPTIONS") {
@@ -97,13 +102,14 @@ module.exports = async function bookingsHandler(req, res) {
   const clientSecret = process.env.AMADEUS_CLIENT_SECRET || process.env.AMADEUS_API_SECRET;
 
   if (!clientId || !clientSecret) {
-    res.status(200).json({
+    const payload: BookingApiResponse = {
       data: getFallbackBookings(cityCode),
       meta: {
         source: "fallback",
         reason: "missing-amadeus-credentials",
       },
-    });
+    };
+    res.status(200).json(payload);
     return;
   }
 
@@ -121,7 +127,7 @@ module.exports = async function bookingsHandler(req, res) {
         })
       : [];
 
-    res.status(200).json({
+    const payload: BookingApiResponse = {
       data: amadeusOptions.length ? amadeusOptions : getFallbackBookings(cityCode),
       meta: {
         source: amadeusOptions.length ? "amadeus" : "fallback",
@@ -130,27 +136,29 @@ module.exports = async function bookingsHandler(req, res) {
         checkOutDate,
         adults,
       },
-    });
+    };
+    res.status(200).json(payload);
   } catch (error) {
     console.warn(`Amadeus booking lookup unavailable; using curated stays. ${formatErrorForLog(error)}`);
-    res.status(200).json({
+    const payload: BookingApiResponse = {
       data: getFallbackBookings(cityCode),
       meta: {
         source: "fallback",
         reason: "amadeus-request-failed",
       },
-    });
+    };
+    res.status(200).json(payload);
   }
-};
+}
 
-function setResponseHeaders(res) {
+function setResponseHeaders(res: ApiResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=3600");
 }
 
-function getAmadeusBaseUrl() {
+function getAmadeusBaseUrl(): string {
   if (process.env.AMADEUS_BASE_URL) {
     return process.env.AMADEUS_BASE_URL.replace(/\/$/, "");
   }
@@ -160,7 +168,7 @@ function getAmadeusBaseUrl() {
     : AMADEUS_TEST_BASE_URL;
 }
 
-async function getAmadeusAccessToken(baseUrl, clientId, clientSecret) {
+async function getAmadeusAccessToken(baseUrl: string, clientId: string, clientSecret: string): Promise<string> {
   if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
     return cachedToken.accessToken;
   }
@@ -181,20 +189,22 @@ async function getAmadeusAccessToken(baseUrl, clientId, clientSecret) {
     throw new Error(`Amadeus auth failed: ${response.status}`);
   }
 
-  const payload = await response.json();
-  if (!payload.access_token) {
+  const payload: unknown = await response.json();
+  const payloadRecord = isRecord(payload) ? payload : {};
+  const accessToken = asString(payloadRecord.access_token);
+  if (!accessToken) {
     throw new Error("Amadeus auth response did not include an access token");
   }
 
   cachedToken = {
-    accessToken: payload.access_token,
-    expiresAt: Date.now() + Number(payload.expires_in ?? 1200) * 1000,
+    accessToken,
+    expiresAt: Date.now() + (asNumber(payloadRecord.expires_in) ?? 1200) * 1000,
   };
 
   return cachedToken.accessToken;
 }
 
-async function getHotelIdsByCity(baseUrl, accessToken, cityCode) {
+async function getHotelIdsByCity(baseUrl: string, accessToken: string, cityCode: CityCode): Promise<string[]> {
   const url = new URL(`${baseUrl}/v1/reference-data/locations/hotels/by-city`);
   url.searchParams.set("cityCode", cityCode);
   url.searchParams.set("radius", String(HOTEL_SEARCH_RADIUS_KM));
@@ -211,14 +221,27 @@ async function getHotelIdsByCity(baseUrl, accessToken, cityCode) {
     throw new Error(`Amadeus hotel list failed: ${response.status}`);
   }
 
-  const payload = await response.json();
-  return (Array.isArray(payload.data) ? payload.data : [])
-    .map((hotel) => hotel.hotelId)
-    .filter(Boolean)
+  const payload: unknown = await response.json();
+  const payloadRecord = isRecord(payload) ? payload : {};
+  return (Array.isArray(payloadRecord.data) ? payloadRecord.data : [])
+    .map((hotel) => isRecord(hotel) ? asString(hotel.hotelId) : undefined)
+    .filter((hotelId): hotelId is string => Boolean(hotelId))
     .slice(0, MAX_HOTELS_FOR_OFFERS);
 }
 
-async function getHotelOffers(baseUrl, accessToken, params) {
+type HotelOfferParams = {
+  hotelIds: string[];
+  cityCode: CityCode;
+  checkInDate: string;
+  checkOutDate: string;
+  adults: number;
+};
+
+async function getHotelOffers(
+  baseUrl: string,
+  accessToken: string,
+  params: HotelOfferParams
+): Promise<BookingOption[]> {
   const url = new URL(`${baseUrl}/v3/shopping/hotel-offers`);
   url.searchParams.set("hotelIds", params.hotelIds.join(","));
   url.searchParams.set("adults", String(params.adults));
@@ -237,33 +260,40 @@ async function getHotelOffers(baseUrl, accessToken, params) {
     throw new Error(`Amadeus hotel offers failed: ${response.status}`);
   }
 
-  const payload = await response.json();
-  return (Array.isArray(payload.data) ? payload.data : [])
+  const payload: unknown = await response.json();
+  const payloadRecord = isRecord(payload) ? payload : {};
+  return (Array.isArray(payloadRecord.data) ? payloadRecord.data : [])
     .map((item, index) => mapAmadeusOffer(item, index, params))
-    .filter(Boolean)
+    .filter((option): option is BookingOption => Boolean(option))
     .slice(0, MAX_BOOKING_OPTIONS);
 }
 
-function mapAmadeusOffer(item, index, params) {
-  const hotel = item.hotel ?? {};
-  const offer = Array.isArray(item.offers) ? item.offers[0] : null;
-  const priceValue = Number(offer?.price?.total ?? offer?.price?.base ?? 0);
+function mapAmadeusOffer(item: unknown, index: number, params: HotelOfferParams): BookingOption | null {
+  const record = isRecord(item) ? item : {};
+  const hotel = isRecord(record.hotel) ? record.hotel : {};
+  const offer = Array.isArray(record.offers) && isRecord(record.offers[0]) ? record.offers[0] : null;
+  const price = offer && isRecord(offer.price) ? offer.price : {};
+  const priceValue = Number(price.total ?? price.base ?? 0);
 
   if (!offer || !Number.isFinite(priceValue) || priceValue <= 0) {
     return null;
   }
 
-  const title = hotel.name || `${DESTINATION_LABELS[params.cityCode]} hotel offer`;
-  const roomType = offer.room?.typeEstimated?.category || offer.room?.description?.text;
-  const boardType = offer.boardType ? titleCase(offer.boardType.replace(/_/g, " ")) : null;
+  const title = asString(hotel.name) || `${DESTINATION_LABELS[params.cityCode]} hotel offer`;
+  const room = isRecord(offer.room) ? offer.room : {};
+  const typeEstimated = isRecord(room.typeEstimated) ? room.typeEstimated : {};
+  const description = isRecord(room.description) ? room.description : {};
+  const roomType = asString(typeEstimated.category) || asString(description.text);
+  const rawBoardType = asString(offer.boardType);
+  const boardType = rawBoardType ? titleCase(rawBoardType.replace(/_/g, " ")) : null;
 
   return {
-    id: `amadeus-${hotel.hotelId || slugify(title)}-${offer.id || index}`,
+    id: `amadeus-${asString(hotel.hotelId) || slugify(title)}-${asString(offer.id) || index}`,
     title,
     provider: "Hotel partner",
     type: "hotel",
     price: Math.round(priceValue),
-    currency: offer.price?.currency || "USD",
+    currency: asString(price.currency) || "USD",
     url: buildHotelSearchUrl(title, params.cityCode),
     description: [
       roomType ? titleCase(roomType) : "Current hotel offer",
@@ -274,14 +304,17 @@ function mapAmadeusOffer(item, index, params) {
   };
 }
 
-function buildPerks(offer, boardType) {
+function buildPerks(offer: Record<string, unknown>, boardType: string | null): string[] {
   const perks = ["Current availability"];
 
   if (boardType) {
     perks.push(boardType);
   }
 
-  const cancellationDeadline = offer.policies?.cancellations?.[0]?.deadline;
+  const policies = isRecord(offer.policies) ? offer.policies : {};
+  const cancellations = Array.isArray(policies.cancellations) ? policies.cancellations : [];
+  const firstCancellation = isRecord(cancellations[0]) ? cancellations[0] : {};
+  const cancellationDeadline = asString(firstCancellation.deadline);
   if (cancellationDeadline) {
     perks.push(`Cancellation by ${cancellationDeadline.slice(0, 10)}`);
   }
@@ -289,45 +322,45 @@ function buildPerks(offer, boardType) {
   return perks.slice(0, 3);
 }
 
-function buildHotelSearchUrl(title, cityCode) {
+function buildHotelSearchUrl(title: string, cityCode: CityCode): string {
   const destinationLabel = DESTINATION_LABELS[cityCode] ?? "Jamaica";
   const query = encodeURIComponent(`${title} ${destinationLabel} booking`);
   return `https://www.google.com/search?q=${query}`;
 }
 
-function getFallbackBookings(cityCode) {
+function getFallbackBookings(cityCode: CityCode): BookingOption[] {
   return FALLBACK_BOOKINGS[cityCode] ?? FALLBACK_BOOKINGS.MBJ;
 }
 
-function normalizeAirportCode(value) {
+function normalizeAirportCode(value: unknown): string {
   const firstValue = Array.isArray(value) ? value[0] : value;
   return typeof firstValue === "string" ? firstValue.trim().toUpperCase() : "MBJ";
 }
 
-function normalizeDate(value) {
+function normalizeDate(value: unknown): string | null {
   const firstValue = Array.isArray(value) ? value[0] : value;
   if (typeof firstValue !== "string") return null;
   return /^\d{4}-\d{2}-\d{2}$/.test(firstValue) ? firstValue : null;
 }
 
-function getDateOffset(days, fromDate) {
+function getDateOffset(days: number, fromDate?: string): string {
   const date = fromDate ? new Date(`${fromDate}T00:00:00Z`) : new Date();
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
 
-function clampInteger(value, min, max, fallback) {
+function clampInteger(value: unknown, min: number, max: number, fallback: number): number {
   const firstValue = Array.isArray(value) ? value[0] : value;
-  const parsed = Number.parseInt(firstValue, 10);
+  const parsed = Number.parseInt(String(firstValue ?? ""), 10);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
 }
 
-function slugify(value) {
+function slugify(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-function titleCase(value) {
+function titleCase(value: string): string {
   return value
     .toLowerCase()
     .split(" ")
@@ -336,6 +369,19 @@ function titleCase(value) {
     .join(" ");
 }
 
-function formatErrorForLog(error) {
+function formatErrorForLog(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

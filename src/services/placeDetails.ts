@@ -1,26 +1,7 @@
 import type { Destination, Experience } from "../types/travel";
+import type { PlaceDetails } from "../types/api";
 
-export type PlaceDetails = {
-  id: string;
-  name: string;
-  address: string;
-  shortAddress: string;
-  latitude?: number;
-  longitude?: number;
-  mapsUrl: string;
-  websiteUrl: string;
-  phone: string;
-  internationalPhone: string;
-  rating?: number;
-  userRatingCount?: number;
-  priceLevel: string;
-  openNow?: boolean;
-  weekdayDescriptions: string[];
-  businessStatus: string;
-  primaryType: string;
-  types: string[];
-  source: "google-places";
-};
+export type { PlaceDetails } from "../types/api";
 
 type PlaceDetailsLookup =
   | { kind: "destination"; destination: Destination }

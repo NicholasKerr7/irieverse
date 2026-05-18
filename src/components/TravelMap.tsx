@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Map, { Layer, Marker, Source, type MapRef, type ViewStateChangeEvent } from "react-map-gl/maplibre";
 import type { Destination, RouteLeg } from "../types/travel";
 import type { ThemeMode } from "../hooks/useTravelOS";
+import type { RoadRoute, RoadRouteStep } from "../types/api";
 import { MapPin, Sparkles } from "lucide-react";
 import { MapCanvasSkeleton } from "./LoadingStates";
 import { classNames } from "../utils/classNames";
@@ -75,20 +76,7 @@ export type RouteFallbackReason =
   | "road-route-unavailable"
   | "unsupported-route";
 
-export type RouteStep = {
-  id: string;
-  instruction: string;
-  distanceKm: number;
-  durationMinutes: number;
-  roadName: string;
-  maneuverType: string;
-  modifier: string;
-  direction: string;
-  exitNumber?: number;
-  location?: [number, number];
-  ref?: string;
-  destinations?: string;
-};
+export type RouteStep = RoadRouteStep;
 
 export type RouteDetail = {
   id: string;
@@ -721,15 +709,6 @@ type RouteRequest = {
   fallbackDurationMinutes: number;
 };
 
-type RoadRoute = {
-  coordinates: Array<[number, number]>;
-  distanceKm: number;
-  durationMinutes: number;
-  summary: string;
-  steps: RouteStep[];
-  source: string;
-};
-
 type RouteFallbackInfo = {
   reason: RouteFallbackReason;
   message: string;
@@ -869,7 +848,7 @@ async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promi
       durationMinutes: Number(data.durationMinutes) || request.fallbackDurationMinutes,
       summary: asString(data.summary) ?? "",
       steps: normalizeRouteSteps(data.steps),
-      source: String(data.source ?? "road"),
+      source: "osrm",
     },
   };
 }
