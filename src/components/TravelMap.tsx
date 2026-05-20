@@ -911,7 +911,7 @@ function getRoadRouteCacheKey(request: RouteRequest): string {
 }
 
 function shouldCacheRoadRouteResult(result: RoadRouteFetchResult): boolean {
-  return Boolean(result.route || result.fallback?.reason !== "request-failed");
+  return Boolean(result.route || result.fallback?.reason === "unsupported-route");
 }
 
 function waitForRoadRouteResult(

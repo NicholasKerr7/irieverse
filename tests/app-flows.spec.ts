@@ -576,6 +576,10 @@ test("map route preview reuses identical startup road lookups", async ({ page })
   await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
   await expect(page.getByText("Road-aware")).toBeVisible({ timeout: 10000 });
   await page.waitForTimeout(1000);
+  await expectMapTopControlsToHaveSeparateHitTargets(page);
+  await page.getByLabel("Expand trip drawer").click();
+  await expect(page.getByLabel("Search and filters")).toHaveCount(0);
+  await expect(page.getByTestId("map-trip-drawer").getByRole("heading", { name: "5-day North Coast" })).toBeVisible();
 
   expect(routeRequestCounts.size).toBeGreaterThan(0);
   expect(Array.from(routeRequestCounts.values()).every((count) => count === 1)).toBe(true);
@@ -732,6 +736,44 @@ async function expectNoHorizontalOverflow(page: Page) {
 function parseRouteCoordinate(value: string): [number, number] {
   const [longitude, latitude] = value.split(",").map(Number);
   return [longitude ?? 0, latitude ?? 0];
+}
+
+async function expectMapTopControlsToHaveSeparateHitTargets(page: Page) {
+  const boxes = await page.evaluate(() => {
+    const controls = ["Search and filters", "Open Trips", "Switch to light mode"];
+    return controls.map((label) => {
+      const candidates = [...document.querySelectorAll("button")]
+        .filter((button) => button.getAttribute("aria-label") === label)
+        .map((button) => {
+          const rect = button.getBoundingClientRect();
+          return {
+            label,
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+            right: rect.right,
+            bottom: rect.bottom,
+          };
+        })
+        .filter((box) => box.width > 0 && box.height > 0 && box.y < 100);
+      return candidates[0] ?? null;
+    });
+  });
+  const [searchBox, tripsBox, themeBox] = boxes;
+
+  expect(searchBox).toBeTruthy();
+  expect(tripsBox).toBeTruthy();
+  expect(themeBox).toBeTruthy();
+  expect(boxesOverlap(searchBox!, tripsBox!)).toBe(false);
+  expect(boxesOverlap(tripsBox!, themeBox!)).toBe(false);
+}
+
+function boxesOverlap(
+  first: { x: number; y: number; right: number; bottom: number },
+  second: { x: number; y: number; right: number; bottom: number }
+): boolean {
+  return first.x < second.right && first.right > second.x && first.y < second.bottom && first.bottom > second.y;
 }
 
 function collectPageIssues(page: Page): string[] {
