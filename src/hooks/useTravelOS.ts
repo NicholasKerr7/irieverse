@@ -99,7 +99,7 @@ const AIRPORT_TIMEZONES: Record<string, string> = {
   OCJ: "America/Jamaica",
 };
 
-export const ORIGIN_AIRPORTS: [OriginAirport, ...OriginAirport[]] = [
+const ORIGIN_AIRPORTS: [OriginAirport, ...OriginAirport[]] = [
   { id: "jfk", name: "New York, USA (JFK)", code: "JFK", shortLabel: "NYC", latitude: 40.6413, longitude: -73.7781 },
   { id: "mia", name: "Miami, USA (MIA)", code: "MIA", shortLabel: "Miami", latitude: 25.7959, longitude: -80.287 },
   { id: "yyz", name: "Toronto, CA (YYZ)", code: "YYZ", shortLabel: "Toronto", latitude: 43.6777, longitude: -79.6248 },
@@ -301,7 +301,7 @@ export function useTravelOS() {
     document.documentElement.style.colorScheme = theme;
     document
       .querySelector('meta[name="theme-color"]:not([media])')
-      ?.setAttribute("content", theme === "dark" ? "#020617" : "#f8fafc");
+      ?.setAttribute("content", theme === "dark" ? "#020617" : "#f4f8f8");
     writeStringToStorage(STORAGE_KEY_THEME, theme);
   }, [theme]);
 

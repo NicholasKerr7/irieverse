@@ -29,6 +29,8 @@ const CATEGORY_COLORS: Record<MapPinCategory, string> = {
   adventure: "#84cc16",
   default: "#38bdf8",
 };
+const ROAD_ROUTE_RESULT_CACHE = new globalThis.Map<string, RoadRouteFetchResult>();
+const ROAD_ROUTE_IN_FLIGHT = new globalThis.Map<string, Promise<RoadRouteFetchResult>>();
 
 interface TravelMapProps {
   destinations: Destination[];
@@ -76,7 +78,7 @@ export type RouteFallbackReason =
   | "road-route-unavailable"
   | "unsupported-route";
 
-export type RouteStep = RoadRouteStep;
+type RouteStep = RoadRouteStep;
 
 export type RouteDetail = {
   id: string;
@@ -140,17 +142,25 @@ export const TravelMap = memo(function TravelMap({
   const [routeFallbacksById, setRouteFallbacksById] = useState<Record<string, RouteFallbackInfo>>({});
   const [isLoadingRoadRoutes, setIsLoadingRoadRoutes] = useState(false);
   const [routeRevealProgress, setRouteRevealProgress] = useState(0);
+  const routeRequestKey = useMemo(
+    () => buildRouteRequestKey(routeDestinations, routeLegs),
+    [routeDestinations, routeLegs]
+  );
   const routeRequests = useMemo(
     () => buildRouteRequests(routeDestinations, routeLegs),
-    [routeDestinations, routeLegs]
+    [routeRequestKey]
   );
   const routeSegments = useMemo(
     () => buildRouteSegments(routeRequests, roadRoutesById, routeFallbacksById, isLoadingRoadRoutes),
     [isLoadingRoadRoutes, roadRoutesById, routeFallbacksById, routeRequests]
   );
-  const routeDetails = useMemo(
-    () => routeSegments.map(routeSegmentToDetail),
+  const visibleRouteSegments = useMemo(
+    () => routeSegments.filter((segment) => segment.fallbackReason !== "loading"),
     [routeSegments]
+  );
+  const routeDetails = useMemo(
+    () => visibleRouteSegments.map(routeSegmentToDetail),
+    [visibleRouteSegments]
   );
   const selectedRouteSegment = selectedRouteLegId
     ? routeSegments.find((segment) => segment.id === selectedRouteLegId)
@@ -178,7 +188,7 @@ export const TravelMap = memo(function TravelMap({
   };
   const routeGeojson = {
     type: "FeatureCollection" as const,
-    features: routeSegments.map((segment, index) => ({
+    features: visibleRouteSegments.map((segment, index) => ({
       type: "Feature" as const,
       geometry: {
         type: "LineString" as const,
@@ -229,28 +239,13 @@ export const TravelMap = memo(function TravelMap({
     async function loadRoadRoutes() {
       setIsLoadingRoadRoutes(true);
       const entries: Array<{ id: string; result: RoadRouteFetchResult }> = [];
-      let pausedLookupFallback: RouteFallbackInfo | null = null;
 
       for (const request of routeRequests) {
         if (controller.signal.aborted) return;
 
-        if (pausedLookupFallback) {
-          entries.push({
-            id: request.id,
-            result: {
-              route: null,
-              fallback: getPausedRouteLookupFallback(pausedLookupFallback.reason),
-            },
-          });
-          continue;
-        }
-
         try {
           const result = await fetchRoadRoute(request, controller.signal);
           entries.push({ id: request.id, result });
-          if (shouldPauseRoadLookups(result.fallback?.reason)) {
-            pausedLookupFallback = result.fallback ?? getPausedRouteLookupFallback();
-          }
         } catch (error) {
           if (!controller.signal.aborted) {
             logRecoverableWarning("Road route unavailable; using planning route line.", error);
@@ -266,7 +261,6 @@ export const TravelMap = memo(function TravelMap({
               fallback,
             },
           });
-          pausedLookupFallback = fallback;
         }
 
         await waitForRouteSlot(controller.signal);
@@ -298,25 +292,25 @@ export const TravelMap = memo(function TravelMap({
     };
   }, [routeRequests]);
 
-  const routeAnimationKey = routeSegments
+  const routeAnimationKey = visibleRouteSegments
     .map((segment) => `${segment.id}:${segment.source}:${segment.coordinates.length}`)
     .join("|");
 
   useEffect(() => {
-    if (!routeSegments.length) {
+    if (!visibleRouteSegments.length) {
       setRouteRevealProgress(0);
       return;
     }
 
     let frame = 0;
     const startedAt = performance.now();
-    const duration = Math.max(850, routeSegments.length * 380);
+    const duration = Math.max(850, visibleRouteSegments.length * 380);
 
     const tick = (timestamp: number) => {
       const elapsed = timestamp - startedAt;
-      const progress = Math.min(routeSegments.length, (elapsed / duration) * routeSegments.length);
+      const progress = Math.min(visibleRouteSegments.length, (elapsed / duration) * visibleRouteSegments.length);
       setRouteRevealProgress(progress);
-      if (progress < routeSegments.length) {
+      if (progress < visibleRouteSegments.length) {
         frame = window.requestAnimationFrame(tick);
       }
     };
@@ -325,11 +319,14 @@ export const TravelMap = memo(function TravelMap({
     frame = window.requestAnimationFrame(tick);
 
     return () => window.cancelAnimationFrame(frame);
-  }, [routeAnimationKey, routeSegments.length]);
+  }, [routeAnimationKey, visibleRouteSegments.length]);
 
   useEffect(() => {
     if (!onRouteStatusChange) return;
     const roadLegs = routeSegments.filter((segment) => segment.source === "road").length;
+    const fallbackLegs = routeSegments.filter(
+      (segment) => segment.source === "fallback" && segment.fallbackReason !== "loading"
+    ).length;
     const failedLegs = routeSegments.filter(
       (segment) =>
         segment.source === "fallback" &&
@@ -340,7 +337,7 @@ export const TravelMap = memo(function TravelMap({
       isLoading: isLoadingRoadRoutes,
       totalLegs: routeSegments.length,
       roadLegs,
-      fallbackLegs: Math.max(0, routeSegments.length - roadLegs),
+      fallbackLegs,
       failedLegs,
     });
   }, [isLoadingRoadRoutes, onRouteStatusChange, routeSegments]);
@@ -441,7 +438,7 @@ export const TravelMap = memo(function TravelMap({
                 ],
                 "line-opacity": [
                   "*",
-                  ["get", "opacity"],
+                  ["to-number", ["get", "opacity"], 0],
                   ["case", ["==", ["get", "source"], "fallback"], 0.36, 0.58],
                 ],
               }}
@@ -463,7 +460,7 @@ export const TravelMap = memo(function TravelMap({
                 ],
                 "line-opacity": [
                   "*",
-                  ["get", "opacity"],
+                  ["to-number", ["get", "opacity"], 0],
                   ["case", ["==", ["get", "source"], "fallback"], 0.62, 0.96],
                 ],
               }}
@@ -488,12 +485,12 @@ export const TravelMap = memo(function TravelMap({
           </Source>
         )}
 
-        {routeSegments.map((segment, index) => {
+        {visibleRouteSegments.map((segment, index) => {
           const opacity = getSegmentRevealOpacity(routeRevealProgress, index);
           const isSelectedRouteLeg = segment.id === selectedRouteLegId;
           const shouldShowRouteLabel = selectedRouteLegId
             ? isSelectedRouteLeg
-            : routeSegments.length <= 2;
+            : visibleRouteSegments.length <= 2;
 
           if (!shouldShowRouteLabel) return null;
           const label = isSelectedRouteLeg ? segment.label : `Day ${segment.day}`;
@@ -753,6 +750,17 @@ function buildRouteRequests(routeDestinations: Destination[], routeLegs: RouteLe
   });
 }
 
+function buildRouteRequestKey(routeDestinations: Destination[], routeLegs: RouteLeg[]): string {
+  return [
+    routeDestinations
+      .map((destination) => `${destination.id}:${destination.longitude}:${destination.latitude}`)
+      .join(">"),
+    routeLegs
+      .map((leg) => `${leg.fromDestinationId}:${leg.toDestinationId}:${leg.distanceKm}:${leg.driveMinutes}`)
+      .join(">"),
+  ].join("||");
+}
+
 function buildRouteSegments(
   routeRequests: RouteRequest[],
   roadRoutesById: Record<string, RoadRoute>,
@@ -809,11 +817,34 @@ function createRouteSegment(
 }
 
 async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promise<RoadRouteFetchResult> {
+  const cacheKey = getRoadRouteCacheKey(request);
+  const cached = ROAD_ROUTE_RESULT_CACHE.get(cacheKey);
+  if (cached) return cached;
+
+  let requestPromise = ROAD_ROUTE_IN_FLIGHT.get(cacheKey);
+  if (!requestPromise) {
+    requestPromise = fetchRoadRouteUncached(request)
+      .then((result) => {
+        if (shouldCacheRoadRouteResult(result)) {
+          ROAD_ROUTE_RESULT_CACHE.set(cacheKey, result);
+        }
+        return result;
+      })
+      .finally(() => {
+        ROAD_ROUTE_IN_FLIGHT.delete(cacheKey);
+      });
+    ROAD_ROUTE_IN_FLIGHT.set(cacheKey, requestPromise);
+  }
+
+  return waitForRoadRouteResult(requestPromise, signal);
+}
+
+async function fetchRoadRouteUncached(request: RouteRequest): Promise<RoadRouteFetchResult> {
   const params = new URLSearchParams({
     from: `${request.from.longitude},${request.from.latitude}`,
     to: `${request.to.longitude},${request.to.latitude}`,
   });
-  const response = await fetch(`/api/road-route?${params}`, { signal });
+  const response = await fetch(`/api/road-route?${params}`);
   if (!response.ok) {
     return {
       route: null,
@@ -857,6 +888,38 @@ async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promi
       source: "osrm",
     },
   };
+}
+
+function getRoadRouteCacheKey(request: RouteRequest): string {
+  return [
+    request.from.longitude,
+    request.from.latitude,
+    request.to.longitude,
+    request.to.latitude,
+    request.fallbackDistanceKm,
+    request.fallbackDurationMinutes,
+  ].join(":");
+}
+
+function shouldCacheRoadRouteResult(result: RoadRouteFetchResult): boolean {
+  return Boolean(result.route || result.fallback?.reason === "unsupported-route");
+}
+
+function waitForRoadRouteResult(
+  promise: Promise<RoadRouteFetchResult>,
+  signal: AbortSignal
+): Promise<RoadRouteFetchResult> {
+  if (signal.aborted) {
+    return Promise.reject(new DOMException("Route request aborted", "AbortError"));
+  }
+
+  return new Promise((resolve, reject) => {
+    const handleAbort = () => reject(new DOMException("Route request aborted", "AbortError"));
+    signal.addEventListener("abort", handleAbort, { once: true });
+    promise.then(resolve, reject).finally(() => {
+      signal.removeEventListener("abort", handleAbort);
+    });
+  });
 }
 
 function routeSegmentToDetail(segment: RouteSegment): RouteDetail {
@@ -979,17 +1042,6 @@ function shallowRouteFallbacksEqual(first: Record<string, RouteFallbackInfo>, se
     first[key]?.reason === second[key]?.reason &&
     first[key]?.message === second[key]?.message
   ));
-}
-
-function shouldPauseRoadLookups(reason: RouteFallbackReason | undefined): boolean {
-  return reason === "request-failed" || reason === "invalid-response" || reason === "road-route-unavailable";
-}
-
-function getPausedRouteLookupFallback(reason: RouteFallbackReason = "road-route-unavailable"): RouteFallbackInfo {
-  return {
-    reason,
-    message: "Road preview is unavailable right now, so this leg is using a simple route line.",
-  };
 }
 
 function waitForRouteSlot(signal: AbortSignal): Promise<void> {

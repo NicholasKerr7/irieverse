@@ -118,7 +118,7 @@ export function LegalScreen({ page, onNavigate }: LegalScreenProps) {
   const Icon = copy.icon;
 
   return (
-    <main className="min-h-dvh bg-slate-950 text-slate-100">
+    <main className="legal-screen min-h-dvh bg-slate-950 text-slate-100">
       <section className="border-b border-white/10 bg-slate-950 px-5 py-8 sm:px-6 lg:px-10">
         <div className="mx-auto max-w-4xl">
           <button

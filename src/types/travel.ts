@@ -10,7 +10,7 @@ export type Vibe =
   | "authentic"
   | "mixed";
 
-export type ExperienceCategory = "food" | "music" | "festival";
+type ExperienceCategory = "food" | "music" | "festival";
 
 export type ExperienceType = "all" | ExperienceCategory;
 
@@ -75,7 +75,7 @@ export interface Destination {
   placeLookup?: PlaceLookup;
 }
 
-export interface PlaceLookup {
+interface PlaceLookup {
   query: string;
   requiredTerms?: string[];
   blockedTerms?: string[];
@@ -134,7 +134,7 @@ export interface ImportedIdea {
   place?: ImportedIdeaPlaceMetadata;
 }
 
-export interface ImportedIdeaPlaceMetadata {
+interface ImportedIdeaPlaceMetadata {
   name?: string;
   address?: string;
   shortAddress?: string;
@@ -203,7 +203,7 @@ export interface RouteLeg {
   transferSeverity: "easy" | "moderate" | "long";
 }
 
-export interface RouteWarning {
+interface RouteWarning {
   id: string;
   day: number;
   severity: "moderate" | "long";
@@ -211,7 +211,7 @@ export interface RouteWarning {
   body: string;
 }
 
-export interface RouteSummary {
+interface RouteSummary {
   totalDistanceKm: number;
   totalDriveMinutes: number;
   regionCount: number;

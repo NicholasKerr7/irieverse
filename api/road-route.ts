@@ -12,7 +12,6 @@ const MAX_ROUTE_STEPS = 32;
 const DEFAULT_ROUTING_TIMEOUT_MS = 4500;
 const DEFAULT_ROUTING_COOLDOWN_SECONDS = 45;
 
-let routingProviderCooldownUntil = 0;
 let routingProviderLastWarningAt = 0;
 
 type Coordinate = {
@@ -52,14 +51,8 @@ export default async function roadRouteHandler(req: ApiRequest, res: ApiResponse
     return;
   }
 
-  if (Date.now() < routingProviderCooldownUntil) {
-    sendRouteFallback(res, "Road preview is still syncing, so the app is keeping a simple route line for this leg.");
-    return;
-  }
-
   try {
     const route = await fetchOsrmRoute(from, to);
-    routingProviderCooldownUntil = 0;
     const payload: RoadRouteApiResponse = {
       data: route,
       meta: {
@@ -69,7 +62,6 @@ export default async function roadRouteHandler(req: ApiRequest, res: ApiResponse
     };
     res.status(200).json(payload);
   } catch (error) {
-    routingProviderCooldownUntil = Date.now() + getRoutingCooldownMs();
     if (!isAbortError(error) && shouldLogRoutingProviderFailure()) {
       console.warn(`Road route provider unavailable; using planning route lines temporarily. ${formatErrorForLog(error)}`);
     }

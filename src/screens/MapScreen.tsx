@@ -291,6 +291,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     return [];
   }, [activeDrawerTab, numberedActiveDrawerImportedStops, selectedImportedPlacePin, unplannedImportedPlacePins]);
   const tripTitle = `${app.plannerDays}-day ${app.destination.region}`;
+  const showFloatingMapControls = !sheetExpanded && !placeDetail && !selectedImportedPlacePin;
 
   useEffect(() => {
     if (!selectedRouteLegId) return;
@@ -362,11 +363,6 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     const routeLeg = routeLegOptions.find((option) => option.day === day);
     if (stop) setFocusedDestinationId(stop.destinationId);
     setSelectedRouteLegId(routeLeg?.id ?? null);
-  };
-
-  const handleAddToTrip = () => {
-    app.savePlace(selectedDestination.id);
-    onNavigate("trips");
   };
 
   const handleNearbyExperience = (experience: Experience) => {
@@ -473,35 +469,40 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       <div className="map-screen-left-fade pointer-events-none absolute inset-y-0 left-0 z-10 w-1/3" />
       <div className="map-screen-right-fade pointer-events-none absolute inset-y-0 right-0 z-10 w-1/4" />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 p-3 sm:p-5">
-        <div className="pointer-events-auto mx-auto flex max-w-7xl items-start justify-between gap-3">
-          <div className="map-glass-toolbar min-w-0 rounded-full border px-4 py-3">
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-950/30">
-                <Compass className="h-4 w-4" />
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-black">IrieVerse Map</span>
-                <span className="block truncate text-xs text-slate-500">
-                  {activeCategoryLabel} layer · {visiblePinCount} pins
+      {showFloatingMapControls && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-30 p-3 sm:p-5">
+          <div className="pointer-events-auto mx-auto flex max-w-7xl items-start justify-between gap-3">
+            <div className="map-glass-toolbar min-w-0 rounded-full border px-4 py-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-950/30">
+                  <Compass className="h-4 w-4" />
                 </span>
-              </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-black">
+                    <span className="sm:hidden">IrieVerse</span>
+                    <span className="hidden sm:inline">IrieVerse Map</span>
+                  </span>
+                  <span className="block truncate text-xs text-slate-500">
+                    {activeCategoryLabel} layer · {visiblePinCount} pins
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            <div className="mr-14 flex shrink-0 gap-2 md:mr-0">
+              <FloatingMapButton
+                icon={Search}
+                label="Search and filters"
+                onClick={() => {
+                  setActiveDrawerTab("overview");
+                  setSheetExpanded(true);
+                }}
+              />
+              <FloatingMapButton icon={CalendarDays} label="Open Trips" onClick={() => onNavigate("trips")} />
             </div>
           </div>
-
-          <div className="flex shrink-0 gap-2">
-            <FloatingMapButton
-              icon={Search}
-              label="Search and filters"
-              onClick={() => {
-                setActiveDrawerTab("overview");
-                setSheetExpanded(true);
-              }}
-            />
-            <FloatingMapButton icon={CalendarDays} label="Open Trips" onClick={() => onNavigate("trips")} />
-          </div>
         </div>
-      </div>
+      )}
 
       {!visiblePinCount && (
         <div className="absolute left-1/2 top-1/2 z-50 w-[min(90vw,28rem)] -translate-x-1/2 -translate-y-1/2 rounded-[2rem] border border-white/10 bg-slate-950/92 p-6 text-center shadow-2xl shadow-slate-950/70 backdrop-blur-2xl">
@@ -550,25 +551,25 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         </button>
 
         <div className="px-4 pb-4">
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <img
               src={app.destination.heroImage}
               alt={app.destination.name}
-              className="h-20 w-20 shrink-0 rounded-2xl object-cover shadow-lg shadow-slate-300/60 sm:h-24 sm:w-24"
+              className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-lg shadow-slate-300/60 sm:h-24 sm:w-24"
             />
             <div className="min-w-0 flex-1">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-2 sm:gap-3">
                 <div className="min-w-0">
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-sky-600">Jamaica trip map</p>
-                  <h1 className="mt-1 truncate text-2xl font-black tracking-tight sm:text-3xl">{tripTitle}</h1>
-                  <p className="mt-2 truncate text-sm font-semibold text-slate-500">
+                  <h1 className="mt-1 line-clamp-2 text-xl font-black leading-tight tracking-tight sm:text-3xl">{tripTitle}</h1>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 sm:mt-2 sm:text-sm">
                     {app.plannerDays} days · {routeSummary.stops.length} stops · {formatDriveTime(routeSummary.totalDriveMinutes)}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => onNavigate("trips")}
-                  className="map-glass-control inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition hover:text-sky-300"
+                  className="map-glass-control inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition hover:text-sky-300 sm:h-12 sm:w-12"
                   aria-label="Open Trips"
                 >
                   <ArrowUpRight className="h-5 w-5" />
@@ -909,7 +910,7 @@ function TripDrawerTabs({
   onSelectTab: (tab: MapDrawerTab) => void;
 }) {
   return (
-    <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+    <div className="mt-4 flex gap-2 overflow-x-auto scroll-px-4 pb-1">
       <TripDrawerTabButton active={activeTab === "overview"} icon={Route} label="Overview" onClick={() => onSelectTab("overview")} />
       <TripDrawerTabButton active={activeTab === "unplanned"} icon={Layers3} label="Unplanned" onClick={() => onSelectTab("unplanned")} muted />
       {stops.map((stop) => {
@@ -929,14 +930,14 @@ function TripDrawerTabs({
             type="button"
             onClick={() => onSelectTab(tab)}
             className={classNames(
-              "inline-flex min-h-14 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition",
+              "inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-black transition sm:min-h-14 sm:gap-2 sm:px-4 sm:text-sm",
               activeTab === tab
                 ? "border-[#020617] bg-[#020617] text-white shadow-lg shadow-slate-300"
                 : "border-slate-200 bg-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-800"
             )}
           >
             <span
-              className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-black text-white"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-black text-white sm:h-7 sm:w-7"
               style={{ backgroundColor: color }}
             >
               {stop.day}
@@ -968,7 +969,7 @@ function TripDrawerTabButton({
       type="button"
       onClick={onClick}
       className={classNames(
-        "inline-flex min-h-14 shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition",
+        "inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-black transition sm:min-h-14 sm:gap-2 sm:px-4 sm:text-sm",
         active
           ? "border-[#020617] bg-[#020617] text-white shadow-lg shadow-slate-300"
           : muted
@@ -1256,9 +1257,7 @@ function DayPlanPanel({
             </div>
           )}
 
-          {!!importedStops.length && (
-            <DayFocusCard destination={destination} importedStops={importedStops} />
-          )}
+          {!!importedStops.length && <DayFocusCard importedStops={importedStops} />}
 
           <div className="relative mt-4 min-w-0 pl-7 sm:pl-9">
             <span className="absolute bottom-4 left-4 top-4 w-px border-l border-dashed border-slate-300" />
@@ -1369,13 +1368,7 @@ function DayPlanPanel({
   );
 }
 
-function DayFocusCard({
-  destination,
-  importedStops,
-}: {
-  destination: Destination;
-  importedStops: ImportedPlacePin[];
-}) {
+function DayFocusCard({ importedStops }: { importedStops: ImportedPlacePin[] }) {
   const visibleStopNames = importedStops.slice(0, 2).map((pin) => pin.name);
   const hiddenCount = Math.max(0, importedStops.length - visibleStopNames.length);
   const stopLabel = `${importedStops.length} saved stop${importedStops.length === 1 ? "" : "s"}`;
