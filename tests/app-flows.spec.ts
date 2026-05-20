@@ -544,6 +544,45 @@ test("map route preview keeps route notes secondary", async ({ page }) => {
   expect(issues).toEqual([]);
 });
 
+test("map route preview reuses identical startup road lookups", async ({ page }) => {
+  const issues = collectPageIssues(page);
+  const routeRequestCounts = new Map<string, number>();
+
+  await page.route("**/api/road-route**", async (route) => {
+    const url = new URL(route.request().url());
+    const from = url.searchParams.get("from") ?? "";
+    const to = url.searchParams.get("to") ?? "";
+    const requestKey = `${from} -> ${to}`;
+    routeRequestCounts.set(requestKey, (routeRequestCounts.get(requestKey) ?? 0) + 1);
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          coordinates: [parseRouteCoordinate(from), parseRouteCoordinate(to)],
+          distanceKm: 78.4,
+          durationMinutes: 108,
+          summary: "Road-aware preview",
+          steps: [],
+          source: "osrm",
+        },
+        meta: { source: "osrm", stepCount: 0 },
+      }),
+    });
+  });
+
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await expect(page.getByText("Road-aware")).toBeVisible({ timeout: 10000 });
+  await page.waitForTimeout(1000);
+
+  expect(routeRequestCounts.size).toBeGreaterThan(0);
+  expect(Array.from(routeRequestCounts.values()).every((count) => count === 1)).toBe(true);
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("map place details surface live visit data when available", async ({ page }) => {
   const issues = collectPageIssues(page);
 
@@ -688,6 +727,11 @@ async function expectNoHorizontalOverflow(page: Page) {
     clientWidth: document.documentElement.clientWidth,
   }));
   expect(sizes.scrollWidth).toBeLessThanOrEqual(sizes.clientWidth);
+}
+
+function parseRouteCoordinate(value: string): [number, number] {
+  const [longitude, latitude] = value.split(",").map(Number);
+  return [longitude ?? 0, latitude ?? 0];
 }
 
 function collectPageIssues(page: Page): string[] {

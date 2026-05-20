@@ -161,7 +161,7 @@ export function addDaysToISODate(startDateISO: string, days: number): string | u
   return checkoutDate.toISOString().slice(0, 10);
 }
 
-export function buildDestinationPool(
+function buildDestinationPool(
   base: Destination,
   preferredDestinationIds: Set<string>,
   plannerVibe: Vibe | "mixed"

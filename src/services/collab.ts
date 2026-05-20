@@ -12,7 +12,7 @@ export type CollaborationErrorCode =
   | "empty-response"
   | "request-failed";
 
-export class CollaborationError extends Error {
+class CollaborationError extends Error {
   code: CollaborationErrorCode;
   cause?: unknown;
 

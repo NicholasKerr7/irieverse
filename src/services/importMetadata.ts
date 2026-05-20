@@ -1,7 +1,7 @@
 import type { ImportedIdeaSourcePlatform } from "../types/travel";
 import type { ImportMetadata, ImportMetadataPlace } from "../types/api";
 
-export type { ImportMetadata, ImportMetadataPlace } from "../types/api";
+export type { ImportMetadata } from "../types/api";
 
 export async function fetchImportMetadata(url: string, signal?: AbortSignal): Promise<ImportMetadata | null> {
   const normalizedUrl = normalizeMetadataUrl(url);

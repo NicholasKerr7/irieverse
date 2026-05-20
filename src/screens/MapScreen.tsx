@@ -364,11 +364,6 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
     setSelectedRouteLegId(routeLeg?.id ?? null);
   };
 
-  const handleAddToTrip = () => {
-    app.savePlace(selectedDestination.id);
-    onNavigate("trips");
-  };
-
   const handleNearbyExperience = (experience: Experience) => {
     app.saveExperience(experience.id);
     if (experience.linkedDestinationId) {
@@ -1256,9 +1251,7 @@ function DayPlanPanel({
             </div>
           )}
 
-          {!!importedStops.length && (
-            <DayFocusCard destination={destination} importedStops={importedStops} />
-          )}
+          {!!importedStops.length && <DayFocusCard importedStops={importedStops} />}
 
           <div className="relative mt-4 min-w-0 pl-7 sm:pl-9">
             <span className="absolute bottom-4 left-4 top-4 w-px border-l border-dashed border-slate-300" />
@@ -1369,13 +1362,7 @@ function DayPlanPanel({
   );
 }
 
-function DayFocusCard({
-  destination,
-  importedStops,
-}: {
-  destination: Destination;
-  importedStops: ImportedPlacePin[];
-}) {
+function DayFocusCard({ importedStops }: { importedStops: ImportedPlacePin[] }) {
   const visibleStopNames = importedStops.slice(0, 2).map((pin) => pin.name);
   const hiddenCount = Math.max(0, importedStops.length - visibleStopNames.length);
   const stopLabel = `${importedStops.length} saved stop${importedStops.length === 1 ? "" : "s"}`;

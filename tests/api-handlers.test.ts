@@ -5,7 +5,6 @@ import flightsHandler, { resetFlightsHandlerStateForTest } from "../api/flights"
 import importMetadataHandler from "../api/import-metadata";
 import roadRouteHandler from "../api/road-route";
 import type {
-  ApiRequest,
   ApiResponse,
   BookingApiResponse,
   FlightApiResponse,

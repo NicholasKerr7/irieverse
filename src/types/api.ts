@@ -4,7 +4,7 @@ import type {
   ImportedIdeaSourcePlatform,
 } from "./travel";
 
-export type QueryValue = string | string[] | undefined;
+type QueryValue = string | string[] | undefined;
 export type QueryRecord = Record<string, QueryValue>;
 
 export interface ApiRequest {

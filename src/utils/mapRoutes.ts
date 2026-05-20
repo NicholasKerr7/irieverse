@@ -21,7 +21,7 @@ export const MAP_CATEGORIES: Array<{ id: MapCategoryId; label: string; color: st
   { id: "nightlife", label: "Nightlife", color: "bg-rose-300", border: "border-rose-300/50" },
 ];
 
-export const ROUTE_COLORS = ["#fb5573", "#f59e0b", "#d946ef", "#22c55e", "#8b5cf6", "#38bdf8"];
+const ROUTE_COLORS = ["#fb5573", "#f59e0b", "#d946ef", "#22c55e", "#8b5cf6", "#38bdf8"];
 
 export function getLinkedExperiences(destinationId: string) {
   return EXPERIENCES.filter((experience) => experience.linkedDestinationId === destinationId);
@@ -120,14 +120,6 @@ export function getRouteColor(index: number): string {
   return ROUTE_COLORS[index % ROUTE_COLORS.length] ?? ROUTE_COLORS[0] ?? "#22d3ee";
 }
 
-export function getLegDistance(
-  legs: Array<{ toDestinationId: string; distanceKm: number }>,
-  destinationId: string,
-  fallbackKm: number
-): number {
-  return legs.find((leg) => leg.toDestinationId === destinationId)?.distanceKm ?? fallbackKm;
-}
-
 export function mergeDestinations(primary: Destination[], secondary: Destination[]): Destination[] {
   const byId = new globalThis.Map<string, Destination>();
   [...primary, ...secondary].forEach((destination) => byId.set(destination.id, destination));
@@ -158,7 +150,7 @@ export function buildDrivingGuideUrl(routeDestinations: Destination[]): string {
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
-export function getDestinationSearchText(destination: Destination): string {
+function getDestinationSearchText(destination: Destination): string {
   return [
     destination.name,
     destination.region,

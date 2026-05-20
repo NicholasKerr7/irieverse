@@ -9,6 +9,3 @@ export const glassControl = "glass-control border";
 export const glassField = "glass-field border";
 
 export const glassControlMuted = "glass-control-muted border";
-
-export const hideScrollbar =
-  "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";

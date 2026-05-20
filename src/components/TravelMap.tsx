@@ -29,6 +29,8 @@ const CATEGORY_COLORS: Record<MapPinCategory, string> = {
   adventure: "#84cc16",
   default: "#38bdf8",
 };
+const ROAD_ROUTE_RESULT_CACHE = new globalThis.Map<string, RoadRouteFetchResult>();
+const ROAD_ROUTE_IN_FLIGHT = new globalThis.Map<string, Promise<RoadRouteFetchResult>>();
 
 interface TravelMapProps {
   destinations: Destination[];
@@ -76,7 +78,7 @@ export type RouteFallbackReason =
   | "road-route-unavailable"
   | "unsupported-route";
 
-export type RouteStep = RoadRouteStep;
+type RouteStep = RoadRouteStep;
 
 export type RouteDetail = {
   id: string;
@@ -140,9 +142,13 @@ export const TravelMap = memo(function TravelMap({
   const [routeFallbacksById, setRouteFallbacksById] = useState<Record<string, RouteFallbackInfo>>({});
   const [isLoadingRoadRoutes, setIsLoadingRoadRoutes] = useState(false);
   const [routeRevealProgress, setRouteRevealProgress] = useState(0);
+  const routeRequestKey = useMemo(
+    () => buildRouteRequestKey(routeDestinations, routeLegs),
+    [routeDestinations, routeLegs]
+  );
   const routeRequests = useMemo(
     () => buildRouteRequests(routeDestinations, routeLegs),
-    [routeDestinations, routeLegs]
+    [routeRequestKey]
   );
   const routeSegments = useMemo(
     () => buildRouteSegments(routeRequests, roadRoutesById, routeFallbacksById, isLoadingRoadRoutes),
@@ -441,7 +447,7 @@ export const TravelMap = memo(function TravelMap({
                 ],
                 "line-opacity": [
                   "*",
-                  ["get", "opacity"],
+                  ["to-number", ["get", "opacity"], 0],
                   ["case", ["==", ["get", "source"], "fallback"], 0.36, 0.58],
                 ],
               }}
@@ -463,7 +469,7 @@ export const TravelMap = memo(function TravelMap({
                 ],
                 "line-opacity": [
                   "*",
-                  ["get", "opacity"],
+                  ["to-number", ["get", "opacity"], 0],
                   ["case", ["==", ["get", "source"], "fallback"], 0.62, 0.96],
                 ],
               }}
@@ -753,6 +759,17 @@ function buildRouteRequests(routeDestinations: Destination[], routeLegs: RouteLe
   });
 }
 
+function buildRouteRequestKey(routeDestinations: Destination[], routeLegs: RouteLeg[]): string {
+  return [
+    routeDestinations
+      .map((destination) => `${destination.id}:${destination.longitude}:${destination.latitude}`)
+      .join(">"),
+    routeLegs
+      .map((leg) => `${leg.fromDestinationId}:${leg.toDestinationId}:${leg.distanceKm}:${leg.driveMinutes}`)
+      .join(">"),
+  ].join("||");
+}
+
 function buildRouteSegments(
   routeRequests: RouteRequest[],
   roadRoutesById: Record<string, RoadRoute>,
@@ -809,11 +826,34 @@ function createRouteSegment(
 }
 
 async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promise<RoadRouteFetchResult> {
+  const cacheKey = getRoadRouteCacheKey(request);
+  const cached = ROAD_ROUTE_RESULT_CACHE.get(cacheKey);
+  if (cached) return cached;
+
+  let requestPromise = ROAD_ROUTE_IN_FLIGHT.get(cacheKey);
+  if (!requestPromise) {
+    requestPromise = fetchRoadRouteUncached(request)
+      .then((result) => {
+        if (shouldCacheRoadRouteResult(result)) {
+          ROAD_ROUTE_RESULT_CACHE.set(cacheKey, result);
+        }
+        return result;
+      })
+      .finally(() => {
+        ROAD_ROUTE_IN_FLIGHT.delete(cacheKey);
+      });
+    ROAD_ROUTE_IN_FLIGHT.set(cacheKey, requestPromise);
+  }
+
+  return waitForRoadRouteResult(requestPromise, signal);
+}
+
+async function fetchRoadRouteUncached(request: RouteRequest): Promise<RoadRouteFetchResult> {
   const params = new URLSearchParams({
     from: `${request.from.longitude},${request.from.latitude}`,
     to: `${request.to.longitude},${request.to.latitude}`,
   });
-  const response = await fetch(`/api/road-route?${params}`, { signal });
+  const response = await fetch(`/api/road-route?${params}`);
   if (!response.ok) {
     return {
       route: null,
@@ -857,6 +897,38 @@ async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promi
       source: "osrm",
     },
   };
+}
+
+function getRoadRouteCacheKey(request: RouteRequest): string {
+  return [
+    request.from.longitude,
+    request.from.latitude,
+    request.to.longitude,
+    request.to.latitude,
+    request.fallbackDistanceKm,
+    request.fallbackDurationMinutes,
+  ].join(":");
+}
+
+function shouldCacheRoadRouteResult(result: RoadRouteFetchResult): boolean {
+  return Boolean(result.route || result.fallback?.reason !== "request-failed");
+}
+
+function waitForRoadRouteResult(
+  promise: Promise<RoadRouteFetchResult>,
+  signal: AbortSignal
+): Promise<RoadRouteFetchResult> {
+  if (signal.aborted) {
+    return Promise.reject(new DOMException("Route request aborted", "AbortError"));
+  }
+
+  return new Promise((resolve, reject) => {
+    const handleAbort = () => reject(new DOMException("Route request aborted", "AbortError"));
+    signal.addEventListener("abort", handleAbort, { once: true });
+    promise.then(resolve, reject).finally(() => {
+      signal.removeEventListener("abort", handleAbort);
+    });
+  });
 }
 
 function routeSegmentToDetail(segment: RouteSegment): RouteDetail {
