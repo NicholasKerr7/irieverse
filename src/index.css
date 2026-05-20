@@ -12,6 +12,10 @@ html.dark {
   --app-bg: #020617;
   --app-text: #f8fafc;
   --app-muted: #94a3b8;
+  --app-accent: #67e8f9;
+  --app-accent-strong: #22d3ee;
+  --app-accent-soft: rgba(34, 211, 238, 0.1);
+  --app-accent-border: rgba(103, 232, 249, 0.35);
   --app-shell-bg: linear-gradient(160deg, #020617 0%, #07111f 48%, #031a1d 100%);
   --app-border: rgba(255, 255, 255, 0.1);
   --app-border-strong: rgba(148, 163, 184, 0.26);
@@ -60,56 +64,57 @@ html.dark {
 
 html.light {
   color-scheme: light;
-  --app-bg: #f8fafc;
+  --app-bg: #f4f8f8;
   --app-text: #0f172a;
-  --app-muted: #64748b;
-  --app-shell-bg:
-    radial-gradient(circle at 14% 0%, rgba(34, 211, 238, 0.2), transparent 28%),
-    radial-gradient(circle at 88% 18%, rgba(16, 185, 129, 0.16), transparent 30%),
-    linear-gradient(160deg, #f8fafc 0%, #eef7f5 52%, #e7f4ff 100%);
-  --app-border: rgba(15, 23, 42, 0.12);
-  --app-border-strong: rgba(15, 23, 42, 0.18);
-  --app-surface: rgba(255, 255, 255, 0.66);
-  --app-surface-strong: rgba(255, 255, 255, 0.86);
-  --app-surface-card: rgba(255, 255, 255, 0.72);
-  --app-control: rgba(255, 255, 255, 0.78);
-  --app-control-muted: rgba(255, 255, 255, 0.58);
-  --app-field: rgba(255, 255, 255, 0.9);
-  --app-nav: rgba(255, 255, 255, 0.82);
-  --app-desktop-nav: rgba(255, 255, 255, 0.78);
-  --app-shadow: rgba(15, 23, 42, 0.14);
+  --app-muted: #5f7084;
+  --app-accent: #62d4de;
+  --app-accent-strong: #1395a7;
+  --app-accent-soft: rgba(98, 212, 222, 0.14);
+  --app-accent-border: rgba(19, 149, 167, 0.24);
+  --app-shell-bg: linear-gradient(180deg, #f8fbfa 0%, #eff7f4 46%, #eef5f8 100%);
+  --app-border: rgba(15, 23, 42, 0.095);
+  --app-border-strong: rgba(15, 23, 42, 0.14);
+  --app-surface: rgba(250, 253, 252, 0.72);
+  --app-surface-strong: rgba(250, 253, 252, 0.9);
+  --app-surface-card: rgba(255, 255, 255, 0.78);
+  --app-control: rgba(250, 253, 252, 0.82);
+  --app-control-muted: rgba(250, 253, 252, 0.66);
+  --app-field: rgba(255, 255, 255, 0.92);
+  --app-nav: rgba(250, 253, 252, 0.88);
+  --app-desktop-nav: rgba(250, 253, 252, 0.86);
+  --app-shadow: rgba(30, 49, 60, 0.1);
   --app-hero-scrim: linear-gradient(
     180deg,
-    rgba(248, 250, 252, 0.08) 0%,
-    rgba(248, 250, 252, 0.5) 52%,
-    #f8fafc 100%
+    rgba(248, 251, 250, 0.12) 0%,
+    rgba(248, 251, 250, 0.52) 52%,
+    #f4f8f8 100%
   );
-  --app-hero-fade: linear-gradient(to top, #f8fafc, transparent);
-  --app-toggle-bg: rgba(255, 255, 255, 0.78);
+  --app-hero-fade: linear-gradient(to top, #f4f8f8, transparent);
+  --app-toggle-bg: rgba(250, 253, 252, 0.86);
   --app-toggle-text: #0f172a;
   --app-map-scrim: linear-gradient(
     180deg,
-    rgba(248, 250, 252, 0.82) 0%,
-    rgba(248, 250, 252, 0.24) 28%,
-    rgba(248, 250, 252, 0.04) 52%,
-    rgba(248, 250, 252, 0.68) 100%
+    rgba(244, 248, 248, 0.8) 0%,
+    rgba(244, 248, 248, 0.2) 28%,
+    rgba(244, 248, 248, 0.04) 52%,
+    rgba(244, 248, 248, 0.68) 100%
   );
-  --app-map-left-fade: linear-gradient(90deg, rgba(248, 250, 252, 0.58), rgba(248, 250, 252, 0));
-  --app-map-right-fade: linear-gradient(270deg, rgba(248, 250, 252, 0.48), rgba(248, 250, 252, 0));
+  --app-map-left-fade: linear-gradient(90deg, rgba(244, 248, 248, 0.56), rgba(244, 248, 248, 0));
+  --app-map-right-fade: linear-gradient(270deg, rgba(244, 248, 248, 0.44), rgba(244, 248, 248, 0));
   --map-glass-text: #0f172a;
-  --map-glass-muted: #475569;
-  --map-glass-subtle: #64748b;
-  --map-glass-surface: rgba(255, 255, 255, 0.7);
-  --map-glass-surface-strong: rgba(255, 255, 255, 0.86);
-  --map-glass-card: rgba(255, 255, 255, 0.72);
-  --map-glass-card-strong: rgba(255, 255, 255, 0.88);
-  --map-glass-control: rgba(255, 255, 255, 0.76);
-  --map-glass-field: rgba(248, 250, 252, 0.72);
-  --map-glass-border: rgba(15, 23, 42, 0.12);
-  --map-glass-border-strong: rgba(14, 165, 233, 0.24);
-  --map-glass-shadow: rgba(15, 23, 42, 0.16);
-  --map-glass-accent-shadow: rgba(14, 165, 233, 0.14);
-  --map-glass-inner-shadow: rgba(15, 23, 42, 0.14);
+  --map-glass-muted: #52677c;
+  --map-glass-subtle: #748397;
+  --map-glass-surface: rgba(250, 253, 252, 0.76);
+  --map-glass-surface-strong: rgba(250, 253, 252, 0.9);
+  --map-glass-card: rgba(255, 255, 255, 0.8);
+  --map-glass-card-strong: rgba(255, 255, 255, 0.9);
+  --map-glass-control: rgba(250, 253, 252, 0.82);
+  --map-glass-field: rgba(246, 250, 250, 0.82);
+  --map-glass-border: rgba(15, 23, 42, 0.095);
+  --map-glass-border-strong: rgba(19, 149, 167, 0.2);
+  --map-glass-shadow: rgba(30, 49, 60, 0.12);
+  --map-glass-accent-shadow: rgba(19, 149, 167, 0.1);
+  --map-glass-inner-shadow: rgba(30, 49, 60, 0.1);
 }
 
 body {
@@ -372,15 +377,27 @@ html.dark .map-glass-sheet .text-rose-700 {
 }
 
 html.light .bg-slate-950 {
-  background-color: #f8fafc !important;
+  background-color: #f4f8f8 !important;
 }
 
 html.light .bg-slate-900 {
-  background-color: #f1f5f9 !important;
+  background-color: #eef5f4 !important;
 }
 
 html.light .bg-slate-800 {
-  background-color: #e2e8f0 !important;
+  background-color: #dbe8e7 !important;
+}
+
+html.light .bg-white {
+  background-color: #fbfdfc !important;
+}
+
+html.light .bg-slate-50 {
+  background-color: #f6faf9 !important;
+}
+
+html.light .bg-slate-100 {
+  background-color: #eef5f4 !important;
 }
 
 html.light [class~="bg-slate-950/92"],
@@ -395,11 +412,17 @@ html.light [class~="bg-slate-950/68"],
 html.light [class~="bg-slate-950/65"],
 html.light [class~="bg-slate-950/62"],
 html.light [class~="bg-slate-950/60"],
+html.light [class~="bg-slate-950/55"],
 html.light [class~="bg-slate-950/54"],
 html.light [class~="bg-slate-950/50"],
+html.light [class~="bg-slate-950/48"],
+html.light [class~="bg-slate-950/45"],
+html.light [class~="bg-slate-950/35"],
+html.light [class~="bg-slate-950/20"],
 html.light [class~="bg-slate-900/90"],
-html.light [class~="bg-slate-900/70"] {
-  background-color: rgba(255, 255, 255, 0.82) !important;
+html.light [class~="bg-slate-900/70"],
+html.light [class~="bg-slate-800/80"] {
+  background-color: rgba(250, 253, 252, 0.74) !important;
 }
 
 html.light [class~="bg-white/[0.04]"],
@@ -409,7 +432,66 @@ html.light [class~="bg-white/[0.055]"],
 html.light [class~="bg-white/[0.06]"],
 html.light [class~="bg-white/[0.07]"],
 html.light [class~="bg-white/[0.08]"] {
-  background-color: rgba(255, 255, 255, 0.68) !important;
+  background-color: rgba(255, 255, 255, 0.58) !important;
+}
+
+html.light [class~="bg-[#020617]"] {
+  background-color: #17333b !important;
+}
+
+html.light [class~="border-[#020617]"] {
+  border-color: rgba(23, 51, 59, 0.86) !important;
+}
+
+html.light .bg-cyan-300,
+html.light .bg-cyan-400,
+html.light [class~="bg-cyan-300"] {
+  background-color: var(--app-accent) !important;
+}
+
+html.light [class~="bg-cyan-300/10"],
+html.light [class~="bg-cyan-300/12"],
+html.light [class~="bg-cyan-300/15"],
+html.light [class~="bg-cyan-300/20"],
+html.light [class~="bg-cyan-400/10"] {
+  background-color: var(--app-accent-soft) !important;
+}
+
+html.light [class~="bg-cyan-200"] {
+  background-color: #a9edf2 !important;
+}
+
+html.light [class~="border-cyan-300"],
+html.light [class~="border-cyan-300/20"],
+html.light [class~="border-cyan-300/25"],
+html.light [class~="border-cyan-300/30"],
+html.light [class~="border-cyan-300/35"],
+html.light [class~="border-cyan-300/40"],
+html.light [class~="border-cyan-300/45"],
+html.light [class~="border-cyan-300/50"],
+html.light [class~="border-cyan-300/55"],
+html.light [class~="border-cyan-300/60"],
+html.light [class~="border-cyan-400/60"] {
+  border-color: var(--app-accent-border) !important;
+}
+
+html.light .bg-emerald-50,
+html.light [class~="bg-emerald-300/10"],
+html.light [class~="bg-emerald-300/15"] {
+  background-color: rgba(222, 246, 235, 0.72) !important;
+}
+
+html.light .bg-sky-50,
+html.light .bg-cyan-50 {
+  background-color: rgba(230, 247, 249, 0.72) !important;
+}
+
+html.light .bg-amber-50 {
+  background-color: rgba(250, 244, 218, 0.72) !important;
+}
+
+html.light .bg-rose-50 {
+  background-color: rgba(253, 237, 240, 0.72) !important;
 }
 
 html.light .text-slate-100,
@@ -430,7 +512,7 @@ html.light .text-slate-600 {
 html.light .text-cyan-100,
 html.light .text-cyan-200,
 html.light .text-cyan-300 {
-  color: #0e7490 !important;
+  color: var(--app-accent-strong) !important;
 }
 
 html.light .text-emerald-100,
@@ -452,6 +534,18 @@ html.light .media-overlay .text-cyan-100,
 html.light .media-overlay .text-cyan-200,
 html.light .media-overlay .text-cyan-300 {
   color: #cffafe !important;
+}
+
+html.light .media-overlay {
+  color: #fff;
+}
+
+html.light .media-overlay .text-slate-100,
+html.light .media-overlay .text-slate-200,
+html.light .media-overlay .text-slate-300,
+html.light .media-overlay .text-slate-400,
+html.light .media-overlay .text-slate-500 {
+  color: #dbeafe !important;
 }
 
 html.light .media-overlay .text-emerald-100,
@@ -477,8 +571,27 @@ html.light textarea::placeholder {
 }
 
 html.light [class*="shadow-slate-950"] {
-  --tw-shadow-color: rgba(15, 23, 42, 0.14) !important;
+  --tw-shadow-color: rgba(30, 49, 60, 0.1) !important;
   --tw-shadow: var(--tw-shadow-colored) !important;
+}
+
+html.light [class*="shadow-slate-300"],
+html.light [class*="shadow-slate-500"],
+html.light [class*="shadow-cyan"],
+html.light [class*="shadow-sky"] {
+  --tw-shadow-color: rgba(30, 49, 60, 0.1) !important;
+  --tw-shadow: var(--tw-shadow-colored) !important;
+}
+
+html.light .legal-screen .text-white,
+html.light .legal-screen .text-slate-100,
+html.light .legal-screen .text-slate-200 {
+  color: #0f172a !important;
+}
+
+html.light .legal-screen .text-slate-300,
+html.light .legal-screen .text-slate-400 {
+  color: #52677c !important;
 }
 
 .hero-title:hover {

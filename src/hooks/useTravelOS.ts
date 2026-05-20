@@ -301,7 +301,7 @@ export function useTravelOS() {
     document.documentElement.style.colorScheme = theme;
     document
       .querySelector('meta[name="theme-color"]:not([media])')
-      ?.setAttribute("content", theme === "dark" ? "#020617" : "#f8fafc");
+      ?.setAttribute("content", theme === "dark" ? "#020617" : "#f4f8f8");
     writeStringToStorage(STORAGE_KEY_THEME, theme);
   }, [theme]);
 

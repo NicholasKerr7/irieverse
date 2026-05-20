@@ -101,7 +101,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
           <div className="relative min-h-72">
             <img src={app.destination.heroImage} alt={app.destination.name} className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-transparent" />
-            <div className="absolute bottom-5 left-5 right-5">
+            <div className="media-overlay absolute bottom-5 left-5 right-5">
               <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/90">
                 {PLANNING_MODE_LABELS[app.planningMode].label} plan
               </p>
