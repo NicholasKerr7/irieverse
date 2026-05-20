@@ -544,6 +544,55 @@ test("map route preview keeps route notes secondary", async ({ page }) => {
   expect(issues).toEqual([]);
 });
 
+test("map route preview waits for road geometry before showing route details", async ({ page }) => {
+  const issues = collectPageIssues(page);
+  const routeRequests: string[] = [];
+  let releaseRoadRoutes = () => {};
+  const roadRoutesReleased = new Promise<void>((resolve) => {
+    releaseRoadRoutes = resolve;
+  });
+
+  await page.route("**/api/road-route**", async (route) => {
+    const url = new URL(route.request().url());
+    const from = url.searchParams.get("from") ?? "";
+    const to = url.searchParams.get("to") ?? "";
+    routeRequests.push(`${from} -> ${to}`);
+
+    await roadRoutesReleased;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          coordinates: buildMockRoadCoordinates(from, to),
+          distanceKm: 78.4,
+          durationMinutes: 108,
+          summary: "Road-aware preview",
+          steps: [],
+          source: "osrm",
+        },
+        meta: { source: "osrm", stepCount: 0 },
+      }),
+    });
+  });
+
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await expect(page.getByText("Building preview")).toBeVisible({ timeout: 10000 });
+  await expect.poll(() => routeRequests.length).toBeGreaterThan(0);
+
+  await page.getByRole("button", { name: /Day 2/ }).click();
+  const mapDrawer = page.getByTestId("map-trip-drawer");
+  await expect(mapDrawer.getByText("Building the road preview...")).toBeVisible();
+  await expect(mapDrawer.getByText("The road preview is still being prepared for this leg.")).toHaveCount(0);
+
+  releaseRoadRoutes();
+  await expect(mapDrawer.getByText("Road-aware", { exact: true })).toBeVisible({ timeout: 15000 });
+  await expect(mapDrawer.getByText("Building the road preview...")).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("map route preview reuses identical startup road lookups", async ({ page }) => {
   const issues = collectPageIssues(page);
   const routeRequestCounts = new Map<string, number>();
@@ -560,7 +609,7 @@ test("map route preview reuses identical startup road lookups", async ({ page })
       contentType: "application/json",
       body: JSON.stringify({
         data: {
-          coordinates: [parseRouteCoordinate(from), parseRouteCoordinate(to)],
+          coordinates: buildMockRoadCoordinates(from, to),
           distanceKm: 78.4,
           durationMinutes: 108,
           summary: "Road-aware preview",
@@ -736,6 +785,20 @@ async function expectNoHorizontalOverflow(page: Page) {
 function parseRouteCoordinate(value: string): [number, number] {
   const [longitude, latitude] = value.split(",").map(Number);
   return [longitude ?? 0, latitude ?? 0];
+}
+
+function buildMockRoadCoordinates(from: string, to: string): Array<[number, number]> {
+  const [fromLongitude, fromLatitude] = parseRouteCoordinate(from);
+  const [toLongitude, toLatitude] = parseRouteCoordinate(to);
+  const midpoint: [number, number] = [
+    (fromLongitude + toLongitude) / 2 + 0.05,
+    (fromLatitude + toLatitude) / 2 - 0.04,
+  ];
+  return [
+    [fromLongitude, fromLatitude],
+    midpoint,
+    [toLongitude, toLatitude],
+  ];
 }
 
 async function expectMapTopControlsToHaveSeparateHitTargets(page: Page) {

@@ -154,9 +154,13 @@ export const TravelMap = memo(function TravelMap({
     () => buildRouteSegments(routeRequests, roadRoutesById, routeFallbacksById, isLoadingRoadRoutes),
     [isLoadingRoadRoutes, roadRoutesById, routeFallbacksById, routeRequests]
   );
-  const routeDetails = useMemo(
-    () => routeSegments.map(routeSegmentToDetail),
+  const visibleRouteSegments = useMemo(
+    () => routeSegments.filter((segment) => segment.fallbackReason !== "loading"),
     [routeSegments]
+  );
+  const routeDetails = useMemo(
+    () => visibleRouteSegments.map(routeSegmentToDetail),
+    [visibleRouteSegments]
   );
   const selectedRouteSegment = selectedRouteLegId
     ? routeSegments.find((segment) => segment.id === selectedRouteLegId)
@@ -184,7 +188,7 @@ export const TravelMap = memo(function TravelMap({
   };
   const routeGeojson = {
     type: "FeatureCollection" as const,
-    features: routeSegments.map((segment, index) => ({
+    features: visibleRouteSegments.map((segment, index) => ({
       type: "Feature" as const,
       geometry: {
         type: "LineString" as const,
@@ -235,28 +239,13 @@ export const TravelMap = memo(function TravelMap({
     async function loadRoadRoutes() {
       setIsLoadingRoadRoutes(true);
       const entries: Array<{ id: string; result: RoadRouteFetchResult }> = [];
-      let pausedLookupFallback: RouteFallbackInfo | null = null;
 
       for (const request of routeRequests) {
         if (controller.signal.aborted) return;
 
-        if (pausedLookupFallback) {
-          entries.push({
-            id: request.id,
-            result: {
-              route: null,
-              fallback: getPausedRouteLookupFallback(pausedLookupFallback.reason),
-            },
-          });
-          continue;
-        }
-
         try {
           const result = await fetchRoadRoute(request, controller.signal);
           entries.push({ id: request.id, result });
-          if (shouldPauseRoadLookups(result.fallback?.reason)) {
-            pausedLookupFallback = result.fallback ?? getPausedRouteLookupFallback();
-          }
         } catch (error) {
           if (!controller.signal.aborted) {
             logRecoverableWarning("Road route unavailable; using planning route line.", error);
@@ -272,7 +261,6 @@ export const TravelMap = memo(function TravelMap({
               fallback,
             },
           });
-          pausedLookupFallback = fallback;
         }
 
         await waitForRouteSlot(controller.signal);
@@ -304,25 +292,25 @@ export const TravelMap = memo(function TravelMap({
     };
   }, [routeRequests]);
 
-  const routeAnimationKey = routeSegments
+  const routeAnimationKey = visibleRouteSegments
     .map((segment) => `${segment.id}:${segment.source}:${segment.coordinates.length}`)
     .join("|");
 
   useEffect(() => {
-    if (!routeSegments.length) {
+    if (!visibleRouteSegments.length) {
       setRouteRevealProgress(0);
       return;
     }
 
     let frame = 0;
     const startedAt = performance.now();
-    const duration = Math.max(850, routeSegments.length * 380);
+    const duration = Math.max(850, visibleRouteSegments.length * 380);
 
     const tick = (timestamp: number) => {
       const elapsed = timestamp - startedAt;
-      const progress = Math.min(routeSegments.length, (elapsed / duration) * routeSegments.length);
+      const progress = Math.min(visibleRouteSegments.length, (elapsed / duration) * visibleRouteSegments.length);
       setRouteRevealProgress(progress);
-      if (progress < routeSegments.length) {
+      if (progress < visibleRouteSegments.length) {
         frame = window.requestAnimationFrame(tick);
       }
     };
@@ -331,11 +319,14 @@ export const TravelMap = memo(function TravelMap({
     frame = window.requestAnimationFrame(tick);
 
     return () => window.cancelAnimationFrame(frame);
-  }, [routeAnimationKey, routeSegments.length]);
+  }, [routeAnimationKey, visibleRouteSegments.length]);
 
   useEffect(() => {
     if (!onRouteStatusChange) return;
     const roadLegs = routeSegments.filter((segment) => segment.source === "road").length;
+    const fallbackLegs = routeSegments.filter(
+      (segment) => segment.source === "fallback" && segment.fallbackReason !== "loading"
+    ).length;
     const failedLegs = routeSegments.filter(
       (segment) =>
         segment.source === "fallback" &&
@@ -346,7 +337,7 @@ export const TravelMap = memo(function TravelMap({
       isLoading: isLoadingRoadRoutes,
       totalLegs: routeSegments.length,
       roadLegs,
-      fallbackLegs: Math.max(0, routeSegments.length - roadLegs),
+      fallbackLegs,
       failedLegs,
     });
   }, [isLoadingRoadRoutes, onRouteStatusChange, routeSegments]);
@@ -494,12 +485,12 @@ export const TravelMap = memo(function TravelMap({
           </Source>
         )}
 
-        {routeSegments.map((segment, index) => {
+        {visibleRouteSegments.map((segment, index) => {
           const opacity = getSegmentRevealOpacity(routeRevealProgress, index);
           const isSelectedRouteLeg = segment.id === selectedRouteLegId;
           const shouldShowRouteLabel = selectedRouteLegId
             ? isSelectedRouteLeg
-            : routeSegments.length <= 2;
+            : visibleRouteSegments.length <= 2;
 
           if (!shouldShowRouteLabel) return null;
           const label = isSelectedRouteLeg ? segment.label : `Day ${segment.day}`;
@@ -1051,17 +1042,6 @@ function shallowRouteFallbacksEqual(first: Record<string, RouteFallbackInfo>, se
     first[key]?.reason === second[key]?.reason &&
     first[key]?.message === second[key]?.message
   ));
-}
-
-function shouldPauseRoadLookups(reason: RouteFallbackReason | undefined): boolean {
-  return reason === "request-failed" || reason === "invalid-response" || reason === "road-route-unavailable";
-}
-
-function getPausedRouteLookupFallback(reason: RouteFallbackReason = "road-route-unavailable"): RouteFallbackInfo {
-  return {
-    reason,
-    message: "Road preview is unavailable right now, so this leg is using a simple route line.",
-  };
 }
 
 function waitForRouteSlot(signal: AbortSignal): Promise<void> {
