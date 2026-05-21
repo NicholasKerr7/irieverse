@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { promises as dns } from "node:dns";
 import bookingsHandler, { resetBookingsHandlerStateForTest } from "../api/bookings";
+import eventsHandler, { resetEventsHandlerStateForTest } from "../api/events";
 import flightsHandler, { resetFlightsHandlerStateForTest } from "../api/flights";
 import importMetadataHandler, {
   resetImportMetadataHandlerStateForTest,
@@ -12,6 +13,7 @@ import type {
   ApiRequest,
   ApiResponse,
   BookingApiResponse,
+  EventsApiResponse,
   FlightApiResponse,
   ImportMetadataApiResponse,
   RoadRouteApiResponse,
@@ -38,6 +40,8 @@ async function main() {
   await testBookingsFallbackWithoutCredentials();
   await testBookingsLiveAmadeusNormalization();
   await testBookingsProviderLimitFallback();
+  await testEventsFallbackWithoutCredentials();
+  await testEventsLiveProviderNormalization();
   await testFlightsLiveAviationStackNormalization();
   await testFlightsRateLimitFallbackAndCooldown();
   await testImportMetadataBlocksPrivateUrls();
@@ -444,6 +448,170 @@ async function testBookingsProviderLimitFallback() {
     resetBookingsHandlerStateForTest();
     globalThis.fetch = originalFetch;
     console.warn = originalWarn;
+    restoreEnv();
+  }
+}
+
+async function testEventsFallbackWithoutCredentials() {
+  resetEventsHandlerStateForTest();
+  const restoreEnv = withEnv({
+    EVENTBRITE_API_KEY: undefined,
+    EVENTBRITE_PRIVATE_TOKEN: undefined,
+    TICKETMASTER_API_KEY: undefined,
+  });
+
+  try {
+    const response = createResponse();
+    await eventsHandler(
+      {
+        method: "GET",
+        query: {
+          region: "North Coast",
+          parish: "St. Ann",
+          latitude: "18.4029",
+          longitude: "-76.974",
+        },
+      },
+      response
+    );
+
+    assert.equal(response.statusCode, 200);
+    const body = assertBody<EventsApiResponse>(response.body);
+    assert.equal(body.meta.source, "curated");
+    assert.equal(body.meta.reason, "missing-event-provider-keys");
+    assert.equal(body.meta.providerConfigured, false);
+    assert.equal(body.meta.providers.eventbrite, false);
+    assert.equal(body.meta.providers.ticketmaster, false);
+    assert.ok(body.data.some((event) => event.title === "Reggae Sumfest"));
+  } finally {
+    resetEventsHandlerStateForTest();
+    restoreEnv();
+  }
+}
+
+async function testEventsLiveProviderNormalization() {
+  resetEventsHandlerStateForTest();
+  const restoreEnv = withEnv({
+    EVENTBRITE_API_KEY: "legacy-eventbrite-api-key",
+    EVENTBRITE_PRIVATE_TOKEN: "test-eventbrite-private-token",
+    TICKETMASTER_API_KEY: "test-ticketmaster-key",
+    EVENTS_CACHE_TTL_SECONDS: "60",
+  });
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (url, init) => {
+    const requestUrl = new URL(String(url));
+
+    if (requestUrl.origin + requestUrl.pathname === "https://www.eventbriteapi.com/v3/users/me/organizations/") {
+      assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-eventbrite-private-token");
+      return jsonResponse({
+        organizations: [
+          {
+            id: "org-1",
+          },
+        ],
+      });
+    }
+
+    if (requestUrl.origin + requestUrl.pathname === "https://www.eventbriteapi.com/v3/organizations/org-1/events/") {
+      assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-eventbrite-private-token");
+      assert.equal(requestUrl.searchParams.get("status"), "live");
+      assert.equal(requestUrl.searchParams.get("order_by"), "start_asc");
+      assert.equal(requestUrl.searchParams.get("expand"), "venue,ticket_availability");
+      return jsonResponse({
+        events: [
+          {
+            id: "eb-1",
+            name: { text: "Ochi Food Night" },
+            description: { text: "Live food event in Ocho Rios with music and vendors." },
+            url: "https://eventbrite.example/ochi-food",
+            is_free: false,
+            start: { local: "2026-07-01T19:00:00" },
+            venue: {
+              name: "Ocho Rios Bay",
+              address: { city: "Ocho Rios" },
+            },
+            ticket_availability: { is_sold_out: false },
+          },
+        ],
+      });
+    }
+
+    if (requestUrl.origin + requestUrl.pathname === "https://app.ticketmaster.com/discovery/v2/events.json") {
+      assert.equal(requestUrl.searchParams.get("apikey"), "test-ticketmaster-key");
+      assert.equal(requestUrl.searchParams.get("countryCode"), "JM");
+      assert.equal(requestUrl.searchParams.get("latlong"), "18.4029,-76.974");
+      assert.equal(requestUrl.searchParams.get("radius"), "100");
+      assert.equal(requestUrl.searchParams.get("keyword"), null);
+      return jsonResponse({
+        _embedded: {
+          events: [
+            {
+              id: "tm-1",
+              name: "St Ann Live Stage",
+              url: "https://ticketmaster.example/st-ann-live",
+              dates: {
+                start: { dateTime: "2026-07-02T01:00:00Z" },
+              },
+              _embedded: {
+                venues: [
+                  {
+                    name: "Plantation Cove",
+                    city: { name: "Priory" },
+                  },
+                ],
+              },
+              classifications: [
+                {
+                  segment: { name: "Music" },
+                  genre: { name: "Reggae" },
+                },
+              ],
+              priceRanges: [
+                {
+                  min: 40,
+                  max: 90,
+                  currency: "USD",
+                },
+              ],
+            },
+          ],
+        },
+      });
+    }
+
+    throw new Error(`Unexpected events fetch: ${String(url)}`);
+  };
+
+  try {
+    const response = createResponse();
+    await eventsHandler(
+      {
+        method: "GET",
+        query: {
+          region: "North Coast",
+          parish: "St. Ann",
+          latitude: "18.4029",
+          longitude: "-76.974",
+        },
+      },
+      response
+    );
+
+    assert.equal(response.statusCode, 200);
+    const body = assertBody<EventsApiResponse>(response.body);
+    assert.equal(body.meta.source, "mixed");
+    assert.equal(body.meta.providerConfigured, true);
+    assert.equal(body.meta.providers.eventbrite, true);
+    assert.equal(body.meta.providers.ticketmaster, true);
+    assert.equal(body.meta.reason, undefined);
+    assert.ok(body.data.some((event) => event.id === "eventbrite-eb-1" && event.price === "Ticket/pass required"));
+    assert.ok(body.data.some((event) => event.id === "ticketmaster-tm-1" && event.price === "USD 40-90"));
+    assert.ok(body.data.some((event) => event.officialUrl === "https://eventbrite.example/ochi-food"));
+    assert.ok(body.data.some((event) => event.officialUrl === "https://ticketmaster.example/st-ann-live"));
+  } finally {
+    resetEventsHandlerStateForTest();
+    globalThis.fetch = originalFetch;
     restoreEnv();
   }
 }

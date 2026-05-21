@@ -34,11 +34,6 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     heroAttraction: "Doctor's Cave Beach",
     heroImage:
       "https://images.pexels.com/photos/4093370/pexels-photo-4093370.png?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
-    heroImageCredit: {
-      provider: "Pexels",
-      author: "Dre Dawkcide",
-      sourceUrl: "https://www.pexels.com/photo/people-swimming-on-the-beach-4093370/",
-    },
     entryRequirement: {
       status: "ticket-required",
       label: "Beach entry ticket",
@@ -82,11 +77,6 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     heroAttraction: "Seven Mile Beach",
     heroImage:
       "https://pixabay.com/get/gf1efba83e8cd7dcedf54cd82e724f49f6de53d3a6db223207259d2c7ecd005b8b824e0c7e9c4a4520ec1c680b0f5b703daebb5f71bd1e9329c93050b25005606_1280.jpg",
-    heroImageCredit: {
-      provider: "Pixabay",
-      author: "Nadi17",
-      sourceUrl: "https://pixabay.com/photos/jamaica-negril-beach-boat-2409533/",
-    },
     entryRequirement: {
       status: "varies",
       label: "Mixed access",
@@ -128,11 +118,6 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     heroAttraction: "Dunn's River Falls",
     heroImage:
       "https://pixabay.com/get/g3d7ea2add79075337c2f347c5fefd7e5dd40eb09eedab2b784bc5684cb26befe32d44cebb1638944e2c6cb5394af7ba4cdae78a0017ac5965438fa296dd8fcef_1280.jpg",
-    heroImageCredit: {
-      provider: "Pixabay",
-      author: "neufal54",
-      sourceUrl: "https://pixabay.com/photos/jamaica-dunns-river-falls-to-travel-2695087/",
-    },
     entryRequirement: {
       status: "ticket-required",
       label: "Attraction ticket",
@@ -258,11 +243,6 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     heroAttraction: "Frenchman's Cove",
     heroImage:
       "https://pixabay.com/get/gb812c236d102aff94ac9dc606560ddefd8abc669b5db01525dd5aff849bd1e1c71bf4d74e98df5bb3d470a497251d18fb0b819a36036085fcf081d7e7b440f3e_1280.jpg",
-    heroImageCredit: {
-      provider: "Pixabay",
-      author: "katy_gorge207",
-      sourceUrl: "https://pixabay.com/photos/flow-jamaica-green-plants-2427568/",
-    },
     entryRequirement: {
       status: "ticket-required",
       label: "Beach entry ticket",
@@ -465,11 +445,6 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     heroAttraction: "Morant Point Lighthouse",
     heroImage:
       "https://images.unsplash.com/photo-1767191742511-350b50f397e8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w0NDcwNTl8MHwxfHNlYXJjaHwyfHxNb3JhbnQlMjBQb2ludCUyMExpZ2h0aG91c2UlMjBKYW1haWNhfGVufDB8MHx8fDE3NzkzODAzNTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    heroImageCredit: {
-      provider: "Unsplash",
-      author: "Osheenei Graham",
-      sourceUrl: "https://unsplash.com/photos/rocky-coastline-with-a-stone-structure-and-ocean-waves-BC2sTyCXpp0?utm_source=irieverse&utm_medium=referral",
-    },
     entryRequirement: {
       status: "varies",
       label: "Remote heritage route",
@@ -593,11 +568,6 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     heroAttraction: "Spanish Town Square",
     heroImage:
       "https://images.unsplash.com/photo-1659416071137-1b0e73ce261f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w0NDcwNTl8MHwxfHNlYXJjaHwxfHxTcGFuaXNoJTIwVG93biUyMFNxdWFyZSUyMEphbWFpY2F8ZW58MHwwfHx8MTc3OTM4MDM1N3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    heroImageCredit: {
-      provider: "Unsplash",
-      author: "Kemoi Brown",
-      sourceUrl: "https://unsplash.com/photos/a-building-with-a-clock-tower-M6Yrvga15cU?utm_source=irieverse&utm_medium=referral",
-    },
     entryRequirement: {
       status: "varies",
       label: "Mixed access",

@@ -2,6 +2,7 @@ import type {
   BookingOption,
   FlightOption,
   ImportedIdeaSourcePlatform,
+  LiveEvent,
 } from "./travel";
 
 type QueryValue = string | string[] | undefined;
@@ -51,6 +52,24 @@ export type BookingApiMeta = {
 export type BookingApiResponse = {
   data: BookingOption[];
   meta: BookingApiMeta;
+};
+
+export type EventsApiMeta = {
+  source: "live" | "mixed" | "curated";
+  reason?: string;
+  providerConfigured: boolean;
+  providers: {
+    eventbrite: boolean;
+    ticketmaster: boolean;
+  };
+  region?: string;
+  parish?: string;
+  cached?: boolean;
+};
+
+export type EventsApiResponse = {
+  data: LiveEvent[];
+  meta: EventsApiMeta;
 };
 
 export type PlaceDetails = {

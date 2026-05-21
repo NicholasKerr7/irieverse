@@ -22,13 +22,17 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | `ROUTING_API_TIMEOUT_MS` | Optional | Max server wait for one routing-provider request. Defaults to `4500` ms. |
 | `ROUTING_PROVIDER_COOLDOWN_SECONDS` | Optional | Server-side throttle window for repeated routing-provider failure logs. Defaults to `45` seconds. |
 | `GOOGLE_PLACES_API_KEY` | Optional | Server-only Google Places key used by `api/place-details.ts` for live place address, hours, phone, website, and map links. |
+| `EVENTBRITE_PRIVATE_TOKEN` | Optional | Server-only Eventbrite private token used by `api/events.ts` for automatic local event listings. `EVENTBRITE_API_KEY` remains supported as a legacy alias. |
+| `EVENTBRITE_ORGANIZATION_ID` | Optional | Eventbrite organization ID. If omitted, `api/events.ts` tries to list organizations from the private token. |
+| `TICKETMASTER_API_KEY` | Optional | Server-only Ticketmaster Discovery API key used by `api/events.ts` for automatic concert, festival, and venue listings. |
+| `EVENTS_CACHE_TTL_SECONDS` | Optional | Server-side live events cache TTL. Defaults to `1800` seconds. |
 | `UNSPLASH_ACCESS_KEY` | Optional | Server/local-only key for curating richer parish images from Unsplash. Do not prefix with `VITE_`. |
 | `PIXABAY_API_KEY` | Optional | Server/local-only key for curating richer parish images from Pixabay. Do not prefix with `VITE_`. |
 | `PEXELS_API_KEY` | Optional | Server/local-only key for curating richer parish images from Pexels. Do not prefix with `VITE_`. |
 | `IRIEVERSE_ALLOWED_ORIGINS` | Optional | Comma-separated browser origins allowed to call the API proxies. Defaults include `https://irieverse.vercel.app`, the active Vercel deployment URL, and local dev origins. |
 | `IRIEVERSE_API_RATE_LIMIT_WINDOW_SECONDS` | Optional | Shared API rate-limit window. Defaults to `60` seconds. Per-route caps can be overridden with `IRIEVERSE_API_RATE_LIMIT_FLIGHTS`, `IRIEVERSE_API_RATE_LIMIT_BOOKINGS`, `IRIEVERSE_API_RATE_LIMIT_IMPORT_METADATA`, `IRIEVERSE_API_RATE_LIMIT_PLACE_DETAILS`, and `IRIEVERSE_API_RATE_LIMIT_ROAD_ROUTE`. |
 
-Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack, Amadeus, Places, image-provider, and routing credentials server-only.
+Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack, Amadeus, Places, event-provider, image-provider, and routing credentials server-only.
 
 ## Local Setup
 
@@ -66,6 +70,10 @@ vercel env add ROUTING_API_BASE_URL production
 vercel env add ROUTING_API_TIMEOUT_MS production
 vercel env add ROUTING_PROVIDER_COOLDOWN_SECONDS production
 vercel env add GOOGLE_PLACES_API_KEY production
+vercel env add EVENTBRITE_PRIVATE_TOKEN production
+vercel env add EVENTBRITE_ORGANIZATION_ID production
+vercel env add TICKETMASTER_API_KEY production
+vercel env add EVENTS_CACHE_TTL_SECONDS production
 vercel env add IRIEVERSE_ALLOWED_ORIGINS production
 vercel env add IRIEVERSE_API_RATE_LIMIT_WINDOW_SECONDS production
 ```
@@ -241,7 +249,7 @@ Trips includes a compact planning confidence panel for launch QA:
 | Flights | `Live schedule` when `/api/flights` returns AviationStack data. | `Saved examples` from `public/data/flights-sample.json`. |
 | Place details | `Live details` when `/api/place-details` returns a trusted Google Places match. | `Curated details` when the key is missing, the provider is limited, or a live result does not match the selected stop. |
 | Road planning | `Road-aware` through `api/road-route.ts`. | The map keeps preview route lines if the proxy fails. |
-| Island events | Live provider if one is added later. | `Curated calendar` from `public/data/events.json`. |
+| Island events | `Live events` through `api/events.ts` when Eventbrite or Ticketmaster returns matching Jamaica listings. | `Curated calendar` from `public/data/events.json`. |
 
 Use this panel after each deploy to confirm the app is honest about which trip services are live, estimated, or curated.
 

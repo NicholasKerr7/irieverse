@@ -16,6 +16,7 @@ import {
   type BookingSourceMeta,
 } from "../services/bookings";
 import type { CloudBoardPayload } from "../services/cloudBoards";
+import type { EventsApiMeta, EventsApiResponse } from "../types/api";
 import {
   type CollaborationErrorCode,
   type TripPayload,
@@ -243,6 +244,7 @@ export function useTravelOS() {
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [eventsError, setEventsError] = useState<string | null>(null);
+  const [eventSourceMeta, setEventSourceMeta] = useState<EventsApiMeta>(getInitialEventSourceMeta);
   const [bookingOptions, setBookingOptions] = useState<BookingOption[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
@@ -478,34 +480,72 @@ export function useTravelOS() {
   const loadEvents = useCallback(async () => {
     const selectedRegion = destination.region.toLowerCase();
     const selectedParish = destination.parish?.toLowerCase();
+    const params = new URLSearchParams({
+      region: destination.region,
+      latitude: destination.latitude.toString(),
+      longitude: destination.longitude.toString(),
+    });
+    if (destination.parish) params.set("parish", destination.parish);
 
     setIsLoadingEvents(true);
     setEventsError(null);
     try {
-      const response = await fetch("/data/events.json");
+      const response = await fetch(`/api/events?${params}`);
       if (!response.ok) {
         throw new Error("Events fetch failed");
       }
-      const events: LiveEvent[] = await response.json();
-      const filteredEvents = events
-        .filter((event) => {
-          const eventRegion = event.region?.toLowerCase();
-          const eventParish = event.parish?.toLowerCase();
-          return eventRegion === selectedRegion || Boolean(selectedParish && eventParish === selectedParish);
-        })
-        .sort(
-          (first, second) =>
-            new Date(first.startDate).getTime() - new Date(second.startDate).getTime()
-        );
-      setLiveEvents(filteredEvents);
-    } catch (error) {
-      logRecoverableWarning("Events unavailable; showing an empty regional calendar.", error);
-      setEventsError("Live events unavailable right now.");
-      setLiveEvents([]);
+      const payload: EventsApiResponse = await response.json();
+      setLiveEvents(payload.data);
+      setEventSourceMeta(payload.meta);
+    } catch {
+      try {
+        const response = await fetch("/data/events.json");
+        if (!response.ok) {
+          throw new Error("Curated events fetch failed");
+        }
+        const events: LiveEvent[] = await response.json();
+        const filteredEvents = events
+          .filter((event) => {
+            const eventRegion = event.region?.toLowerCase();
+            const eventParish = event.parish?.toLowerCase();
+            return eventRegion === selectedRegion || Boolean(selectedParish && eventParish === selectedParish);
+          })
+          .sort(
+            (first, second) =>
+              new Date(first.startDate).getTime() - new Date(second.startDate).getTime()
+          );
+        setLiveEvents(filteredEvents);
+        setEventSourceMeta({
+          source: "curated",
+          reason: "events-endpoint-unavailable",
+          providerConfigured: false,
+          providers: {
+            eventbrite: false,
+            ticketmaster: false,
+          },
+          region: destination.region,
+          ...(destination.parish ? { parish: destination.parish } : {}),
+        });
+      } catch (fallbackError) {
+        logRecoverableWarning("Events unavailable; showing an empty regional calendar.", fallbackError);
+        setEventsError("Live events unavailable right now.");
+        setLiveEvents([]);
+        setEventSourceMeta({
+          source: "curated",
+          reason: "events-unavailable",
+          providerConfigured: false,
+          providers: {
+            eventbrite: false,
+            ticketmaster: false,
+          },
+          region: destination.region,
+          ...(destination.parish ? { parish: destination.parish } : {}),
+        });
+      }
     } finally {
       setIsLoadingEvents(false);
     }
-  }, [destination.parish, destination.region]);
+  }, [destination.latitude, destination.longitude, destination.parish, destination.region]);
 
   useEffect(() => {
     loadEvents();
@@ -1371,6 +1411,7 @@ export function useTravelOS() {
     liveEvents,
     isLoadingEvents,
     eventsError,
+    eventSourceMeta,
     loadEvents,
     bookingOptions,
     isLoadingBookings,
@@ -1458,6 +1499,17 @@ function getPatchedOptionalValue<Key extends keyof ImportedIdeaPatch>(
 
 function getInitialTheme(): ThemeMode {
   return "dark";
+}
+
+function getInitialEventSourceMeta(): EventsApiMeta {
+  return {
+    source: "curated",
+    providerConfigured: false,
+    providers: {
+      eventbrite: false,
+      ticketmaster: false,
+    },
+  };
 }
 
 function getInitialOriginAirportId(): string {

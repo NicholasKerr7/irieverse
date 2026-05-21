@@ -68,7 +68,6 @@ export interface Destination {
   description: string;
   highlights: string[];
   heroImage: string;
-  heroImageCredit?: ImageCredit;
   heroAttraction?: string;
   entryRequirement?: EntryRequirement;
   localTips?: string[];
@@ -79,12 +78,6 @@ export interface Destination {
   quickFacts?: QuickFact[];
   markerType?: "destination" | "experience";
   placeLookup?: PlaceLookup;
-}
-
-export interface ImageCredit {
-  provider: string;
-  author?: string;
-  sourceUrl: string;
 }
 
 interface PlaceLookup {

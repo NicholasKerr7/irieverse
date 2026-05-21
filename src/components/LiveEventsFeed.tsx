@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { LiveEvent } from "../types/travel";
-import { AlertTriangle, CalendarDays, ExternalLink, PartyPopper, RefreshCcw, Ticket } from "lucide-react";
+import type { EventsApiMeta } from "../types/api";
+import { AlertTriangle, CalendarDays, Database, ExternalLink, PartyPopper, RadioTower, RefreshCcw, Ticket } from "lucide-react";
 import { CardGridSkeleton, EmptyStatePanel } from "./LoadingStates";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassPanel } from "../utils/glass";
@@ -9,6 +10,7 @@ interface LiveEventsFeedProps {
   events: LiveEvent[];
   isLoading: boolean;
   error: string | null;
+  sourceMeta: EventsApiMeta;
   onRefresh: () => void;
   selectedRegion: string;
 }
@@ -17,9 +19,13 @@ export const LiveEventsFeed = memo(function LiveEventsFeed({
   events,
   isLoading,
   error,
+  sourceMeta,
   onRefresh,
   selectedRegion,
 }: LiveEventsFeedProps) {
+  const sourceStatus = getEventSourceStatus(sourceMeta, isLoading);
+  const SourceIcon = sourceStatus.tone === "live" ? RadioTower : Database;
+
   return (
     <section className={classNames("max-w-6xl mx-auto rounded-3xl p-4 sm:p-6 space-y-4", glassPanel)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -30,16 +36,35 @@ export const LiveEventsFeed = memo(function LiveEventsFeed({
             Markets, music sessions, and pop-ups that match the region you are planning around.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-3 py-1.5 text-[0.7rem] uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-900/60 disabled:opacity-40"
-          disabled={isLoading}
-        >
-          <RefreshCcw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex flex-col gap-2 sm:items-end">
+          <div
+            className={classNames(
+              "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.16em]",
+              sourceStatus.tone === "live"
+                ? "border-emerald-300/35 bg-emerald-300/10 text-emerald-100"
+                : sourceStatus.tone === "error"
+                  ? "border-rose-300/35 bg-rose-300/10 text-rose-100"
+                  : "border-amber-300/35 bg-amber-300/10 text-amber-100"
+            )}
+          >
+            <SourceIcon className="h-3.5 w-3.5" />
+            {sourceStatus.label}
+          </div>
+          <button
+            type="button"
+            onClick={onRefresh}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-700/80 px-3 py-1.5 text-[0.7rem] uppercase tracking-[0.2em] text-slate-200 hover:bg-slate-900/60 disabled:opacity-40"
+            disabled={isLoading}
+          >
+            <RefreshCcw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
+
+      <p className="rounded-2xl border border-slate-700/70 bg-slate-950/35 px-3 py-2 text-xs leading-5 text-slate-300">
+        {sourceStatus.body}
+      </p>
 
       {error && (
         <EmptyStatePanel
@@ -112,6 +137,91 @@ export const LiveEventsFeed = memo(function LiveEventsFeed({
     </section>
   );
 });
+
+type EventSourceTone = "live" | "fallback" | "error";
+
+function getEventSourceStatus(
+  meta: EventsApiMeta,
+  isLoading: boolean
+): { label: string; tone: EventSourceTone; body: string } {
+  if (isLoading) {
+    return {
+      label: "Checking events",
+      tone: "fallback",
+      body: "Refreshing Eventbrite, Ticketmaster, and the curated Jamaica calendar for this area.",
+    };
+  }
+
+  if (meta.source === "live") {
+    return {
+      label: "Live events",
+      tone: "live",
+      body: `Showing current listings from ${formatEventProviders(meta)}.`,
+    };
+  }
+
+  if (meta.source === "mixed") {
+    return {
+      label: "Live + curated",
+      tone: "live",
+      body: `Showing current listings from ${formatEventProviders(meta)} plus curated Jamaica calendar picks.`,
+    };
+  }
+
+  if (meta.reason === "event-provider-rate-limited") {
+    return {
+      label: "Provider limit",
+      tone: "fallback",
+      body: "The live event provider limit was reached, so curated Jamaica calendar picks are shown for now.",
+    };
+  }
+
+  if (meta.reason === "event-provider-request-failed") {
+    return {
+      label: "Curated fallback",
+      tone: "error",
+      body: "Live event lookup did not complete, so curated Jamaica calendar picks are shown.",
+    };
+  }
+
+  if (meta.reason === "partial-event-provider-request-failed") {
+    return {
+      label: "Partial provider",
+      tone: "fallback",
+      body: "One live event provider did not complete. Curated Jamaica calendar picks are shown with any available live matches.",
+    };
+  }
+
+  if (meta.reason === "no-live-provider-events") {
+    return {
+      label: "Curated fallback",
+      tone: "fallback",
+      body: "Eventbrite and Ticketmaster returned no matching Jamaica listings for this area, so curated picks are shown.",
+    };
+  }
+
+  if (!meta.providerConfigured) {
+    return {
+      label: "Curated calendar",
+      tone: "fallback",
+      body: "Server event keys are not active in this environment, so the built-in Jamaica calendar is shown.",
+    };
+  }
+
+  return {
+    label: "Curated calendar",
+    tone: "fallback",
+    body: "Curated Jamaica calendar picks are shown for this area.",
+  };
+}
+
+function formatEventProviders(meta: EventsApiMeta): string {
+  const providers = [
+    meta.providers.eventbrite ? "Eventbrite" : null,
+    meta.providers.ticketmaster ? "Ticketmaster" : null,
+  ].filter(Boolean);
+  return providers.length ? providers.join(" and ") : "live providers";
+}
 
 function formatEventTime(isoString: string): string {
   if (!isoString) return "TBA";

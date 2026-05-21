@@ -165,6 +165,11 @@ AMADEUS_BASE_URL=https://test.api.amadeus.com
 
 GOOGLE_PLACES_API_KEY=your_google_places_key
 
+EVENTBRITE_PRIVATE_TOKEN=your_eventbrite_private_token
+EVENTBRITE_ORGANIZATION_ID=optional_eventbrite_organization_id
+TICKETMASTER_API_KEY=your_ticketmaster_discovery_key
+EVENTS_CACHE_TTL_SECONDS=1800
+
 UNSPLASH_ACCESS_KEY=your_unsplash_access_key
 PIXABAY_API_KEY=your_pixabay_api_key
 PEXELS_API_KEY=your_pexels_api_key
@@ -207,6 +212,7 @@ Recommended deployment target: Vercel.
 Production checklist:
 
 - Add `GOOGLE_PLACES_API_KEY` for live place details and richer Google Maps imports.
+- Add `EVENTBRITE_PRIVATE_TOKEN` and/or `TICKETMASTER_API_KEY` for automatic live event listings; curated events remain as fallback.
 - Add `AVIATIONSTACK_API_KEY` for live flight snapshots.
 - Leave Amadeus unset until you have credentials. Curated stays will remain active.
 - Add `AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`, and `AMADEUS_BASE_URL` when hotel pricing is ready.

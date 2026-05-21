@@ -31,7 +31,6 @@ import {
 } from "lucide-react";
 import { BookingRecommendations } from "../components/BookingRecommendations";
 import { BudgetInsight } from "../components/BudgetInsight";
-import { ImageCredit } from "../components/ImageCredit";
 import { ItineraryView } from "../components/ItineraryView";
 import { LiveEventsFeed } from "../components/LiveEventsFeed";
 import type { MobileTabId } from "../components/mobile/BottomNav";
@@ -110,7 +109,6 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
               <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
                 {getTripHeroBody(app.planningMode)}
               </p>
-              <ImageCredit credit={app.destination.heroImageCredit} className="mt-3" />
             </div>
           </div>
 
@@ -303,6 +301,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
               events={app.liveEvents}
               isLoading={app.isLoadingEvents}
               error={app.eventsError}
+              sourceMeta={app.eventSourceMeta}
               onRefresh={app.loadEvents}
               selectedRegion={app.destination.region}
             />
@@ -1790,6 +1789,7 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
   const sharingStatus = getSharingIntegrationStatus(app);
   const bookingStatus = getBookingIntegrationStatus(app);
   const flightStatus = getFlightSourceStatus(app);
+  const eventStatus = getEventIntegrationStatus(app);
   const integrationCards = [
     {
       icon: Share2,
@@ -1822,9 +1822,9 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
     {
       icon: CalendarDays,
       title: "Island events",
-      status: "Jamaica calendar",
-      tone: "fallback",
-      body: "Regional events are shown from the built-in Jamaica calendar.",
+      status: eventStatus.status,
+      tone: eventStatus.tone,
+      body: eventStatus.body,
     },
   ] satisfies Array<{
     icon: ComponentType<LucideProps>;
@@ -2127,6 +2127,74 @@ function getBookingIntegrationStatus(app: TravelOS): { status: string; tone: Int
     status: "Curated stays",
     tone: "fallback",
     body: getCuratedStayBody(meta.reason, false),
+  };
+}
+
+function getEventIntegrationStatus(app: TravelOS): { status: string; tone: IntegrationTone; body: string } {
+  const meta = app.eventSourceMeta;
+
+  if (app.eventsError) {
+    return {
+      status: "Events paused",
+      tone: "error",
+      body: "Event lookup failed and the regional calendar could not be loaded.",
+    };
+  }
+
+  if (meta.source === "live") {
+    return {
+      status: "Live events",
+      tone: "live",
+      body: "Current Eventbrite or Ticketmaster listings are available for this area.",
+    };
+  }
+
+  if (meta.source === "mixed") {
+    return {
+      status: "Live + curated",
+      tone: "live",
+      body: "Current event listings are blended with curated Jamaica calendar picks.",
+    };
+  }
+
+  if (meta.reason === "event-provider-rate-limited") {
+    return {
+      status: "Provider limit",
+      tone: "fallback",
+      body: "The live event provider limit was reached, so curated events are shown.",
+    };
+  }
+
+  if (meta.reason === "event-provider-request-failed") {
+    return {
+      status: "Curated fallback",
+      tone: "fallback",
+      body: "Live event lookup did not finish, so curated events are shown.",
+    };
+  }
+
+  if (meta.reason === "partial-event-provider-request-failed") {
+    return {
+      status: "Partial provider",
+      tone: "fallback",
+      body: "One live event provider did not finish, so curated events are shown with any available live matches.",
+    };
+  }
+
+  if (meta.reason === "no-live-provider-events") {
+    return {
+      status: "Curated fallback",
+      tone: "fallback",
+      body: "Live providers returned no matching Jamaica listings for this area.",
+    };
+  }
+
+  return {
+    status: meta.providerConfigured ? "Curated fallback" : "Jamaica calendar",
+    tone: "fallback",
+    body: meta.providerConfigured
+      ? "Curated Jamaica events are shown while live providers have no matching listings."
+      : "Regional events are shown from the built-in Jamaica calendar.",
   };
 }
 
