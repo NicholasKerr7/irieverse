@@ -1,4 +1,6 @@
 import { promises as dns } from "node:dns";
+import { request as httpRequest, type IncomingHttpHeaders } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { isIP, isIPv4 } from "node:net";
 import type {
   ApiRequest,
@@ -8,6 +10,7 @@ import type {
   ImportMetadataPlace,
 } from "../src/types/api";
 import type { ImportedIdeaSourcePlatform } from "../src/types/travel";
+import { guardApiRequest } from "./_shared/api-guard";
 
 const MAX_URL_LENGTH = 2048;
 const MAX_HTML_BYTES = 300_000;
@@ -42,23 +45,41 @@ type BaseMetadataOverrides = {
   reason?: string;
 };
 
+type ResolvedPublicEndpoint = {
+  address: string;
+  family: number;
+};
+
+type PublicUrlFetchOptions = RequestInit & {
+  maxBytes?: number;
+};
+
+type PinnedRequestOptions = PublicUrlFetchOptions & ResolvedPublicEndpoint;
+
+type PinnedRequestTransport = (url: URL, options: PinnedRequestOptions) => Promise<Response>;
+
+let pinnedRequestTransport: PinnedRequestTransport = fetchWithPinnedDnsTransport;
+
+export function resetImportMetadataHandlerStateForTest() {
+  METADATA_CACHE.clear();
+  pinnedRequestTransport = fetchWithPinnedDnsTransport;
+}
+
+export function setImportMetadataFetchTransportForTest(transport: PinnedRequestTransport) {
+  const previousTransport = pinnedRequestTransport;
+  pinnedRequestTransport = transport;
+  return () => {
+    pinnedRequestTransport = previousTransport;
+  };
+}
+
 export default async function importMetadataHandler(req: ApiRequest, res: ApiResponse) {
-  setResponseHeaders(res);
-
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
-  }
-
-  if (req.method === "HEAD") {
-    res.status(200).end();
-    return;
-  }
-
-  if (req.method !== "GET") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
+  if (!guardApiRequest(req, res, {
+    routeId: "import_metadata",
+    allowedMethods: ["GET", "HEAD"],
+    cacheControl: "s-maxage=86400, stale-while-revalidate=604800",
+    rateLimitMax: 30,
+  })) return;
 
   const rawUrl = getFirstQueryValue(req.query?.url);
   const parsedUrl = parseSafeUrl(rawUrl);
@@ -93,13 +114,6 @@ export default async function importMetadataHandler(req: ApiRequest, res: ApiRes
     };
     res.status(200).json(payload);
   }
-}
-
-function setResponseHeaders(res: ApiResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate=604800");
 }
 
 async function resolveMetadata(url: URL): Promise<ImportMetadataApiData> {
@@ -146,7 +160,7 @@ async function resolveYouTubeMetadata(url: URL, sourceUrl = url): Promise<Import
   oembedUrl.searchParams.set("url", url.toString());
   oembedUrl.searchParams.set("format", "json");
 
-  const response = await fetchWithTimeout(oembedUrl.toString(), {
+  const response = await fetchTrustedWithTimeout(oembedUrl.toString(), {
     headers: {
       Accept: "application/json",
       "User-Agent": "IrieVerseBot/1.0 (+https://irieverse.app)",
@@ -175,7 +189,7 @@ async function resolveGoogleMapsMetadata(url: URL, sourceUrl = url): Promise<Imp
   const placeQuery = extractGoogleMapsPlaceName(url);
   if (!apiKey || !placeQuery) return null;
 
-  const response = await fetchWithTimeout(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+  const response = await fetchTrustedWithTimeout(GOOGLE_PLACES_TEXT_SEARCH_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -288,9 +302,8 @@ async function resolveRedirectUrl(url: URL): Promise<URL> {
 
   for (let index = 0; index < MAX_REDIRECT_HOPS; index += 1) {
     await assertPublicHostname(currentUrl);
-    const response = await fetchWithTimeout(currentUrl.toString(), {
+    const response = await fetchPublicUrlWithTimeout(currentUrl, {
       method: "HEAD",
-      redirect: "manual",
       headers: {
         Accept: "text/html,application/xhtml+xml",
         "User-Agent": "IrieVerseBot/1.0 (+https://irieverse.app)",
@@ -319,16 +332,14 @@ async function fetchHtmlWithValidatedRedirects(
 
   for (let index = 0; index <= MAX_REDIRECT_HOPS; index += 1) {
     await assertPublicHostname(currentUrl);
-    const response = await fetchWithTimeout(currentUrl.toString(), {
+    const response = await fetchPublicUrlWithTimeout(currentUrl, {
       ...options,
-      redirect: "manual",
+      maxBytes: MAX_HTML_BYTES,
     });
 
     const location = response.headers.get("location");
     if (!location || response.status < 300 || response.status >= 400) {
-      const finalUrl = parseSafeUrl(response.url) ?? currentUrl;
-      await assertPublicHostname(finalUrl);
-      return { response, finalUrl };
+      return { response, finalUrl: currentUrl };
     }
 
     if (index === MAX_REDIRECT_HOPS) {
@@ -346,7 +357,7 @@ async function fetchHtmlWithValidatedRedirects(
   throw new Error("Metadata page redirected too many times");
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+async function fetchTrustedWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5500);
 
@@ -359,6 +370,115 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function fetchPublicUrlWithTimeout(url: URL, options: PublicUrlFetchOptions = {}): Promise<Response> {
+  const endpoint = await resolvePublicEndpoint(url);
+  return pinnedRequestTransport(url, {
+    ...options,
+    address: endpoint.address,
+    family: endpoint.family,
+  });
+}
+
+function fetchWithPinnedDnsTransport(url: URL, options: PinnedRequestOptions): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const method = options.method ?? "GET";
+    const headers = headersToRecord(options.headers);
+    headers.Host = url.host;
+    const maxBytes = options.maxBytes ?? MAX_HTML_BYTES;
+    const request = (url.protocol === "https:" ? httpsRequest : httpRequest)({
+      protocol: url.protocol,
+      hostname: options.address,
+      port: url.port || (url.protocol === "https:" ? 443 : 80),
+      path: `${url.pathname}${url.search}`,
+      method,
+      headers,
+      servername: url.hostname,
+    });
+    const timeout = setTimeout(() => {
+      request.destroy(new Error("Metadata request timed out"));
+    }, 5500);
+    let settled = false;
+
+    request.on("response", (response) => {
+      const chunks: Buffer[] = [];
+      let receivedBytes = 0;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        const status = response.statusCode ?? 200;
+        const body = method.toUpperCase() === "HEAD" || status === 204 || status === 205 || status === 304
+          ? null
+          : Buffer.concat(chunks);
+        resolve(new Response(body, {
+          status,
+          headers: nodeHeadersToHeaders(response.headers),
+          ...(response.statusMessage ? { statusText: response.statusMessage } : {}),
+        }));
+      };
+
+      if (method.toUpperCase() === "HEAD") {
+        response.resume();
+        finish();
+        return;
+      }
+
+      response.on("data", (chunk: Buffer) => {
+        if (settled) return;
+        const remainingBytes = maxBytes - receivedBytes;
+        if (remainingBytes > 0) {
+          chunks.push(chunk.length > remainingBytes ? chunk.subarray(0, remainingBytes) : chunk);
+          receivedBytes += Math.min(chunk.length, remainingBytes);
+        }
+        if (receivedBytes >= maxBytes) {
+          finish();
+          request.destroy();
+        }
+      });
+      response.on("end", finish);
+      response.on("error", (error) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timeout);
+          reject(error);
+        }
+      });
+    });
+
+    request.on("error", (error) => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timeout);
+        reject(error);
+      }
+    });
+    request.end();
+  });
+}
+
+function headersToRecord(headers: HeadersInit | undefined): Record<string, string> {
+  const record: Record<string, string> = {};
+  if (!headers) return record;
+  new Headers(headers).forEach((value, name) => {
+    record[name] = value;
+  });
+  return record;
+}
+
+function nodeHeadersToHeaders(headers: IncomingHttpHeaders): Headers {
+  const responseHeaders = new Headers();
+  Object.entries(headers).forEach(([name, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((entry) => responseHeaders.append(name, entry));
+      return;
+    }
+    if (typeof value === "string") {
+      responseHeaders.set(name, value);
+    }
+  });
+  return responseHeaders;
 }
 
 function formatErrorForLog(error: unknown): string {
@@ -420,16 +540,29 @@ function parseSafeUrl(value: unknown): URL | null {
 }
 
 async function assertPublicHostname(url: URL): Promise<void> {
+  await resolvePublicEndpoint(url);
+}
+
+async function resolvePublicEndpoint(url: URL): Promise<ResolvedPublicEndpoint> {
   const hostname = url.hostname.toLowerCase();
   if (isIP(hostname)) {
     if (isPrivateIp(hostname)) throw new Error("Blocked private IP URL");
-    return;
+    return {
+      address: hostname,
+      family: isIPv4(hostname) ? 4 : 6,
+    };
   }
 
   const addresses = await dns.lookup(hostname, { all: true });
   if (!addresses.length || addresses.some((entry) => isPrivateIp(entry.address))) {
     throw new Error("Blocked private hostname URL");
   }
+  const firstAddress = addresses[0];
+  if (!firstAddress) throw new Error("Blocked private hostname URL");
+  return {
+    address: firstAddress.address,
+    family: firstAddress.family,
+  };
 }
 
 function isBlockedHostname(hostname: string): boolean {
@@ -452,12 +585,26 @@ function isPrivateIp(address: string): boolean {
       first === 0 ||
       (first === 169 && second === 254) ||
       (first === 172 && second >= 16 && second <= 31) ||
-      (first === 192 && second === 168)
+      (first === 100 && second >= 64 && second <= 127) ||
+      (first === 192 && second === 168) ||
+      (first === 192 && second === 0) ||
+      (first === 198 && (second === 18 || second === 19)) ||
+      (first >= 224 && first <= 255)
     );
   }
 
   const normalized = address.toLowerCase();
-  return normalized === "::1" || normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80:");
+  const ipv4Mapped = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)?.[1];
+  if (ipv4Mapped) return isPrivateIp(ipv4Mapped);
+  return (
+    normalized === "::" ||
+    normalized === "::1" ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    normalized.startsWith("fe80:") ||
+    normalized.startsWith("ff") ||
+    normalized.startsWith("2001:db8")
+  );
 }
 
 function detectSourcePlatform(url: URL): ImportedIdeaSourcePlatform {

@@ -10,6 +10,8 @@ export type QueryRecord = Record<string, QueryValue>;
 export interface ApiRequest {
   method?: string;
   query?: QueryRecord;
+  headers?: Record<string, string | string[] | undefined>;
+  ip?: string;
 }
 
 export interface ApiResponse {

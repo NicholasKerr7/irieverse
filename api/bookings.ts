@@ -1,5 +1,6 @@
 import type { ApiRequest, ApiResponse, BookingApiResponse } from "../src/types/api";
 import type { BookingOption } from "../src/types/travel";
+import { guardApiRequest } from "./_shared/api-guard";
 
 const AMADEUS_TEST_BASE_URL = "https://test.api.amadeus.com";
 const AMADEUS_PRODUCTION_BASE_URL = "https://api.amadeus.com";
@@ -68,22 +69,12 @@ const FALLBACK_BOOKINGS = {
 let cachedToken: { accessToken: string; expiresAt: number } | null = null;
 
 export default async function bookingsHandler(req: ApiRequest, res: ApiResponse) {
-  setResponseHeaders(res);
-
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
-  }
-
-  if (req.method === "HEAD") {
-    res.status(200).end();
-    return;
-  }
-
-  if (req.method !== "GET") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
+  if (!guardApiRequest(req, res, {
+    routeId: "bookings",
+    allowedMethods: ["GET", "HEAD"],
+    cacheControl: "s-maxage=900, stale-while-revalidate=3600",
+    rateLimitMax: 60,
+  })) return;
 
   const query = req.query ?? {};
   const destination = normalizeAirportCode(query.destination);
@@ -149,13 +140,6 @@ export default async function bookingsHandler(req: ApiRequest, res: ApiResponse)
     };
     res.status(200).json(payload);
   }
-}
-
-function setResponseHeaders(res: ApiResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=3600");
 }
 
 function getAmadeusBaseUrl(): string {

@@ -2,9 +2,14 @@ import assert from "node:assert/strict";
 import { promises as dns } from "node:dns";
 import bookingsHandler from "../api/bookings";
 import flightsHandler, { resetFlightsHandlerStateForTest } from "../api/flights";
-import importMetadataHandler from "../api/import-metadata";
+import importMetadataHandler, {
+  resetImportMetadataHandlerStateForTest,
+  setImportMetadataFetchTransportForTest,
+} from "../api/import-metadata";
 import roadRouteHandler from "../api/road-route";
+import { resetApiGuardStateForTest } from "../api/_shared/api-guard";
 import type {
+  ApiRequest,
   ApiResponse,
   BookingApiResponse,
   FlightApiResponse,
@@ -25,15 +30,81 @@ type ErrorApiResponse = {
 type OsrmRoadRouteApiResponse = Extract<RoadRouteApiResponse, { meta: { source: "osrm" } }>;
 
 async function main() {
+  resetApiGuardStateForTest();
+  resetImportMetadataHandlerStateForTest();
+
+  await testApiGuardRejectsDisallowedOrigins();
+  await testApiGuardRateLimitsByClient();
   await testBookingsFallbackWithoutCredentials();
   await testBookingsLiveAmadeusNormalization();
   await testFlightsLiveAviationStackNormalization();
   await testFlightsRateLimitFallbackAndCooldown();
   await testImportMetadataBlocksPrivateUrls();
+  await testImportMetadataBlocksPrivateDnsResolution();
   await testImportMetadataArticlePreview();
+  await testRoadRouteRejectsOutOfBoundsCoordinates();
   await testRoadRouteNormalization();
 
   console.log("API handler checks passed.");
+}
+
+async function testApiGuardRejectsDisallowedOrigins() {
+  resetApiGuardStateForTest();
+  const response = createResponse();
+  await flightsHandler(
+    {
+      method: "GET",
+      headers: {
+        origin: "https://not-irieverse.example",
+      },
+      query: {
+        origin: "JFK",
+        destination: "MBJ",
+      },
+    },
+    response
+  );
+
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.headers["access-control-allow-origin"], undefined);
+  const body = assertBody<ErrorApiResponse>(response.body);
+  assert.equal(body.error, "Origin not allowed.");
+}
+
+async function testApiGuardRateLimitsByClient() {
+  resetApiGuardStateForTest();
+  const restoreEnv = withEnv({
+    IRIEVERSE_API_RATE_LIMIT_FLIGHTS: "1",
+    IRIEVERSE_API_RATE_LIMIT_FLIGHTS_WINDOW_SECONDS: "60",
+    AVIATIONSTACK_API_KEY: undefined,
+    VITE_AVIATIONSTACK_API_KEY: undefined,
+  });
+  const request: ApiRequest = {
+    method: "GET",
+    headers: {
+      "x-forwarded-for": "203.0.113.10",
+    },
+    query: {
+      origin: "JFK",
+      destination: "MBJ",
+    },
+  };
+
+  try {
+    const firstResponse = createResponse();
+    await flightsHandler(request, firstResponse);
+    assert.equal(firstResponse.statusCode, 200);
+
+    const secondResponse = createResponse();
+    await flightsHandler(request, secondResponse);
+    assert.equal(secondResponse.statusCode, 429);
+    assert.equal(secondResponse.headers["retry-after"], "60");
+    const body = assertBody<ErrorApiResponse>(secondResponse.body);
+    assert.equal(body.error, "Too many requests. Try again shortly.");
+  } finally {
+    restoreEnv();
+    resetApiGuardStateForTest();
+  }
 }
 
 async function testFlightsLiveAviationStackNormalization() {
@@ -336,11 +407,12 @@ async function testImportMetadataBlocksPrivateUrls() {
 
 async function testImportMetadataArticlePreview() {
   const originalLookup = dns.lookup;
-  const originalFetch = globalThis.fetch;
+  resetImportMetadataHandlerStateForTest();
+  const restoreTransport = setImportMetadataFetchTransportForTest(async (url, options) => {
+    assert.equal(url.hostname, "example.com");
+    assert.equal(options.address, "93.184.216.34");
 
-  dns.lookup = (async () => [{ address: "93.184.216.34", family: 4 }]) as unknown as typeof dns.lookup;
-  globalThis.fetch = async (_url, init) => {
-    if (init?.method === "HEAD") {
+    if (options.method === "HEAD") {
       return new Response(null, { status: 200 });
     }
 
@@ -360,7 +432,9 @@ async function testImportMetadataArticlePreview() {
         },
       }
     );
-  };
+  });
+
+  dns.lookup = (async () => [{ address: "93.184.216.34", family: 4 }]) as unknown as typeof dns.lookup;
 
   try {
     const response = createResponse();
@@ -384,6 +458,76 @@ async function testImportMetadataArticlePreview() {
     assert.equal(body.data.confidence, "high");
   } finally {
     dns.lookup = originalLookup;
+    restoreTransport();
+    resetImportMetadataHandlerStateForTest();
+  }
+}
+
+async function testImportMetadataBlocksPrivateDnsResolution() {
+  const originalLookup = dns.lookup;
+  const originalWarn = console.warn;
+  resetImportMetadataHandlerStateForTest();
+  let transportCalled = false;
+  const restoreTransport = setImportMetadataFetchTransportForTest(async () => {
+    transportCalled = true;
+    throw new Error("Private DNS result should not be fetched");
+  });
+
+  dns.lookup = (async () => [{ address: "127.0.0.1", family: 4 }]) as unknown as typeof dns.lookup;
+  console.warn = () => {};
+
+  try {
+    const response = createResponse();
+    await importMetadataHandler(
+      {
+        method: "GET",
+        query: {
+          url: "https://private.example/food",
+        },
+      },
+      response
+    );
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(transportCalled, false);
+    const body = assertBody<ImportMetadataApiResponse>(response.body);
+    assert.equal(body.data.reason, "metadata-unavailable");
+    assert.equal(body.data.confidence, "low");
+  } finally {
+    dns.lookup = originalLookup;
+    console.warn = originalWarn;
+    restoreTransport();
+    resetImportMetadataHandlerStateForTest();
+  }
+}
+
+async function testRoadRouteRejectsOutOfBoundsCoordinates() {
+  resetApiGuardStateForTest();
+  const originalFetch = globalThis.fetch;
+  let fetchCount = 0;
+  globalThis.fetch = async () => {
+    fetchCount += 1;
+    return jsonResponse({});
+  };
+
+  try {
+    const response = createResponse();
+    await roadRouteHandler(
+      {
+        method: "GET",
+        query: {
+          from: "-73.9857,40.7484",
+          to: "-73.9851,40.758",
+        },
+      },
+      response
+    );
+
+    assert.equal(response.statusCode, 400);
+    assert.equal(fetchCount, 0);
+    const body = assertBody<ErrorApiResponse>(response.body);
+    assert.equal(body.error, "Route coordinates must stay within Jamaica planning bounds.");
+  } finally {
     globalThis.fetch = originalFetch;
   }
 }

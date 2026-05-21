@@ -5,6 +5,7 @@ import type {
   PlaceDetailsApiResponse,
   QueryRecord,
 } from "../src/types/api";
+import { guardApiRequest } from "./_shared/api-guard";
 
 const GOOGLE_PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 const PLACE_DETAILS_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
@@ -68,22 +69,12 @@ type GooglePlaceSearchBody = {
 };
 
 export default async function placeDetailsHandler(req: ApiRequest, res: ApiResponse) {
-  setResponseHeaders(res);
-
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
-  }
-
-  if (req.method === "HEAD") {
-    res.status(200).end();
-    return;
-  }
-
-  if (req.method !== "GET") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
+  if (!guardApiRequest(req, res, {
+    routeId: "place_details",
+    allowedMethods: ["GET", "HEAD"],
+    cacheControl: "s-maxage=43200, stale-while-revalidate=86400",
+    rateLimitMax: 120,
+  })) return;
 
   const query = normalizePlaceDetailsQuery(req.query);
   if (!query) {
@@ -146,13 +137,6 @@ export default async function placeDetailsHandler(req: ApiRequest, res: ApiRespo
     };
     res.status(200).json(payload);
   }
-}
-
-function setResponseHeaders(res: ApiResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Cache-Control", "s-maxage=43200, stale-while-revalidate=86400");
 }
 
 async function fetchGooglePlaceDetails(apiKey: string, query: PlaceDetailsQuery): Promise<PlaceDetailsApiData | null> {

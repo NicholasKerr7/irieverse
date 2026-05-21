@@ -39,6 +39,7 @@ AMADEUS_CLIENT_SECRET=your_amadeus_api_secret # server-only; do not prefix with 
 ROUTING_API_BASE_URL=https://router.project-osrm.org # server-only road routing proxy
 ROUTING_API_TIMEOUT_MS=4500                   # stop slow routing calls before they hold up the map
 ROUTING_PROVIDER_COOLDOWN_SECONDS=45          # throttle repeated routing failure logs
+IRIEVERSE_ALLOWED_ORIGINS=https://irieverse.vercel.app # comma-separated API browser origins
 ```
 
 If env vars are absent, the app falls back to local sample data in `public/data`.

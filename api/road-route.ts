@@ -5,12 +5,19 @@ import type {
   RoadRouteApiResponse,
   RoadRouteStep,
 } from "../src/types/api";
+import { guardApiRequest } from "./_shared/api-guard";
 
 const DEFAULT_ROUTING_BASE_URL = "https://router.project-osrm.org";
 const MAX_ROUTE_DISTANCE_KM = 400;
 const MAX_ROUTE_STEPS = 32;
 const DEFAULT_ROUTING_TIMEOUT_MS = 4500;
 const DEFAULT_ROUTING_COOLDOWN_SECONDS = 45;
+const JAMAICA_ROUTE_BOUNDS = {
+  minLongitude: -78.85,
+  maxLongitude: -75.95,
+  minLatitude: 17.4,
+  maxLatitude: 18.85,
+};
 
 let routingProviderLastWarningAt = 0;
 
@@ -20,22 +27,12 @@ type Coordinate = {
 };
 
 export default async function roadRouteHandler(req: ApiRequest, res: ApiResponse) {
-  setResponseHeaders(res);
-
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
-  }
-
-  if (req.method === "HEAD") {
-    res.status(200).end();
-    return;
-  }
-
-  if (req.method !== "GET") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
+  if (!guardApiRequest(req, res, {
+    routeId: "road_route",
+    allowedMethods: ["GET", "HEAD"],
+    cacheControl: "s-maxage=86400, stale-while-revalidate=604800",
+    rateLimitMax: 120,
+  })) return;
 
   const query = req.query ?? {};
   const from = parseCoordinate(query.from);
@@ -43,6 +40,11 @@ export default async function roadRouteHandler(req: ApiRequest, res: ApiResponse
 
   if (!from || !to) {
     res.status(400).json({ error: "Expected from and to as lon,lat coordinate pairs." });
+    return;
+  }
+
+  if (!isWithinJamaicaRouteBounds(from) || !isWithinJamaicaRouteBounds(to)) {
+    res.status(400).json({ error: "Route coordinates must stay within Jamaica planning bounds." });
     return;
   }
 
@@ -67,13 +69,6 @@ export default async function roadRouteHandler(req: ApiRequest, res: ApiResponse
     }
     sendRouteFallback(res, "Road preview is unavailable right now, so the app is keeping a simple route line for this leg.");
   }
-}
-
-function setResponseHeaders(res: ApiResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Cache-Control", "s-maxage=86400, stale-while-revalidate=604800");
 }
 
 async function fetchOsrmRoute(from: Coordinate, to: Coordinate): Promise<RoadRoute> {
@@ -343,6 +338,15 @@ function isCoordinatePair(value: unknown): value is [unknown, unknown, ...unknow
 function normalizeCoordinatePair(value: unknown): [number, number] | null {
   if (!isCoordinatePair(value)) return null;
   return [Number(value[0]), Number(value[1])];
+}
+
+function isWithinJamaicaRouteBounds(coordinate: Coordinate): boolean {
+  return (
+    coordinate.longitude >= JAMAICA_ROUTE_BOUNDS.minLongitude &&
+    coordinate.longitude <= JAMAICA_ROUTE_BOUNDS.maxLongitude &&
+    coordinate.latitude >= JAMAICA_ROUTE_BOUNDS.minLatitude &&
+    coordinate.latitude <= JAMAICA_ROUTE_BOUNDS.maxLatitude
+  );
 }
 
 function haversineDistanceKm(from: Coordinate, to: Coordinate): number {

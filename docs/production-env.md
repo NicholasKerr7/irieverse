@@ -22,6 +22,8 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | `ROUTING_API_TIMEOUT_MS` | Optional | Max server wait for one routing-provider request. Defaults to `4500` ms. |
 | `ROUTING_PROVIDER_COOLDOWN_SECONDS` | Optional | Server-side throttle window for repeated routing-provider failure logs. Defaults to `45` seconds. |
 | `GOOGLE_PLACES_API_KEY` | Optional | Server-only Google Places key used by `api/place-details.ts` for live place address, hours, phone, website, and map links. |
+| `IRIEVERSE_ALLOWED_ORIGINS` | Optional | Comma-separated browser origins allowed to call the API proxies. Defaults include `https://irieverse.vercel.app`, the active Vercel deployment URL, and local dev origins. |
+| `IRIEVERSE_API_RATE_LIMIT_WINDOW_SECONDS` | Optional | Shared API rate-limit window. Defaults to `60` seconds. Per-route caps can be overridden with `IRIEVERSE_API_RATE_LIMIT_FLIGHTS`, `IRIEVERSE_API_RATE_LIMIT_BOOKINGS`, `IRIEVERSE_API_RATE_LIMIT_IMPORT_METADATA`, `IRIEVERSE_API_RATE_LIMIT_PLACE_DETAILS`, and `IRIEVERSE_API_RATE_LIMIT_ROAD_ROUTE`. |
 
 Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack, Amadeus, Places, and routing credentials server-only.
 
@@ -61,6 +63,8 @@ vercel env add ROUTING_API_BASE_URL production
 vercel env add ROUTING_API_TIMEOUT_MS production
 vercel env add ROUTING_PROVIDER_COOLDOWN_SECONDS production
 vercel env add GOOGLE_PLACES_API_KEY production
+vercel env add IRIEVERSE_ALLOWED_ORIGINS production
+vercel env add IRIEVERSE_API_RATE_LIMIT_WINDOW_SECONDS production
 ```
 
 For this Vercel app, `VITE_BOOKING_API_URL` should be:
