@@ -1,10 +1,13 @@
 import {
   Compass,
+  Landmark,
   MapPin,
   Music2,
+  Palmtree,
   PartyPopper,
   Search,
   SlidersHorizontal,
+  TreePalm,
   Utensils,
   X,
 } from "lucide-react";
@@ -64,7 +67,7 @@ export function ExploreScreen({ app, onNavigate }: ExploreScreenProps) {
                 Explore Jamaica
               </p>
               <h1 className="mt-3 max-w-full text-balance text-2xl font-semibold tracking-tight text-white sm:text-4xl">
-                Places and experiences by vibe.
+                Parish guide, attractions, and island experiences.
               </h1>
             </div>
           </div>
@@ -73,7 +76,7 @@ export function ExploreScreen({ app, onNavigate }: ExploreScreenProps) {
             <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <p className="text-sm leading-6 text-slate-400">
-                  Browse premium destination cards and real island experiences, then save, map, or add them to a trip.
+                  Browse all 14 parishes, hero attractions, entry notes, events, and local-friendly trip ideas.
                 </p>
                 <p className="mt-3 text-xs uppercase tracking-[0.22em] text-slate-500">
                   Showing {visibleCount} of {totalCount}
@@ -161,6 +164,9 @@ export function ExploreScreen({ app, onNavigate }: ExploreScreenProps) {
                       {option.id === "food" && <Utensils className="mr-1 inline h-3.5 w-3.5" />}
                       {option.id === "music" && <Music2 className="mr-1 inline h-3.5 w-3.5" />}
                       {option.id === "festival" && <PartyPopper className="mr-1 inline h-3.5 w-3.5" />}
+                      {option.id === "nature" && <TreePalm className="mr-1 inline h-3.5 w-3.5" />}
+                      {option.id === "heritage" && <Landmark className="mr-1 inline h-3.5 w-3.5" />}
+                      {option.id === "beach" && <Palmtree className="mr-1 inline h-3.5 w-3.5" />}
                       {option.label}
                     </button>
                   ))}

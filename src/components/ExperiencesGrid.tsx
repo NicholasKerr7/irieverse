@@ -1,17 +1,21 @@
 import {
   CalendarDays,
   Clock,
+  Landmark,
   Gauge,
   Heart,
   MapPin,
   Music2,
+  Palmtree,
   PartyPopper,
   Star,
+  Ticket,
+  TreePalm,
   Utensils,
   WalletCards,
 } from "lucide-react";
 import { EmptyStatePanel } from "./LoadingStates";
-import { Experience } from "../types/travel";
+import type { EntryRequirement, Experience } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassControlMuted } from "../utils/glass";
 import { capitalise } from "../utils/text";
@@ -96,6 +100,8 @@ export function ExperiencesGrid({ items, saved, onToggleSaved, onAddToTrip }: Ex
                 <ExperienceFact icon={WalletCards} label="Cost" value={experience.approxCost} />
               </dl>
 
+              <EntryRequirementPill requirement={experience.entryRequirement} />
+
               <button
                 type="button"
                 onClick={() => onAddToTrip?.(experience.id)}
@@ -108,6 +114,20 @@ export function ExperiencesGrid({ items, saved, onToggleSaved, onAddToTrip }: Ex
           </article>
         );
       })}
+    </div>
+  );
+}
+
+function EntryRequirementPill({ requirement }: { requirement: EntryRequirement | undefined }) {
+  if (!requirement) return null;
+
+  return (
+    <div className="mt-3 rounded-2xl border border-slate-700/80 bg-slate-950/45 px-3 py-2">
+      <p className="flex items-center gap-2 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-amber-100">
+        <Ticket className="h-3.5 w-3.5" />
+        {requirement.label}
+      </p>
+      <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{requirement.note}</p>
     </div>
   );
 }
@@ -135,5 +155,8 @@ function iconForType(type: string) {
   if (type === "food") return <Utensils className="h-3.5 w-3.5" />;
   if (type === "music") return <Music2 className="h-3.5 w-3.5" />;
   if (type === "festival") return <PartyPopper className="h-3.5 w-3.5" />;
+  if (type === "nature") return <TreePalm className="h-3.5 w-3.5" />;
+  if (type === "heritage") return <Landmark className="h-3.5 w-3.5" />;
+  if (type === "beach") return <Palmtree className="h-3.5 w-3.5" />;
   return null;
 }

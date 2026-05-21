@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { LiveEvent } from "../types/travel";
-import { AlertTriangle, CalendarDays, PartyPopper, RefreshCcw } from "lucide-react";
+import { AlertTriangle, CalendarDays, ExternalLink, PartyPopper, RefreshCcw, Ticket } from "lucide-react";
 import { CardGridSkeleton, EmptyStatePanel } from "./LoadingStates";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassPanel } from "../utils/glass";
@@ -84,10 +84,28 @@ export const LiveEventsFeed = memo(function LiveEventsFeed({
             </p>
             <div className="flex items-center gap-2 text-[0.75rem] text-slate-200">
               <CalendarDays className="w-3.5 h-3.5 text-emerald-300" />
-              <span>{formatEventTime(event.startDate)}</span>
+              <span>{event.dateLabel ?? formatEventTime(event.startDate)}</span>
             </div>
             <p className="text-xs text-slate-300">{event.description}</p>
-            <p className="text-[0.7rem] text-slate-400">{event.price}</p>
+            <div className="rounded-2xl border border-slate-700/80 bg-slate-950/45 px-3 py-2">
+              <p className="flex items-center gap-2 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-amber-100">
+                <Ticket className="h-3.5 w-3.5" />
+                {event.price ?? "Confirm access"}
+              </p>
+              {event.ticketRequirement && (
+                <p className="mt-1 text-xs leading-5 text-slate-400">{event.ticketRequirement}</p>
+              )}
+            </div>
+            {event.officialUrl && (
+              <a
+                href={event.officialUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-200 hover:text-cyan-100"
+              >
+                Check details <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
           </article>
         ))}
       </div>

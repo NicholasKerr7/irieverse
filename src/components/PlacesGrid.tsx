@@ -1,6 +1,6 @@
-import { CalendarDays, Heart, MapPin, Route, Star } from "lucide-react";
+import { CalendarDays, Heart, MapPin, Route, Star, Ticket } from "lucide-react";
 import { EmptyStatePanel } from "./LoadingStates";
-import { Destination } from "../types/travel";
+import type { Destination, EntryRequirement } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassPanelStrong } from "../utils/glass";
 
@@ -68,9 +68,14 @@ export function PlacesGrid({
               </button>
               <div className="media-overlay absolute bottom-4 left-4 right-4">
                 <p className="flex items-center gap-1 text-xs font-medium text-cyan-100">
-                  <MapPin className="h-3.5 w-3.5" /> {destination.region}
+                  <MapPin className="h-3.5 w-3.5" /> {destination.parish ?? destination.region}
                 </p>
                 <h3 className="mt-1 text-2xl font-semibold leading-tight text-white">{destination.name}</h3>
+                {destination.heroAttraction && (
+                  <p className="mt-1 text-xs font-semibold text-slate-200">
+                    Hero stop: {destination.heroAttraction}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -98,6 +103,8 @@ export function PlacesGrid({
               <p className="mt-3 text-sm font-medium leading-6 text-slate-200">{destination.headline}</p>
               <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-400">{destination.description}</p>
 
+              <EntryRequirementPill requirement={destination.entryRequirement} />
+
               <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
                 <button
                   type="button"
@@ -120,6 +127,20 @@ export function PlacesGrid({
           </article>
         );
       })}
+    </div>
+  );
+}
+
+function EntryRequirementPill({ requirement }: { requirement: EntryRequirement | undefined }) {
+  if (!requirement) return null;
+
+  return (
+    <div className="mt-3 rounded-2xl border border-slate-700/80 bg-slate-950/45 px-3 py-2">
+      <p className="flex items-center gap-2 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-amber-100">
+        <Ticket className="h-3.5 w-3.5" />
+        {requirement.label}
+      </p>
+      <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{requirement.note}</p>
     </div>
   );
 }

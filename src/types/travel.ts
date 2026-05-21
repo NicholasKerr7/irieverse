@@ -10,7 +10,7 @@ export type Vibe =
   | "authentic"
   | "mixed";
 
-type ExperienceCategory = "food" | "music" | "festival";
+type ExperienceCategory = "food" | "music" | "festival" | "nature" | "heritage" | "beach";
 
 export type ExperienceType = "all" | ExperienceCategory;
 
@@ -60,6 +60,7 @@ export interface Destination {
   id: string;
   name: string;
   region: string;
+  parish?: string;
   vibes: string[];
   rating: number;
   priceLevel: number;
@@ -67,6 +68,10 @@ export interface Destination {
   description: string;
   highlights: string[];
   heroImage: string;
+  heroAttraction?: string;
+  entryRequirement?: EntryRequirement;
+  localTips?: string[];
+  visitorTips?: string[];
   latitude: number;
   longitude: number;
   airportCode: string;
@@ -86,6 +91,15 @@ export interface QuickFact {
   value: string;
 }
 
+export type EntryRequirementStatus = "ticket-required" | "pass-recommended" | "free" | "varies";
+
+export interface EntryRequirement {
+  status: EntryRequirementStatus;
+  label: string;
+  note: string;
+  officialUrl?: string;
+}
+
 export interface FlightOption {
   flightNumber: string;
   airline: string;
@@ -102,6 +116,7 @@ export interface Experience {
   title: string;
   type: ExperienceCategory;
   region: string;
+  parish?: string;
   location: string;
   linkedDestinationId?: string;
   vibes: string[];
@@ -112,6 +127,7 @@ export interface Experience {
   bestTime: string;
   imageUrl: string;
   approxCost: string;
+  entryRequirement?: EntryRequirement;
   placeLookup?: PlaceLookup;
 }
 
@@ -242,6 +258,8 @@ export interface OriginAirport {
   shortLabel?: string;
   latitude: number;
   longitude: number;
+  supportsFlights?: boolean;
+  isExactLocation?: boolean;
 }
 
 export interface LiveEvent {
@@ -249,9 +267,13 @@ export interface LiveEvent {
   title: string;
   city: string;
   region: string;
+  parish?: string;
   venue: string;
   startDate: string;
+  dateLabel?: string;
   price?: string;
+  ticketRequirement?: string;
+  officialUrl?: string;
   description?: string;
   vibes?: string[];
 }

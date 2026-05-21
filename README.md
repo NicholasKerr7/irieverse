@@ -1,26 +1,30 @@
 # IrieVerse Travel OS
 
-IrieVerse is a Jamaica-focused travel planning app for building a real trip from scattered ideas. It combines destination discovery, saved link imports, road-aware route planning, flight and stay snapshots, budget cues, local events, sharing, and calendar export in one interactive workspace.
+IrieVerse is a Jamaica-focused travel planning app for building a real trip from scattered ideas. It combines a 14-parish Jamaica guide, saved link imports, road-aware route planning, flight and stay snapshots, budget cues, local events, sharing, optional exact GPS starting points, and calendar export in one interactive workspace.
 
 The app is built for people who want to plan Jamaica without bouncing between maps, notes, social posts, flight tabs, hotel tabs, and generic itinerary tools that do not understand the island.
 
 ## What It Solves
 
 - Turns saved links, Google Maps places, TikToks, Instagram posts, YouTube links, and articles into usable trip ideas.
-- Helps travelers understand which Jamaica region fits their vibe, dates, budget, pace, and starting airport.
+- Helps travelers understand which Jamaica parish, region, hero attraction, event, and starting point fit their vibe, dates, budget, and pace.
+- Shows whether major attractions, beaches, tours, events, and experiences are free, ticketed, pass-based, or variable before users build the day around them.
 - Replaces straight-line map guesses with road-following route previews and fallback messaging when route data is limited.
 - Keeps planning useful when live providers are missing, rate-limited, or temporarily unavailable.
 - Separates live data from curated Jamaica content so users know what is current and what is an editorial planning aid.
-- Gives visitors and locals one place to compare stops, build day plans, save ideas, export calendars, and share trips.
+- Gives visitors and locals one place to compare stops, build day plans, choose a starting area or exact GPS start, save ideas, export calendars, and share trips.
 
 ## What Makes It Stand Out
 
-- **Jamaica-first planning**: destinations, experiences, route pacing, region labels, airport choices, events, and trip language are specific to Jamaica.
+- **Parish-by-parish guide**: all 14 parishes are represented with a hero attraction or place, hero image, parish context, entry guidance, local tips, and visitor tips.
+- **Jamaica-first planning**: destinations, experiences, route pacing, parish labels, airport and local starting points, events, and trip language are specific to Jamaica.
 - **Road-aware map planning**: MapLibre renders Jamaica pins and route geometry, while the route drawer keeps estimated lines available if detailed routing is unavailable.
 - **Saved idea intelligence**: imported URLs can extract titles, descriptions, images, place facts, coordinates, and map anchors when metadata is available.
 - **Live plus curated coverage**: flights, stays, place details, road routes, events, and sharing all label whether they are live, curated, limited, or paused.
 - **Graceful provider handling**: the app still works without Amadeus. Stays show curated Jamaica recommendations until live hotel pricing is connected.
 - **Trip-building workspace**: route order, day assignments, locked stops, notes, saved places, imported ideas, budgets, dates, and exports live together.
+- **Flexible starting points**: users can start from major airports, Jamaica towns, local meetup areas, or an optional exact browser GPS point.
+- **Dark-first interface**: the app boots in dark mode on every fresh load, regardless of saved or system preference, then lets users toggle after startup.
 - **PWA-ready experience**: app shortcuts, install icons, share target support, offline cached data, and production QA checks are included.
 
 ## Questions IrieVerse Can Answer
@@ -32,6 +36,8 @@ The app is built for people who want to plan Jamaica without bouncing between ma
 - Is this route road-aware or only an estimated preview right now?
 - Which saved places and imported ideas are already mapped?
 - Which saved ideas still need Jamaica map anchors?
+- Does this stop require a ticket, pass, registration, cover charge, parking fee, guide, or local confirmation?
+- Which attraction is the hero stop for each parish?
 - Which flights are live and which are saved examples?
 - Are stays live-priced, curated, or limited by provider availability?
 - What can I do near my selected base?
@@ -43,7 +49,9 @@ The app is built for people who want to plan Jamaica without bouncing between ma
 ## How To Use The App
 
 1. **Explore Jamaica**
-   - Browse destinations and experiences by vibe, region, and category.
+   - Browse all 14 parish guide cards, each with a renowned hero attraction/place and hero image.
+   - Filter destinations and experiences by vibe, parish, region, attraction, and category.
+   - Check entry notes before adding a stop: free public access, ticket required, pass recommended, or confirm locally.
    - Save places or experiences that fit the trip.
 
 2. **Open The Map**
@@ -58,7 +66,8 @@ The app is built for people who want to plan Jamaica without bouncing between ma
 
 4. **Build A Trip**
    - Choose visitor or local mode.
-   - Select a starting base, dates, trip length, vibe, and budget.
+   - Select a starting base, dates, trip length, vibe, budget, and starting point.
+   - Pick a major origin airport, Jamaica starting area, or tap **Use exact GPS** to set a browser-provided starting coordinate.
    - Edit route order, lock important stops, add day notes, and assign saved ideas to days.
 
 5. **Check Travel Support**
@@ -72,6 +81,7 @@ The app is built for people who want to plan Jamaica without bouncing between ma
 ## Main Features
 
 - Destination and experience explorer with vibe filters and search
+- 14-parish Jamaica guide with hero attractions, hero images, local tips, visitor tips, and ticket/pass notes
 - Interactive MapLibre map with road-following route overlays
 - Jamaica-specific road pacing, weather cues, local content, and trip language
 - Saved boards with link import parsing and metadata enrichment
@@ -79,6 +89,7 @@ The app is built for people who want to plan Jamaica without bouncing between ma
 - Optional email sign-in for cloud-saved Jamaica boards
 - PWA share target for sending external travel links into the Saved import flow
 - Region-aware trip planner with editable route order, route locks, pacing, budget, dates, and notes
+- Expanded origin picker with US/Canada airports, Jamaica starting areas, and optional exact GPS start
 - Trip planning support panel for share links, stays, flights, road routes, and events
 - Flight snapshots through AviationStack or saved examples
 - Stay recommendations through Amadeus when available or curated Jamaica picks when not
@@ -102,6 +113,8 @@ IrieVerse does not require every provider key to be present. It is designed to s
 | Events | Built-in Jamaica calendar today | Curated regional calendar |
 
 No Amadeus key is required to launch the app. If Amadeus is not connected, stays intentionally show curated Jamaica recommendations.
+
+Exact GPS is optional. The app does not prompt for location on load; it asks only when a user taps **Use exact GPS** in the trip builder.
 
 ## Quick Start
 

@@ -154,6 +154,8 @@ function getDestinationSearchText(destination: Destination): string {
   return [
     destination.name,
     destination.region,
+    destination.parish ?? "",
+    destination.heroAttraction ?? "",
     destination.headline,
     destination.description,
     destination.highlights.join(" "),
