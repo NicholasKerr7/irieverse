@@ -1,7 +1,7 @@
 import { BookingOption } from "../types/travel";
 import type { BookingApiMeta } from "../types/api";
 
-const BOOKINGS_API = import.meta.env.VITE_BOOKING_API_URL?.trim();
+const BOOKINGS_API = getBookingApiUrl();
 
 interface BookingSearchParams {
   checkInDate?: string;
@@ -13,6 +13,7 @@ export type BookingSourceMeta = {
   source: BookingApiMeta["source"] | "api" | "local";
   reason?: string;
   endpointConfigured: boolean;
+  providerConfigured: boolean;
   checkInDate?: string;
   checkOutDate?: string;
   adults?: number;
@@ -28,11 +29,13 @@ export function getInitialBookingSourceMeta(): BookingSourceMeta {
     ? {
         source: "api",
         endpointConfigured: true,
+        providerConfigured: false,
         reason: "endpoint-configured",
       }
     : {
         source: "local",
         endpointConfigured: false,
+        providerConfigured: false,
         reason: "local-sample-data",
       };
 }
@@ -42,26 +45,46 @@ export async function fetchBookingOptions(
   originAirportCode: string,
   searchParams: BookingSearchParams = {}
 ): Promise<BookingOptionsResult> {
-  const endpoint = BOOKINGS_API
-    ? buildBookingEndpoint(destinationAirportCode, originAirportCode, searchParams)
-    : `/data/bookings.json`;
+  if (BOOKINGS_API) {
+    try {
+      const response = await fetch(buildBookingEndpoint(destinationAirportCode, originAirportCode, searchParams));
+      if (!response.ok) {
+        throw new Error(`Booking fetch failed: ${response.statusText}`);
+      }
 
-  const response = await fetch(endpoint);
-  if (!response.ok) {
-    throw new Error(`Booking fetch failed: ${response.statusText}`);
+      const payload: unknown = await response.json();
+      const data = normalizeBookingResponse(payload);
+      const meta = getEndpointBookingMeta(payload);
+
+      return {
+        options: data.slice(0, 4),
+        meta,
+      };
+    } catch {
+      return {
+        options: await fetchLocalBookingOptions(destinationAirportCode),
+        meta: {
+          source: "local",
+          reason: "booking-proxy-request-failed",
+          endpointConfigured: true,
+          providerConfigured: false,
+        },
+      };
+    }
   }
-  const payload: unknown = await response.json();
-  const data: BookingOption[] = BOOKINGS_API
-    ? normalizeBookingResponse(payload)
-    : getFallbackBookingOptions(payload, destinationAirportCode);
-  const meta = BOOKINGS_API
-    ? getEndpointBookingMeta(payload)
-    : getInitialBookingSourceMeta();
 
   return {
-    options: data.slice(0, 4),
-    meta,
+    options: await fetchLocalBookingOptions(destinationAirportCode),
+    meta: getInitialBookingSourceMeta(),
   };
+}
+
+function getBookingApiUrl(): string {
+  const configured = import.meta.env.VITE_BOOKING_API_URL?.trim();
+  if (configured) {
+    return /^(0|false|off|local|disabled)$/i.test(configured) ? "" : configured;
+  }
+  return "/api/bookings";
 }
 
 function buildBookingEndpoint(
@@ -90,6 +113,7 @@ function getEndpointBookingMeta(payload: unknown): BookingSourceMeta {
     const meta: BookingSourceMeta = {
       source: normalizeBookingSource(payload.meta.source),
       endpointConfigured: true,
+      providerConfigured: payload.meta.providerConfigured === true,
     };
     const reason = asString(payload.meta.reason);
     const checkInDate = asString(payload.meta.checkInDate);
@@ -105,6 +129,7 @@ function getEndpointBookingMeta(payload: unknown): BookingSourceMeta {
   return {
     source: "api",
     endpointConfigured: true,
+    providerConfigured: true,
     reason: "custom-endpoint",
   };
 }
@@ -119,6 +144,15 @@ function getFallbackBookingOptions(payload: unknown, destinationAirportCode: str
   if (!isRecord(payload)) return [];
   const options = payload[destinationAirportCode];
   return Array.isArray(options) ? options as BookingOption[] : [];
+}
+
+async function fetchLocalBookingOptions(destinationAirportCode: string): Promise<BookingOption[]> {
+  const response = await fetch("/data/bookings.json");
+  if (!response.ok) {
+    throw new Error(`Local booking data failed: ${response.statusText}`);
+  }
+  const payload: unknown = await response.json();
+  return getFallbackBookingOptions(payload, destinationAirportCode).slice(0, 4);
 }
 
 function asString(value: unknown): string | undefined {

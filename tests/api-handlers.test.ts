@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { promises as dns } from "node:dns";
-import bookingsHandler from "../api/bookings";
+import bookingsHandler, { resetBookingsHandlerStateForTest } from "../api/bookings";
 import flightsHandler, { resetFlightsHandlerStateForTest } from "../api/flights";
 import importMetadataHandler, {
   resetImportMetadataHandlerStateForTest,
@@ -37,6 +37,7 @@ async function main() {
   await testApiGuardRateLimitsByClient();
   await testBookingsFallbackWithoutCredentials();
   await testBookingsLiveAmadeusNormalization();
+  await testBookingsProviderLimitFallback();
   await testFlightsLiveAviationStackNormalization();
   await testFlightsRateLimitFallbackAndCooldown();
   await testImportMetadataBlocksPrivateUrls();
@@ -276,6 +277,7 @@ async function testBookingsFallbackWithoutCredentials() {
     const body = assertBody<BookingApiResponse>(response.body);
     assert.equal(body.meta.source, "fallback");
     assert.equal(body.meta.reason, "missing-amadeus-credentials");
+    assert.equal(body.meta.providerConfigured, false);
     assert.ok(Array.isArray(body.data));
     assert.equal(body.data.length, 2);
   } finally {
@@ -284,6 +286,7 @@ async function testBookingsFallbackWithoutCredentials() {
 }
 
 async function testBookingsLiveAmadeusNormalization() {
+  resetBookingsHandlerStateForTest();
   const restoreEnv = withEnv({
     AMADEUS_CLIENT_ID: "test-client",
     AMADEUS_CLIENT_SECRET: "test-secret",
@@ -372,6 +375,7 @@ async function testBookingsLiveAmadeusNormalization() {
     assert.equal(response.statusCode, 200);
     const body = assertBody<BookingApiResponse>(response.body);
     assert.equal(body.meta.source, "amadeus");
+    assert.equal(body.meta.providerConfigured, true);
     assert.equal(body.meta.adults, 2);
     assert.ok(Array.isArray(body.data));
     assert.equal(body.data[0]?.title, "Harbour View Stay");
@@ -383,7 +387,63 @@ async function testBookingsLiveAmadeusNormalization() {
     ]);
     assert.equal(calls.length, 3);
   } finally {
+    resetBookingsHandlerStateForTest();
     globalThis.fetch = originalFetch;
+    restoreEnv();
+  }
+}
+
+async function testBookingsProviderLimitFallback() {
+  resetBookingsHandlerStateForTest();
+  const restoreEnv = withEnv({
+    AMADEUS_CLIENT_ID: "test-client",
+    AMADEUS_CLIENT_SECRET: "test-secret",
+    AMADEUS_BASE_URL: "https://amadeus.test",
+  });
+  const originalFetch = globalThis.fetch;
+  const originalWarn = console.warn;
+  console.warn = () => {};
+
+  globalThis.fetch = async (url) => {
+    const urlText = String(url);
+
+    if (urlText.endsWith("/v1/security/oauth2/token")) {
+      return jsonResponse({
+        access_token: "test-token",
+        expires_in: 1200,
+      });
+    }
+
+    if (urlText.startsWith("https://amadeus.test/v1/reference-data/locations/hotels/by-city")) {
+      return jsonResponse({ errors: [{ title: "Too Many Requests" }] }, { status: 429 });
+    }
+
+    throw new Error(`Unexpected Amadeus fetch: ${urlText}`);
+  };
+
+  try {
+    const response = createResponse();
+    await bookingsHandler(
+      {
+        method: "GET",
+        query: {
+          destination: "MBJ",
+          origin: "JFK",
+        },
+      },
+      response
+    );
+
+    assert.equal(response.statusCode, 200);
+    const body = assertBody<BookingApiResponse>(response.body);
+    assert.equal(body.meta.source, "fallback");
+    assert.equal(body.meta.reason, "amadeus-rate-limited");
+    assert.equal(body.meta.providerConfigured, true);
+    assert.ok(body.data.length > 0);
+  } finally {
+    resetBookingsHandlerStateForTest();
+    globalThis.fetch = originalFetch;
+    console.warn = originalWarn;
     restoreEnv();
   }
 }
@@ -624,12 +684,16 @@ function createResponse(): TestResponse {
   };
 }
 
-function jsonResponse(payload: unknown): Response {
+function jsonResponse(payload: unknown, init: ResponseInit = {}): Response {
+  const headers = new Headers(init.headers);
+  if (!headers.has("content-type")) {
+    headers.set("content-type", "application/json");
+  }
+
   return new Response(JSON.stringify(payload), {
-    status: 200,
-    headers: {
-      "content-type": "application/json",
-    },
+    ...init,
+    status: init.status ?? 200,
+    headers,
   });
 }
 

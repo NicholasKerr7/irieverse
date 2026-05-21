@@ -42,6 +42,7 @@ export type FlightApiResponse = {
 export type BookingApiMeta = {
   source: "amadeus" | "fallback";
   reason?: string;
+  providerConfigured: boolean;
   checkInDate?: string;
   checkOutDate?: string;
   adults?: number;

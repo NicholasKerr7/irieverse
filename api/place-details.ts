@@ -89,6 +89,7 @@ export default async function placeDetailsHandler(req: ApiRequest, res: ApiRespo
       meta: {
         source: "curated",
         providerConfigured: false,
+        reason: "missing-google-places-key",
       },
     };
     res.status(200).json(payload);
@@ -127,12 +128,15 @@ export default async function placeDetailsHandler(req: ApiRequest, res: ApiRespo
     res.status(200).json(payload);
   } catch (error) {
     console.warn(`Place details lookup unavailable; using curated details. ${formatErrorForLog(error)}`);
+    const reason = error instanceof GooglePlacesError && error.status === 429
+      ? "google-places-rate-limited"
+      : "lookup-unavailable";
     const payload: PlaceDetailsApiResponse = {
       data: null,
       meta: {
         source: "curated",
         providerConfigured: true,
-        reason: "lookup-unavailable",
+        reason,
       },
     };
     res.status(200).json(payload);
@@ -170,7 +174,7 @@ async function fetchGooglePlaceDetails(apiKey: string, query: PlaceDetailsQuery)
   });
 
   if (!response.ok) {
-    throw new Error(`Google Places lookup failed: ${response.status}`);
+    throw new GooglePlacesError(response.status, `Google Places lookup failed: ${response.status}`);
   }
 
   const payload: unknown = await response.json();
@@ -195,6 +199,16 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise
 
 function formatErrorForLog(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+class GooglePlacesError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "GooglePlacesError";
+    this.status = status;
+  }
 }
 
 function normalizeGooglePlace(place: Record<string, unknown>): PlaceDetailsApiData {

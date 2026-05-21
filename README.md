@@ -1,87 +1,205 @@
 # IrieVerse Travel OS
-An interactive Jamaica trip planner built with React + Vite. Explore destinations and experiences, view maps, live events, flight snapshots, budgeting, and export/share itineraries.
 
-## Features
-- Destination + experience explorer with vibe filters and search
-- Interactive map powered by MapLibre with road-following route overlays
-- Jamaica-specific road pacing, weather cues, and local food/music/beach/culture content
-- Saved boards with automatic Google Maps, TikTok, Instagram, YouTube, and article link parsing plus preview images/descriptions when metadata is available
-- Optional email sign-in for cloud-saved Jamaica boards across devices
+IrieVerse is a Jamaica-focused travel planning app for building a real trip from scattered ideas. It combines destination discovery, saved link imports, road-aware route planning, flight and stay snapshots, budget cues, local events, sharing, and calendar export in one interactive workspace.
+
+The app is built for people who want to plan Jamaica without bouncing between maps, notes, social posts, flight tabs, hotel tabs, and generic itinerary tools that do not understand the island.
+
+## What It Solves
+
+- Turns saved links, Google Maps places, TikToks, Instagram posts, YouTube links, and articles into usable trip ideas.
+- Helps travelers understand which Jamaica region fits their vibe, dates, budget, pace, and starting airport.
+- Replaces straight-line map guesses with road-following route previews and fallback messaging when route data is limited.
+- Keeps planning useful when live providers are missing, rate-limited, or temporarily unavailable.
+- Separates live data from curated Jamaica content so users know what is current and what is an editorial planning aid.
+- Gives visitors and locals one place to compare stops, build day plans, save ideas, export calendars, and share trips.
+
+## What Makes It Stand Out
+
+- **Jamaica-first planning**: destinations, experiences, route pacing, region labels, airport choices, events, and trip language are specific to Jamaica.
+- **Road-aware map planning**: MapLibre renders Jamaica pins and route geometry, while the route drawer keeps estimated lines available if detailed routing is unavailable.
+- **Saved idea intelligence**: imported URLs can extract titles, descriptions, images, place facts, coordinates, and map anchors when metadata is available.
+- **Live plus curated coverage**: flights, stays, place details, road routes, events, and sharing all label whether they are live, curated, limited, or paused.
+- **Graceful provider handling**: the app still works without Amadeus. Stays show curated Jamaica recommendations until live hotel pricing is connected.
+- **Trip-building workspace**: route order, day assignments, locked stops, notes, saved places, imported ideas, budgets, dates, and exports live together.
+- **PWA-ready experience**: app shortcuts, install icons, share target support, offline cached data, and production QA checks are included.
+
+## Questions IrieVerse Can Answer
+
+- Where should I start my Jamaica trip based on my vibe?
+- Which stops fit a food, beach, music, culture, nightlife, or family-friendly trip?
+- How many days do I need for this route?
+- What is the drive time between the places I picked?
+- Is this route road-aware or only an estimated preview right now?
+- Which saved places and imported ideas are already mapped?
+- Which saved ideas still need Jamaica map anchors?
+- Which flights are live and which are saved examples?
+- Are stays live-priced, curated, or limited by provider availability?
+- What can I do near my selected base?
+- Which day should a saved place or imported idea belong to?
+- Can I export this itinerary to a calendar?
+- Can I share this trip as a view-only link?
+- What still needs setup before a production launch?
+
+## How To Use The App
+
+1. **Explore Jamaica**
+   - Browse destinations and experiences by vibe, region, and category.
+   - Save places or experiences that fit the trip.
+
+2. **Open The Map**
+   - Compare destinations, imported pins, and route stops.
+   - Use route tabs to inspect each travel leg.
+   - Open place details to see live place info when available or curated notes when not.
+
+3. **Import Saved Ideas**
+   - Paste a Google Maps, TikTok, Instagram, YouTube, article, or normal web URL into Saved.
+   - IrieVerse extracts the best available preview and links the idea to a Jamaica planning area when possible.
+   - Place imported ideas on the map if they need manual cleanup.
+
+4. **Build A Trip**
+   - Choose visitor or local mode.
+   - Select a starting base, dates, trip length, vibe, and budget.
+   - Edit route order, lock important stops, add day notes, and assign saved ideas to days.
+
+5. **Check Travel Support**
+   - Trips shows a compact live/curated status panel for sharing, stays, flights, road planning, and events.
+   - Current sources are labeled separately from curated or limited sources.
+
+6. **Export Or Share**
+   - Export the itinerary as an ICS calendar file.
+   - If Supabase sharing is enabled, create a view-only share link with local edit-token updates from the creating browser.
+
+## Main Features
+
+- Destination and experience explorer with vibe filters and search
+- Interactive MapLibre map with road-following route overlays
+- Jamaica-specific road pacing, weather cues, local content, and trip language
+- Saved boards with link import parsing and metadata enrichment
+- Google Maps import enrichment when `GOOGLE_PLACES_API_KEY` is configured
+- Optional email sign-in for cloud-saved Jamaica boards
 - PWA share target for sending external travel links into the Saved import flow
-- Region-aware trip planner with editable route order, route pacing, drive estimates, budget, dates, and ICS export
-- Trip planning confidence panel for share links, stays, flights, road routes, and events
-- Flight snapshot with live schedules or saved examples
-- Island calendar and stay recommendations with live data or curated examples
-- Optional Supabase-backed cloud boards and view-only trip sharing with local edit-token updates
-- Production QA deletes its own Supabase test share rows through the protected cleanup RPC
-- PWA manifest, full install/maskable icon set, app shortcuts, and same-origin offline cache for fallback data/assets
+- Region-aware trip planner with editable route order, route locks, pacing, budget, dates, and notes
+- Trip planning support panel for share links, stays, flights, road routes, and events
+- Flight snapshots through AviationStack or saved examples
+- Stay recommendations through Amadeus when available or curated Jamaica picks when not
+- Place detail enrichment through Google Places or curated Jamaica notes
+- Optional Supabase-backed cloud boards and view-only trip sharing
+- Production QA that validates routes, APIs, PWA assets, and cleanup behavior
+- PWA manifest, install icons, shortcuts, share target, and same-origin offline cache
 
-## Quick start
-1) Install Node 22.x (`.nvmrc` is set to the Node 22 LTS line)
-2) Install deps: `npm install`
-3) Run dev server: `npm run dev`
-4) Build for prod: `npm run build`
+## Live Integrations And Curated Mode
 
-## Environment (optional)
-Copy `.env.example` to `.env.local` and fill any of the following:
+IrieVerse does not require every provider key to be present. It is designed to stay honest and usable:
 
+| Area | Live when configured | When missing or limited |
+| --- | --- | --- |
+| Flights | AviationStack through `/api/flights` | Saved flight examples |
+| Stays | Amadeus through `/api/bookings` | Curated Jamaica stays |
+| Place details | Google Places through `/api/place-details` | Curated Jamaica notes |
+| Saved imports | Metadata and Google Places enrichment through `/api/import-metadata` | Local link parsing |
+| Road routes | OSRM-compatible route provider through `/api/road-route` | Estimated route preview |
+| Sharing | Supabase Auth and trip RPCs | Local planning and calendar export |
+| Events | Built-in Jamaica calendar today | Curated regional calendar |
+
+No Amadeus key is required to launch the app. If Amadeus is not connected, stays intentionally show curated Jamaica recommendations.
+
+## Quick Start
+
+1. Install Node 22.x. The `.nvmrc` file is set to the Node 22 LTS line.
+2. Install dependencies:
+
+```bash
+npm install
 ```
-VITE_SUPABASE_URL=your_supabase_url           # enables cloud boards + trip sharing
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key # enables cloud boards + trip sharing
-AVIATIONSTACK_API_KEY=your_key                # server-only live flights through /api/flights
-AVIATIONSTACK_DISABLED=false                  # set true locally to force saved examples
-AVIATIONSTACK_CACHE_TTL_SECONDS=900           # cache live flight lookups for 15 minutes
-AVIATIONSTACK_COOLDOWN_SECONDS=1800           # pause provider calls for 30 minutes after rate limits
-VITE_FLIGHTS_API_URL=/api/flights             # optional flight proxy override
-VITE_BOOKING_API_URL=/api/bookings            # live bookings through the Vercel Amadeus proxy
-AMADEUS_CLIENT_ID=your_amadeus_api_key        # server-only; do not prefix with VITE_
-AMADEUS_CLIENT_SECRET=your_amadeus_api_secret # server-only; do not prefix with VITE_
-ROUTING_API_BASE_URL=https://router.project-osrm.org # server-only road routing proxy
-ROUTING_API_TIMEOUT_MS=4500                   # stop slow routing calls before they hold up the map
-ROUTING_PROVIDER_COOLDOWN_SECONDS=45          # throttle repeated routing failure logs
-IRIEVERSE_ALLOWED_ORIGINS=https://irieverse.vercel.app # comma-separated API browser origins
+
+3. Start local development:
+
+```bash
+npm run dev
 ```
 
-If env vars are absent, the app falls back to local sample data in `public/data`.
-See `docs/production-env.md` for production platform setup, booking API response shape, and Supabase migration details.
+4. Build for production:
+
+```bash
+npm run build
+```
+
+## Environment
+
+Copy the template and fill only the integrations you are ready to use:
+
+```bash
+cp .env.example .env.local
+```
+
+Common optional variables:
+
+```text
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_SUPABASE_DISABLED=false
+
+AVIATIONSTACK_API_KEY=your_aviationstack_key
+AVIATIONSTACK_DISABLED=false
+AVIATIONSTACK_CACHE_TTL_SECONDS=900
+AVIATIONSTACK_COOLDOWN_SECONDS=1800
+VITE_FLIGHTS_API_URL=/api/flights
+
+VITE_BOOKING_API_URL=/api/bookings
+AMADEUS_CLIENT_ID=your_amadeus_api_key
+AMADEUS_CLIENT_SECRET=your_amadeus_api_secret
+AMADEUS_BASE_URL=https://test.api.amadeus.com
+
+GOOGLE_PLACES_API_KEY=your_google_places_key
+
+ROUTING_API_BASE_URL=https://router.project-osrm.org
+ROUTING_API_TIMEOUT_MS=4500
+ROUTING_PROVIDER_COOLDOWN_SECONDS=45
+
+IRIEVERSE_ALLOWED_ORIGINS=https://irieverse.vercel.app
+IRIEVERSE_API_RATE_LIMIT_WINDOW_SECONDS=60
+```
+
+Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack, Amadeus, Google Places, and routing credentials server-only.
+
+See [docs/production-env.md](docs/production-env.md) for provider setup, production environment commands, API contracts, and Supabase migration details.
+
+## Development Scripts
+
+```bash
+npm run dev             # Start Vite
+npm run typecheck       # TypeScript checks
+npm run test:api        # API handler regression tests
+npm run build           # Service worker build plus production Vite build
+npm run qa:local        # Playwright app-flow QA against a local dev server
+npm run qa:production   # Playwright production QA against IRIEVERSE_APP_URL
+npm run verify          # Typecheck, API tests, maintenance checks, audit, build
+npm run verify:full     # Full verify plus local browser QA
+npm run maintenance     # Production audit plus outdated package report
+```
 
 ## Deployment
-- Vercel: Import the repo, Framework = Vite, Build Command = `npm run build`, Output = `dist`, add env vars as needed.
-- The booking integration uses the Vercel serverless route at `/api/bookings`.
-- The flight integration uses the Vercel serverless route at `/api/flights` so AviationStack secrets stay server-only. The proxy caches live lookups and cools down after provider rate limits.
-- The import flow uses `/api/import-metadata` for Open Graph and YouTube metadata, follows safe public redirects for cleaner canonical URLs, then falls back to local link heuristics when platforms block metadata.
-- The map driving overlay uses the serverless route at `/api/road-route` for road geometry and maneuver previews.
-- The Trips screen shows planning confidence so production QA can verify what is live, estimated, or curated.
-- PWA shortcuts open app tabs directly with `?tab=explore`, `?tab=map`, and `?tab=trips`.
-- Installed PWA share actions open `?tab=saved` with shared title/text/url prefilled and categorized for import.
-- Plain static hosting: run `npm run build` and serve the `dist` folder (e.g., `npx serve dist`).
 
-## Launch checks
-- `npm run verify`
-- `npm run verify:full`
-- `npm run qa:production`
-- Confirm `/?page=privacy` and `/?page=terms` match the current launch policy.
-- Push Supabase migrations before enabling shared trips in production.
-- Add live provider credentials for flights, stays, places, and routing only when those services are approved for production traffic.
+Recommended deployment target: Vercel.
 
-## Dependency maintenance
-- Dependabot checks npm packages and GitHub Actions weekly, grouping minor/patch updates into dependency PRs.
-- Major version updates are intentionally ignored by Dependabot so they can be planned and tested manually.
-- Dependency Review runs on dependency-changing PRs and blocks high-severity vulnerable additions.
-- A weekly Dependency Maintenance workflow runs the same production audit and outdated-package report, and can be launched manually from GitHub Actions.
-- The pull request template includes a dependency update checklist for Dependabot and manual package bumps.
-- `npm run maintenance` runs the high-severity production audit and prints outdated packages.
-- `npm run check:maintenance` verifies the repo maintenance scripts and GitHub config are still wired correctly.
-- `npm run verify` runs typecheck, API regression tests, maintenance config checks, production dependency audit, and production build.
-- `npm run verify:full` runs `npm run verify` plus local browser QA.
-- `npm run audit:all` checks the full dependency tree at moderate severity when doing a deeper maintenance pass.
-- `npm run audit:fix:dry` previews npm audit fixes before changing the lockfile.
+- Framework: Vite
+- Build command: `npm run build`
+- Output directory: `dist`
+- Serverless API routes: `api/*.ts`
 
-See `docs/dependency-maintenance.md` for the full dependency review runbook.
+Production checklist:
 
-Current audit note: the production dependency audit and full moderate-severity audit both pass with zero reported vulnerabilities.
+- Add `GOOGLE_PLACES_API_KEY` for live place details and richer Google Maps imports.
+- Add `AVIATIONSTACK_API_KEY` for live flight snapshots.
+- Leave Amadeus unset until you have credentials. Curated stays will remain active.
+- Add `AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`, and `AMADEUS_BASE_URL` when hotel pricing is ready.
+- Add `IRIEVERSE_ALLOWED_ORIGINS` for any custom domain beyond the default production domain.
+- Push Supabase migrations before enabling cloud boards or shared trips.
+- Run `npm run verify:full` before shipping a major UI or integration change.
+- Run `npm run qa:production` after deployment.
 
 ## Screenshots
+
 Generated by the Playwright QA flow against the current app build.
 
 | Home | Explore | Map |
@@ -100,13 +218,33 @@ Desktop map:
 
 ![Desktop map](public/screenshots/desktop-map.png)
 
-## Marketing kit
-- Strategy: `docs/marketing-strategy.md`
-- Local mode plan: `docs/local-mode-plan.md`
-- Static press kit page: `public/press-kit.html`
+## Marketing Kit
+
+- Strategy: [docs/marketing-strategy.md](docs/marketing-strategy.md)
+- Local mode plan: [docs/local-mode-plan.md](docs/local-mode-plan.md)
+- Static press kit page: [public/press-kit.html](public/press-kit.html)
 - Production press kit URL after deploy: `https://irieverse.vercel.app/press-kit.html`
 
-The marketing kit uses the QA-generated screenshots above, so launch visuals stay aligned with the current production app.
+The marketing kit uses QA-generated screenshots, so launch visuals stay aligned with the app.
 
-## Tech stack
-React 18, Vite, TypeScript, Tailwind CSS, MapLibre via `react-map-gl`, Supabase (optional for collab).
+## Tech Stack
+
+- React 18
+- Vite
+- TypeScript
+- Tailwind CSS
+- MapLibre through `react-map-gl`
+- Supabase for optional auth, cloud boards, and trip sharing
+- Vercel serverless functions for provider-safe API proxies
+- Playwright for local and production QA
+
+## Maintenance
+
+- Dependabot checks npm packages and GitHub Actions weekly.
+- Major dependency upgrades are handled manually because React, Vite, Tailwind, MapLibre, and TypeScript major bumps can affect UI and build behavior.
+- Dependency Review blocks high-severity vulnerable additions.
+- `npm run verify` runs the standard pre-push safety checks.
+- `npm run verify:full` adds the browser QA suite.
+- `npm run audit:all` runs the deeper moderate-severity audit.
+
+See [docs/dependency-maintenance.md](docs/dependency-maintenance.md) for the full dependency review runbook.

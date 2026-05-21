@@ -68,6 +68,10 @@ const FALLBACK_BOOKINGS = {
 
 let cachedToken: { accessToken: string; expiresAt: number } | null = null;
 
+export function resetBookingsHandlerStateForTest() {
+  cachedToken = null;
+}
+
 export default async function bookingsHandler(req: ApiRequest, res: ApiResponse) {
   if (!guardApiRequest(req, res, {
     routeId: "bookings",
@@ -98,6 +102,7 @@ export default async function bookingsHandler(req: ApiRequest, res: ApiResponse)
       meta: {
         source: "fallback",
         reason: "missing-amadeus-credentials",
+        providerConfigured: false,
       },
     };
     res.status(200).json(payload);
@@ -123,6 +128,7 @@ export default async function bookingsHandler(req: ApiRequest, res: ApiResponse)
       meta: {
         source: amadeusOptions.length ? "amadeus" : "fallback",
         ...(amadeusOptions.length ? {} : { reason: "no-amadeus-offers" }),
+        providerConfigured: true,
         checkInDate,
         checkOutDate,
         adults,
@@ -131,11 +137,15 @@ export default async function bookingsHandler(req: ApiRequest, res: ApiResponse)
     res.status(200).json(payload);
   } catch (error) {
     console.warn(`Amadeus booking lookup unavailable; using curated stays. ${formatErrorForLog(error)}`);
+    const reason = error instanceof AmadeusError && error.status === 429
+      ? "amadeus-rate-limited"
+      : "amadeus-request-failed";
     const payload: BookingApiResponse = {
       data: getFallbackBookings(cityCode),
       meta: {
         source: "fallback",
-        reason: "amadeus-request-failed",
+        reason,
+        providerConfigured: true,
       },
     };
     res.status(200).json(payload);
@@ -170,7 +180,7 @@ async function getAmadeusAccessToken(baseUrl: string, clientId: string, clientSe
   });
 
   if (!response.ok) {
-    throw new Error(`Amadeus auth failed: ${response.status}`);
+    throw new AmadeusError(response.status, `Amadeus auth failed: ${response.status}`);
   }
 
   const payload: unknown = await response.json();
@@ -202,7 +212,7 @@ async function getHotelIdsByCity(baseUrl: string, accessToken: string, cityCode:
   });
 
   if (!response.ok) {
-    throw new Error(`Amadeus hotel list failed: ${response.status}`);
+    throw new AmadeusError(response.status, `Amadeus hotel list failed: ${response.status}`);
   }
 
   const payload: unknown = await response.json();
@@ -241,7 +251,7 @@ async function getHotelOffers(
   });
 
   if (!response.ok) {
-    throw new Error(`Amadeus hotel offers failed: ${response.status}`);
+    throw new AmadeusError(response.status, `Amadeus hotel offers failed: ${response.status}`);
   }
 
   const payload: unknown = await response.json();
@@ -314,6 +324,16 @@ function buildHotelSearchUrl(title: string, cityCode: CityCode): string {
 
 function getFallbackBookings(cityCode: CityCode): BookingOption[] {
   return FALLBACK_BOOKINGS[cityCode] ?? FALLBACK_BOOKINGS.MBJ;
+}
+
+class AmadeusError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "AmadeusError";
+    this.status = status;
+  }
 }
 
 function normalizeAirportCode(value: unknown): string {
