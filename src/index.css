@@ -490,8 +490,19 @@ html.light .bg-amber-50 {
   background-color: rgba(250, 244, 218, 0.72) !important;
 }
 
+html.light [class~="bg-amber-300/10"],
+html.light [class~="bg-amber-300/15"] {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
 html.light .bg-rose-50 {
   background-color: rgba(253, 237, 240, 0.72) !important;
+}
+
+html.light [class~="bg-rose-300/10"],
+html.light [class~="bg-rose-300/15"],
+html.light [class~="bg-rose-400/20"] {
+  background-color: rgba(244, 63, 94, 0.11) !important;
 }
 
 html.light .text-slate-100,
@@ -521,9 +532,22 @@ html.light .text-emerald-300 {
   color: #047857 !important;
 }
 
+html.light .text-emerald-50 {
+  color: #047857 !important;
+}
+
+html.light .text-amber-50,
+html.light .text-amber-100,
 html.light .text-amber-200,
 html.light .text-amber-300 {
-  color: #b45309 !important;
+  color: #a16207 !important;
+}
+
+html.light .text-rose-50,
+html.light .text-rose-100,
+html.light .text-rose-200,
+html.light .text-rose-300 {
+  color: #be123c !important;
 }
 
 .media-overlay .text-white {
