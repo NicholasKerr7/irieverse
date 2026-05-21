@@ -1786,6 +1786,7 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
     body: string;
   }>;
   const liveCount = integrationCards.filter((card) => card.tone === "live").length;
+  const curatedCount = integrationCards.filter((card) => card.tone === "fallback").length;
   const attentionCount = integrationCards.filter((card) => card.tone === "error").length;
 
   return (
@@ -1795,9 +1796,9 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
           <CheckCircle2 className="h-5 w-5 text-cyan-300" />
           <div>
             <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Travel support</p>
-            <h2 className="text-lg font-semibold">Your plan has the essentials ready.</h2>
+            <h2 className="text-lg font-semibold">Live and curated coverage.</h2>
             <p className="mt-1 text-xs leading-5 text-slate-400">
-              Export, route planning, stays, flights, and events stay useful even when internet data is limited.
+              The plan labels which sources are current and which ones are curated or limited.
             </p>
           </div>
         </div>
@@ -1811,9 +1812,9 @@ function IntegrationStatusPanel({ app }: { app: TravelOS }) {
       </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        <TravelSupportPill label="Ready now" value={`${liveCount}/${integrationCards.length}`} tone="live" />
-        <TravelSupportPill label="Review" value={attentionCount ? `${attentionCount}` : "0"} tone={attentionCount ? "error" : "live"} />
-        <TravelSupportPill label="Always works" value="Calendar export" tone="fallback" />
+        <TravelSupportPill label="Live sources" value={`${liveCount}/${integrationCards.length}`} tone="live" />
+        <TravelSupportPill label="Curated/limited" value={`${curatedCount}`} tone="fallback" />
+        <TravelSupportPill label="Action needed" value={attentionCount ? `${attentionCount}` : "0"} tone={attentionCount ? "error" : "live"} />
       </div>
 
       {showDetails && (
@@ -1984,15 +1985,23 @@ function getFlightSourceStatus(app: TravelOS): { status: string; tone: Integrati
 
   if (meta.source === "aviationstack") {
     return {
-      status: "Live flights",
+      status: "Live schedule",
       tone: "live",
       body: "Flight snapshots are current for this origin and Jamaica airport.",
     };
   }
 
+  if (meta.reason === "aviationstack-rate-limited") {
+    return {
+      status: "Provider limit",
+      tone: "fallback",
+      body: getExampleFlightBody(meta.reason, true),
+    };
+  }
+
   if (meta.endpointConfigured && meta.providerConfigured) {
     return {
-      status: "Example flights",
+      status: "Saved examples",
       tone: "fallback",
       body: getExampleFlightBody(meta.reason, true),
     };
@@ -2000,14 +2009,14 @@ function getFlightSourceStatus(app: TravelOS): { status: string; tone: Integrati
 
   if (meta.endpointConfigured) {
     return {
-      status: "Example flights",
+      status: "Saved examples",
       tone: "fallback",
       body: getExampleFlightBody(meta.reason, true),
     };
   }
 
   return {
-    status: "Example flights",
+    status: "Saved examples",
     tone: "fallback",
     body: getExampleFlightBody(meta.reason, false),
   };
@@ -2032,11 +2041,19 @@ function getBookingIntegrationStatus(app: TravelOS): { status: string; tone: Int
     };
   }
 
-  if (meta.source === "api") {
+  if (meta.source === "api" && meta.providerConfigured) {
     return {
       status: "Current stays",
       tone: "live",
       body: "Current stay options are available for this trip.",
+    };
+  }
+
+  if (meta.reason === "amadeus-rate-limited") {
+    return {
+      status: "Provider limit",
+      tone: "fallback",
+      body: getCuratedStayBody(meta.reason, true),
     };
   }
 
@@ -2787,9 +2804,11 @@ function getDayBoardIdeas(app: TravelOS, destinationId: string, day: number) {
 
 function getCuratedStayBody(reason: string | undefined, endpointConfigured: boolean): string {
   const labels: Record<string, string> = {
-    "missing-amadeus-credentials": "Current hotel prices are not available here yet, so curated Jamaica stay ideas are shown.",
+    "missing-amadeus-credentials": "Live hotel pricing is not connected yet, so curated Jamaica stays are ready.",
     "no-amadeus-offers": "No current hotel matches came back for this combination, so curated Jamaica stay ideas are shown.",
+    "amadeus-rate-limited": "The live stay source is cooling down after a provider limit, so curated Jamaica stays are shown.",
     "amadeus-request-failed": "The latest hotel lookup did not finish, so curated Jamaica stay ideas are shown.",
+    "booking-proxy-request-failed": "The stay source could not be reached, so curated Jamaica stays are shown.",
     "request-failed": "The latest stay lookup did not finish, so curated Jamaica stay ideas are shown.",
     "custom-endpoint": "Stay details are limited right now, so curated Jamaica stay ideas are shown.",
     "endpoint-configured": "Curated Jamaica stay ideas are shown for now.",
@@ -2805,9 +2824,9 @@ function getCuratedStayBody(reason: string | undefined, endpointConfigured: bool
 function getExampleFlightBody(reason: string | undefined, endpointConfigured: boolean): string {
   const labels: Record<string, string> = {
     "pending-flight-proxy": "Flight lookup is warming up, so example flight options are shown for this route.",
-    "missing-aviationstack-key": "Current flight schedules are not available here yet, so example flight options are shown.",
+    "missing-aviationstack-key": "Live flight schedules are not connected yet, so saved examples are shown.",
     "aviationstack-disabled": "Current flight schedules are paused here, so example flight options are shown.",
-    "aviationstack-rate-limited": "Current flight schedules are busy right now, so example flight options are shown.",
+    "aviationstack-rate-limited": "The live flight source is cooling down after a provider limit, so saved examples are shown.",
     "aviationstack-request-failed": "The latest flight lookup did not finish, so example flight options are shown.",
     "flight-proxy-request-failed": "The latest flight lookup did not finish, so example flight options are shown.",
     "missing-flight-metadata": "Flight details are limited right now, so example flight options are shown.",

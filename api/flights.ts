@@ -1,5 +1,6 @@
 import type { ApiRequest, ApiResponse, FlightApiResponse } from "../src/types/api";
 import type { FlightOption } from "../src/types/travel";
+import { guardApiRequest } from "./_shared/api-guard";
 
 const AVIATIONSTACK_BASE_URL = "https://api.aviationstack.com/v1/flights";
 const MAX_FLIGHT_OPTIONS = 4;
@@ -17,22 +18,12 @@ export function resetFlightsHandlerStateForTest() {
 }
 
 export default async function flightsHandler(req: ApiRequest, res: ApiResponse) {
-  setResponseHeaders(res);
-
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
-  }
-
-  if (req.method === "HEAD") {
-    res.status(200).end();
-    return;
-  }
-
-  if (req.method !== "GET") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
+  if (!guardApiRequest(req, res, {
+    routeId: "flights",
+    allowedMethods: ["GET", "HEAD"],
+    cacheControl: "s-maxage=600, stale-while-revalidate=1800",
+    rateLimitMax: 60,
+  })) return;
 
   const query = req.query ?? {};
   const origin = normalizeAirportCode(query.origin);
@@ -100,13 +91,6 @@ export default async function flightsHandler(req: ApiRequest, res: ApiResponse) 
     console.warn(`AviationStack flight lookup unavailable; using saved examples. ${formatErrorForLog(error)}`);
     res.status(200).json(buildFallbackResponse("aviationstack-request-failed", true, origin, destination));
   }
-}
-
-function setResponseHeaders(res: ApiResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Cache-Control", "s-maxage=600, stale-while-revalidate=1800");
 }
 
 function getAviationStackApiKey(): string {

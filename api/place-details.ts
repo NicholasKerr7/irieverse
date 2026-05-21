@@ -5,6 +5,7 @@ import type {
   PlaceDetailsApiResponse,
   QueryRecord,
 } from "../src/types/api";
+import { guardApiRequest } from "./_shared/api-guard";
 
 const GOOGLE_PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 const PLACE_DETAILS_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
@@ -68,22 +69,12 @@ type GooglePlaceSearchBody = {
 };
 
 export default async function placeDetailsHandler(req: ApiRequest, res: ApiResponse) {
-  setResponseHeaders(res);
-
-  if (req.method === "OPTIONS") {
-    res.status(204).end();
-    return;
-  }
-
-  if (req.method === "HEAD") {
-    res.status(200).end();
-    return;
-  }
-
-  if (req.method !== "GET") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
+  if (!guardApiRequest(req, res, {
+    routeId: "place_details",
+    allowedMethods: ["GET", "HEAD"],
+    cacheControl: "s-maxage=43200, stale-while-revalidate=86400",
+    rateLimitMax: 120,
+  })) return;
 
   const query = normalizePlaceDetailsQuery(req.query);
   if (!query) {
@@ -98,6 +89,7 @@ export default async function placeDetailsHandler(req: ApiRequest, res: ApiRespo
       meta: {
         source: "curated",
         providerConfigured: false,
+        reason: "missing-google-places-key",
       },
     };
     res.status(200).json(payload);
@@ -136,23 +128,19 @@ export default async function placeDetailsHandler(req: ApiRequest, res: ApiRespo
     res.status(200).json(payload);
   } catch (error) {
     console.warn(`Place details lookup unavailable; using curated details. ${formatErrorForLog(error)}`);
+    const reason = error instanceof GooglePlacesError && error.status === 429
+      ? "google-places-rate-limited"
+      : "lookup-unavailable";
     const payload: PlaceDetailsApiResponse = {
       data: null,
       meta: {
         source: "curated",
         providerConfigured: true,
-        reason: "lookup-unavailable",
+        reason,
       },
     };
     res.status(200).json(payload);
   }
-}
-
-function setResponseHeaders(res: ApiResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Cache-Control", "s-maxage=43200, stale-while-revalidate=86400");
 }
 
 async function fetchGooglePlaceDetails(apiKey: string, query: PlaceDetailsQuery): Promise<PlaceDetailsApiData | null> {
@@ -186,7 +174,7 @@ async function fetchGooglePlaceDetails(apiKey: string, query: PlaceDetailsQuery)
   });
 
   if (!response.ok) {
-    throw new Error(`Google Places lookup failed: ${response.status}`);
+    throw new GooglePlacesError(response.status, `Google Places lookup failed: ${response.status}`);
   }
 
   const payload: unknown = await response.json();
@@ -211,6 +199,16 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise
 
 function formatErrorForLog(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+class GooglePlacesError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "GooglePlacesError";
+    this.status = status;
+  }
 }
 
 function normalizeGooglePlace(place: Record<string, unknown>): PlaceDetailsApiData {

@@ -22,7 +22,7 @@ import { TravelMap, type MapExtraMarker, type RouteDetail, type RouteRenderStatu
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
-import { fetchPlaceDetails, type PlaceDetails } from "../services/placeDetails";
+import { fetchPlaceDetails, type PlaceDetails, type PlaceDetailsSourceMeta } from "../services/placeDetails";
 import type { Destination, Experience, ImportedIdea, PlannerDay, RouteLeg } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { formatDriveTime, formatMiles } from "../utils/format";
@@ -70,6 +70,11 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   const [placeDetail, setPlaceDetail] = useState<PlaceDetailTarget | null>(null);
   const [selectedImportedPlaceId, setSelectedImportedPlaceId] = useState<string | null>(null);
   const [livePlaceDetails, setLivePlaceDetails] = useState<PlaceDetails | null>(null);
+  const [placeDetailsMeta, setPlaceDetailsMeta] = useState<PlaceDetailsSourceMeta>({
+    source: "curated",
+    providerConfigured: false,
+    reason: "pending-place-details",
+  });
   const [isPlaceDetailsLoading, setIsPlaceDetailsLoading] = useState(false);
   const [focusedDestinationId, setFocusedDestinationId] = useState(app.plannerBaseId);
   const [selectedRouteLegId, setSelectedRouteLegId] = useState<string | null>(null);
@@ -142,12 +147,22 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
   useEffect(() => {
     if (!placeDetail) {
       setLivePlaceDetails(null);
+      setPlaceDetailsMeta({
+        source: "curated",
+        providerConfigured: false,
+        reason: "pending-place-details",
+      });
       setIsPlaceDetailsLoading(false);
       return;
     }
 
     const controller = new AbortController();
     setLivePlaceDetails(null);
+    setPlaceDetailsMeta({
+      source: "curated",
+      providerConfigured: false,
+      reason: "checking-place-details",
+    });
     setIsPlaceDetailsLoading(true);
 
     const lookup = placeDetail.type === "destination"
@@ -159,11 +174,19 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         };
 
     fetchPlaceDetails(lookup, controller.signal)
-      .then((details) => setLivePlaceDetails(details))
+      .then((result) => {
+        setLivePlaceDetails(result.details);
+        setPlaceDetailsMeta(result.meta);
+      })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         logRecoverableWarning("Place details unavailable; using curated details.", error);
         setLivePlaceDetails(null);
+        setPlaceDetailsMeta({
+          source: "curated",
+          providerConfigured: false,
+          reason: "place-details-request-failed",
+        });
       })
       .finally(() => {
         if (!controller.signal.aborted) setIsPlaceDetailsLoading(false);
@@ -669,6 +692,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
         <PlaceDetailSheet
           target={placeDetail}
           liveDetails={livePlaceDetails}
+          sourceMeta={placeDetailsMeta}
           isLiveDetailsLoading={isPlaceDetailsLoading}
           dayNote={placeDetail.day ? app.dayNotes[String(placeDetail.day)] ?? "" : ""}
           isSaved={
@@ -1808,6 +1832,7 @@ function ImportedPlaceFact({ icon: Icon, label, value }: { icon: LucideIcon; lab
 function PlaceDetailSheet({
   target,
   liveDetails,
+  sourceMeta,
   isLiveDetailsLoading,
   dayNote,
   isSaved,
@@ -1819,6 +1844,7 @@ function PlaceDetailSheet({
 }: {
   target: PlaceDetailTarget;
   liveDetails: PlaceDetails | null;
+  sourceMeta: PlaceDetailsSourceMeta;
   isLiveDetailsLoading: boolean;
   dayNote: string;
   isSaved: boolean;
@@ -1845,6 +1871,7 @@ function PlaceDetailSheet({
   const planFit = buildPlanFit(target, liveDetails);
   const whatToExpect = isDestination ? target.destination.highlights.slice(0, 4) : target.experience.whatToExpect.slice(0, 4);
   const liveVisitRows = buildLiveVisitRows(liveDetails);
+  const sourceStatus = getPlaceDetailsSourceStatus(sourceMeta, isLiveDetailsLoading);
   const openStatusLabel = isLiveDetailsLoading
     ? "Checking latest"
     : liveDetails?.openNow === true
@@ -1867,6 +1894,7 @@ function PlaceDetailSheet({
             <p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-500">
               <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
               {ratingText} · {region}
+              <PlaceSourceBadge label={sourceStatus.label} tone={sourceStatus.tone} />
             </p>
           </div>
           <button
@@ -1881,6 +1909,23 @@ function PlaceDetailSheet({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-5 sm:pb-5">
           <img src={imageUrl} alt="" className="h-56 w-full rounded-3xl object-cover shadow-xl shadow-slate-200" />
+
+          <section
+            className={classNames(
+              "mt-4 rounded-3xl border px-4 py-3",
+              sourceStatus.tone === "live"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : sourceStatus.tone === "error"
+                  ? "border-rose-200 bg-rose-50 text-rose-800"
+                  : "border-amber-200 bg-amber-50 text-amber-800"
+            )}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[0.65rem] font-black uppercase tracking-[0.16em] opacity-75">Place source</p>
+              <PlaceSourceBadge label={sourceStatus.label} tone={sourceStatus.tone} />
+            </div>
+            <p className="mt-1 text-xs font-semibold leading-5">{sourceStatus.body}</p>
+          </section>
 
           <section className="mt-4 grid gap-2 sm:grid-cols-3" aria-label="Trip fit">
             {planFit.map((fact) => (
@@ -1978,6 +2023,90 @@ function PlaceDetailSheet({
       </article>
     </div>
   );
+}
+
+function PlaceSourceBadge({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "live" | "fallback" | "error";
+}) {
+  return (
+    <span
+      className={classNames(
+        "inline-flex min-h-7 shrink-0 items-center rounded-full border px-2.5 py-1 text-[0.62rem] font-black uppercase tracking-[0.12em]",
+        tone === "live"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : tone === "error"
+            ? "border-rose-200 bg-rose-50 text-rose-700"
+            : "border-amber-200 bg-amber-50 text-amber-700"
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+function getPlaceDetailsSourceStatus(
+  meta: PlaceDetailsSourceMeta,
+  isLoading: boolean
+): { label: string; tone: "live" | "fallback" | "error"; body: string } {
+  if (isLoading) {
+    return {
+      label: "Checking",
+      tone: "fallback",
+      body: "Checking for current place info while curated Jamaica notes stay visible.",
+    };
+  }
+
+  if (meta.source === "google-places") {
+    return {
+      label: "Live details",
+      tone: "live",
+      body: meta.cached
+        ? "Recent live place info is available for this stop."
+        : "Current place info is available for this stop.",
+    };
+  }
+
+  if (meta.reason === "google-places-rate-limited") {
+    return {
+      label: "Provider limit",
+      tone: "fallback",
+      body: "Live place info is limited right now, so curated Jamaica notes stay in view.",
+    };
+  }
+
+  if (meta.reason === "lookup-unavailable" || meta.reason === "place-details-request-failed") {
+    return {
+      label: "Curated details",
+      tone: "fallback",
+      body: "The live place lookup did not finish, so curated Jamaica notes are shown.",
+    };
+  }
+
+  if (meta.reason === "live-place-mismatch") {
+    return {
+      label: "Curated details",
+      tone: "fallback",
+      body: "The live result did not match this stop closely enough, so curated Jamaica notes are shown.",
+    };
+  }
+
+  if (!meta.providerConfigured) {
+    return {
+      label: "Curated details",
+      tone: "fallback",
+      body: "Live place info is not connected here yet, so curated Jamaica notes are shown.",
+    };
+  }
+
+  return {
+    label: "Curated details",
+    tone: "fallback",
+    body: "Curated Jamaica notes are shown for this place.",
+  };
 }
 
 type CompactPlanFactProps = {

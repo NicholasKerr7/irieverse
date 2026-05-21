@@ -1,7 +1,19 @@
 import type { Destination, Experience } from "../types/travel";
-import type { PlaceDetails } from "../types/api";
+import type { PlaceDetails, PlaceDetailsApiResponse } from "../types/api";
 
 export type { PlaceDetails } from "../types/api";
+
+export type PlaceDetailsSourceMeta = {
+  source: PlaceDetailsApiResponse["meta"]["source"];
+  providerConfigured: boolean;
+  reason?: string;
+  cached?: boolean;
+};
+
+export type PlaceDetailsLookupResult = {
+  details: PlaceDetails | null;
+  meta: PlaceDetailsSourceMeta;
+};
 
 type PlaceDetailsLookup =
   | { kind: "destination"; destination: Destination }
@@ -10,12 +22,19 @@ type PlaceDetailsLookup =
 export async function fetchPlaceDetails(
   lookup: PlaceDetailsLookup,
   signal?: AbortSignal
-): Promise<PlaceDetails | null> {
+): Promise<PlaceDetailsLookupResult> {
   const endpoint = new URL("/api/place-details", getBaseUrl());
   const placeLookup = lookup.kind === "destination" ? lookup.destination.placeLookup : lookup.experience.placeLookup;
 
   if (lookup.kind === "experience" && !placeLookup?.query) {
-    return null;
+    return {
+      details: null,
+      meta: {
+        source: "curated",
+        providerConfigured: false,
+        reason: "missing-place-query",
+      },
+    };
   }
 
   if (lookup.kind === "destination") {
@@ -54,10 +73,50 @@ export async function fetchPlaceDetails(
   }
 
   const payload: unknown = await response.json();
-  if (!isRecord(payload) || !isRecord(payload.data)) return null;
+  const meta = normalizePlaceDetailsMeta(payload);
+  if (!isRecord(payload) || !isRecord(payload.data)) {
+    return {
+      details: null,
+      meta,
+    };
+  }
 
   const details = normalizePlaceDetails(payload.data);
-  return isAcceptablePlaceDetails(details, lookup) ? details : null;
+  if (!isAcceptablePlaceDetails(details, lookup)) {
+    return {
+      details: null,
+      meta: {
+        ...meta,
+        source: "curated",
+        reason: meta.reason ?? "live-place-mismatch",
+      },
+    };
+  }
+
+  return {
+    details,
+    meta,
+  };
+}
+
+function normalizePlaceDetailsMeta(payload: unknown): PlaceDetailsSourceMeta {
+  if (isRecord(payload) && isRecord(payload.meta)) {
+    const source = payload.meta.source === "google-places" ? "google-places" : "curated";
+    const meta: PlaceDetailsSourceMeta = {
+      source,
+      providerConfigured: payload.meta.providerConfigured === true,
+    };
+    const reason = asString(payload.meta.reason);
+    if (reason) meta.reason = reason;
+    if (typeof payload.meta.cached === "boolean") meta.cached = payload.meta.cached;
+    return meta;
+  }
+
+  return {
+    source: "curated",
+    providerConfigured: false,
+    reason: "missing-place-metadata",
+  };
 }
 
 function normalizePlaceDetails(data: Record<string, unknown>): PlaceDetails {

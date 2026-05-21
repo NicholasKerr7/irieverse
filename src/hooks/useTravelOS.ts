@@ -500,6 +500,7 @@ export function useTravelOS() {
           ...getInitialBookingSourceMeta(),
           source: getInitialBookingSourceMeta().endpointConfigured ? "fallback" : "local",
           reason: "request-failed",
+          providerConfigured: false,
         });
       } finally {
         setIsLoadingBookings(false);

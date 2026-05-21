@@ -67,6 +67,8 @@ async function runLocalApiHandler(handler: ApiHandler, req: IncomingMessage, res
     {
       method: req.method ?? "GET",
       query: readQueryParams(requestUrl.searchParams),
+      headers: normalizeHeaders(req.headers),
+      ...(req.socket.remoteAddress ? { ip: req.socket.remoteAddress } : {}),
     },
     createResponseAdapter(res)
   );
@@ -110,4 +112,16 @@ function createResponseAdapter(res: ServerResponse): ApiResponse {
     },
   };
   return adapter;
+}
+
+function normalizeHeaders(headers: IncomingMessage["headers"]): Record<string, string | string[] | undefined> {
+  const normalized: Record<string, string | string[] | undefined> = {};
+  Object.entries(headers).forEach(([name, value]) => {
+    if (typeof value === "number") {
+      normalized[name] = String(value);
+    } else {
+      normalized[name] = value;
+    }
+  });
+  return normalized;
 }

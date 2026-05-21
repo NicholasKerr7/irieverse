@@ -29,7 +29,7 @@ export function BookingRecommendations({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <p className="text-[0.65rem] uppercase tracking-[0.3em] text-emerald-300/80">Book the vibe</p>
-          <h2 className="text-lg sm:text-xl font-semibold">Curated stays for {destinationName}</h2>
+          <h2 className="text-lg sm:text-xl font-semibold">{sourceStatus.title} for {destinationName}</h2>
           <p className="text-xs sm:text-[0.8rem] text-slate-400">
             {sourceStatus.body}
           </p>
@@ -138,20 +138,23 @@ function BookingSourcePill({
 }
 
 function getBookingSourceStatus(meta: BookingSourceMeta): {
+  title: string;
   label: string;
   tone: "live" | "fallback" | "error";
   body: string;
 } {
   if (meta.source === "amadeus") {
     return {
+      title: "Current stays",
       label: "Live stays",
       tone: "live",
       body: "Current hotel options are available for this route and date window.",
     };
   }
 
-  if (meta.source === "api") {
+  if (meta.source === "api" && meta.providerConfigured) {
     return {
+      title: "Current stays",
       label: "Live stays",
       tone: "live",
       body: "Current stay options are available for this trip.",
@@ -159,7 +162,17 @@ function getBookingSourceStatus(meta: BookingSourceMeta): {
   }
 
   if (meta.endpointConfigured) {
+    if (meta.reason === "amadeus-rate-limited") {
+      return {
+        title: "Curated stays",
+        label: "Provider limit",
+        tone: "fallback",
+        body: getCuratedStayBody(meta.reason, true),
+      };
+    }
+
     return {
+      title: "Curated stays",
       label: "Curated stays",
       tone: meta.reason === "request-failed" ? "error" : "fallback",
       body: getCuratedStayBody(meta.reason, true),
@@ -167,6 +180,7 @@ function getBookingSourceStatus(meta: BookingSourceMeta): {
   }
 
   return {
+    title: "Curated stays",
     label: "Curated stays",
     tone: meta.reason === "request-failed" ? "error" : "fallback",
     body: getCuratedStayBody(meta.reason, false),
@@ -175,9 +189,11 @@ function getBookingSourceStatus(meta: BookingSourceMeta): {
 
 function getCuratedStayBody(reason: string | undefined, endpointConfigured: boolean): string {
   const labels: Record<string, string> = {
-    "missing-amadeus-credentials": "Current hotel prices are not available here yet, so curated Jamaica stay ideas are shown.",
+    "missing-amadeus-credentials": "Live hotel pricing is not connected yet, so curated Jamaica stays are ready.",
     "no-amadeus-offers": "No current hotel matches came back for this combination, so curated Jamaica stay ideas are shown.",
+    "amadeus-rate-limited": "The live stay source is cooling down after a provider limit, so curated Jamaica stays are shown.",
     "amadeus-request-failed": "The latest hotel lookup did not finish, so curated Jamaica stay ideas are shown.",
+    "booking-proxy-request-failed": "The stay source could not be reached, so curated Jamaica stays are shown.",
     "request-failed": "The latest stay lookup did not finish, so curated Jamaica stay ideas are shown.",
     "custom-endpoint": "Stay details are limited right now, so curated Jamaica stay ideas are shown.",
     "endpoint-configured": "Curated Jamaica stay ideas are shown for now.",

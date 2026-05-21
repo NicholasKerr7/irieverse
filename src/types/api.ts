@@ -10,6 +10,8 @@ export type QueryRecord = Record<string, QueryValue>;
 export interface ApiRequest {
   method?: string;
   query?: QueryRecord;
+  headers?: Record<string, string | string[] | undefined>;
+  ip?: string;
 }
 
 export interface ApiResponse {
@@ -40,6 +42,7 @@ export type FlightApiResponse = {
 export type BookingApiMeta = {
   source: "amadeus" | "fallback";
   reason?: string;
+  providerConfigured: boolean;
   checkInDate?: string;
   checkOutDate?: string;
   adults?: number;

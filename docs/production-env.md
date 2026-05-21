@@ -14,7 +14,7 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | `AVIATIONSTACK_CACHE_TTL_SECONDS` | Optional | Server-side live flight cache TTL. Defaults to `900` seconds. |
 | `AVIATIONSTACK_COOLDOWN_SECONDS` | Optional | Server-side cooldown after AviationStack rate limits. Defaults to `1800` seconds. |
 | `VITE_FLIGHTS_API_URL` | Optional | Browser-visible flight proxy URL. Defaults to `/api/flights`. |
-| `VITE_BOOKING_API_URL` | Optional | Enables live booking recommendations from the server booking endpoint. |
+| `VITE_BOOKING_API_URL` | Optional | Browser-visible booking proxy URL. Defaults to `/api/bookings`; set to `local` only for static hosting without serverless API routes. |
 | `AMADEUS_CLIENT_ID` | Optional | Server-only Amadeus API key used by `api/bookings.ts`. |
 | `AMADEUS_CLIENT_SECRET` | Optional | Server-only Amadeus API secret used by `api/bookings.ts`. |
 | `AMADEUS_BASE_URL` | Optional | Amadeus base URL. Defaults to `https://test.api.amadeus.com`; use `https://api.amadeus.com` for production credentials. |
@@ -22,6 +22,8 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | `ROUTING_API_TIMEOUT_MS` | Optional | Max server wait for one routing-provider request. Defaults to `4500` ms. |
 | `ROUTING_PROVIDER_COOLDOWN_SECONDS` | Optional | Server-side throttle window for repeated routing-provider failure logs. Defaults to `45` seconds. |
 | `GOOGLE_PLACES_API_KEY` | Optional | Server-only Google Places key used by `api/place-details.ts` for live place address, hours, phone, website, and map links. |
+| `IRIEVERSE_ALLOWED_ORIGINS` | Optional | Comma-separated browser origins allowed to call the API proxies. Defaults include `https://irieverse.vercel.app`, the active Vercel deployment URL, and local dev origins. |
+| `IRIEVERSE_API_RATE_LIMIT_WINDOW_SECONDS` | Optional | Shared API rate-limit window. Defaults to `60` seconds. Per-route caps can be overridden with `IRIEVERSE_API_RATE_LIMIT_FLIGHTS`, `IRIEVERSE_API_RATE_LIMIT_BOOKINGS`, `IRIEVERSE_API_RATE_LIMIT_IMPORT_METADATA`, `IRIEVERSE_API_RATE_LIMIT_PLACE_DETAILS`, and `IRIEVERSE_API_RATE_LIMIT_ROAD_ROUTE`. |
 
 Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack, Amadeus, Places, and routing credentials server-only.
 
@@ -61,6 +63,8 @@ vercel env add ROUTING_API_BASE_URL production
 vercel env add ROUTING_API_TIMEOUT_MS production
 vercel env add ROUTING_PROVIDER_COOLDOWN_SECONDS production
 vercel env add GOOGLE_PLACES_API_KEY production
+vercel env add IRIEVERSE_ALLOWED_ORIGINS production
+vercel env add IRIEVERSE_API_RATE_LIMIT_WINDOW_SECONDS production
 ```
 
 For this Vercel app, `VITE_BOOKING_API_URL` should be:
@@ -115,7 +119,7 @@ If the app reports share setup incomplete, run `supabase/schema.sql` or push all
 
 ## Booking API Contract
 
-This repo includes a Vercel serverless booking endpoint at `api/bookings.ts`. It proxies Amadeus Hotels so Amadeus secrets never ship to the browser. When `VITE_BOOKING_API_URL` is set, IrieVerse calls:
+This repo includes a Vercel serverless booking endpoint at `api/bookings.ts`. It proxies Amadeus Hotels so Amadeus secrets never ship to the browser. The browser defaults to `/api/bookings`, or uses the configured `VITE_BOOKING_API_URL` when set:
 
 ```text
 GET {VITE_BOOKING_API_URL}?destination={airportCode}&origin={airportCode}&checkInDate={YYYY-MM-DD}&checkOutDate={YYYY-MM-DD}&adults=2
@@ -148,12 +152,12 @@ or:
 }
 ```
 
-The endpoint returns fallback booking data when Amadeus credentials are missing, Amadeus has no matching offers, or the provider request fails. If `VITE_BOOKING_API_URL` is missing entirely, the browser uses `public/data/bookings.json`.
+The endpoint returns curated booking data when Amadeus credentials are missing, Amadeus has no matching offers, a provider limit is reached, or the provider request fails. If the booking endpoint itself cannot be reached, the browser recovers with `public/data/bookings.json`.
 
 The Trips screen shows the current stay source:
 
 - `Live stays` when the Vercel endpoint returns Amadeus offers or another live stay feed.
-- `Curated picks` when the endpoint is missing or live offers are unavailable.
+- `Curated stays` when live hotel pricing is not connected, no current offers match, or the provider is limited.
 
 ## Amadeus Setup
 
@@ -230,8 +234,9 @@ Trips includes a compact planning confidence panel for launch QA:
 | Planning area | Live state | Curated/estimated state |
 | --- | --- | --- |
 | Share links | `Ready` when `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and the trip-share RPC functions are reachable. | `Setup needed` and export still works. |
-| Stays | `Live stays` when the configured booking source returns live data. | `Curated picks` with Jamaica stay ideas. |
+| Stays | `Live stays` when the configured booking source returns live data. | `Curated stays` with Jamaica stay ideas, including when hotel credentials are not connected yet. |
 | Flights | `Live schedule` when `/api/flights` returns AviationStack data. | `Saved examples` from `public/data/flights-sample.json`. |
+| Place details | `Live details` when `/api/place-details` returns a trusted Google Places match. | `Curated details` when the key is missing, the provider is limited, or a live result does not match the selected stop. |
 | Road planning | `Road-aware` through `api/road-route.ts`. | The map keeps preview route lines if the proxy fails. |
 | Island events | Live provider if one is added later. | `Curated calendar` from `public/data/events.json`. |
 
