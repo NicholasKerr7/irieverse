@@ -19,6 +19,7 @@ import {
   Ticket,
   type LucideIcon,
 } from "lucide-react";
+import { ImageCredit } from "../components/ImageCredit";
 import { TravelMap, type MapExtraMarker, type RouteDetail, type RouteRenderStatus } from "../components/TravelMap";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS } from "../data/content";
@@ -1861,6 +1862,7 @@ function PlaceDetailSheet({
   const title = isDestination ? target.destination.name : target.experience.title;
   const region = isDestination ? target.destination.region : target.experience.region;
   const imageUrl = isDestination ? target.destination.heroImage : target.experience.imageUrl;
+  const imageCredit = isDestination ? target.destination.heroImageCredit : undefined;
   const description = isDestination ? target.destination.description : target.experience.description;
   const rating = liveDetails?.rating ?? (isDestination ? target.destination.rating : target.experience.rating);
   const ratingText = liveDetails?.userRatingCount
@@ -1914,7 +1916,10 @@ function PlaceDetailSheet({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-5 sm:pb-5">
-          <img src={imageUrl} alt="" className="h-56 w-full rounded-3xl object-cover shadow-xl shadow-slate-200" />
+          <div className="relative">
+            <img src={imageUrl} alt="" className="h-56 w-full rounded-3xl object-cover shadow-xl shadow-slate-200" />
+            <ImageCredit credit={imageCredit} className="absolute bottom-3 left-3 right-3 w-fit max-w-[calc(100%-1.5rem)]" />
+          </div>
 
           <section
             className={classNames(

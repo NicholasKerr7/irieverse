@@ -33,7 +33,12 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Doctor's Cave Beach",
     heroImage:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Doctors-Cave-Beach.jpg?width=1200",
+      "https://images.pexels.com/photos/4093370/pexels-photo-4093370.png?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    heroImageCredit: {
+      provider: "Pexels",
+      author: "Dre Dawkcide",
+      sourceUrl: "https://www.pexels.com/photo/people-swimming-on-the-beach-4093370/",
+    },
     entryRequirement: {
       status: "ticket-required",
       label: "Beach entry ticket",
@@ -76,7 +81,12 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Seven Mile Beach",
     heroImage:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Atlantic_ocean_negril_jamaica.jpg?width=1200",
+      "https://pixabay.com/get/gf1efba83e8cd7dcedf54cd82e724f49f6de53d3a6db223207259d2c7ecd005b8b824e0c7e9c4a4520ec1c680b0f5b703daebb5f71bd1e9329c93050b25005606_1280.jpg",
+    heroImageCredit: {
+      provider: "Pixabay",
+      author: "Nadi17",
+      sourceUrl: "https://pixabay.com/photos/jamaica-negril-beach-boat-2409533/",
+    },
     entryRequirement: {
       status: "varies",
       label: "Mixed access",
@@ -117,7 +127,12 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Dunn's River Falls",
     heroImage:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Dunns_River_Falls_Photo_D_Ramey_Logan.jpg?width=1200",
+      "https://pixabay.com/get/g3d7ea2add79075337c2f347c5fefd7e5dd40eb09eedab2b784bc5684cb26befe32d44cebb1638944e2c6cb5394af7ba4cdae78a0017ac5965438fa296dd8fcef_1280.jpg",
+    heroImageCredit: {
+      provider: "Pixabay",
+      author: "neufal54",
+      sourceUrl: "https://pixabay.com/photos/jamaica-dunns-river-falls-to-travel-2695087/",
+    },
     entryRequirement: {
       status: "ticket-required",
       label: "Attraction ticket",
@@ -242,7 +257,12 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Frenchman's Cove",
     heroImage:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Frenchman%27s_Cove_%2832306710322%29.jpg?width=1200",
+      "https://pixabay.com/get/gb812c236d102aff94ac9dc606560ddefd8abc669b5db01525dd5aff849bd1e1c71bf4d74e98df5bb3d470a497251d18fb0b819a36036085fcf081d7e7b440f3e_1280.jpg",
+    heroImageCredit: {
+      provider: "Pixabay",
+      author: "katy_gorge207",
+      sourceUrl: "https://pixabay.com/photos/flow-jamaica-green-plants-2427568/",
+    },
     entryRequirement: {
       status: "ticket-required",
       label: "Beach entry ticket",
@@ -283,7 +303,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "YS Falls",
     heroImage:
-      "https://images.unsplash.com/photo-1560707303-4e980ce876ad?auto=format&fit=crop&w=1200&q=80",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/YS_Falls.jpg?width=1200",
     entryRequirement: {
       status: "ticket-required",
       label: "Attraction ticket",
@@ -323,9 +343,9 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
       "Yam-country food stop",
       "Cruise-port craft market",
     ],
-    heroAttraction: "Luminous Lagoon",
+    heroAttraction: "Luminous Lagoon / Glistening Waters",
     heroImage:
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Glistening_waters_-_geograph.org.uk_-_5654662.jpg?width=1200",
     entryRequirement: {
       status: "ticket-required",
       label: "Boat tour ticket",
@@ -366,7 +386,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Fort Charlotte, Lucea",
     heroImage:
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Old_Fort%2C_Lucea%2C_Jamaica%2C_ca.1875-ca.1940_%28imp-cswc-GB-237-CSWC47-LS11-014%29.jpg?width=1200",
     entryRequirement: CONFIRM_LOCAL,
     placeLookup: {
       query: "Fort Charlotte, Lucea, Jamaica",
@@ -403,7 +423,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Firefly Estate",
     heroImage:
-      "https://images.unsplash.com/photo-1493558103817-58b2924bce98?auto=format&fit=crop&w=1200&q=80",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/NoelCowardFirefly.jpg?width=1200",
     entryRequirement: {
       status: "ticket-required",
       label: "Tour ticket likely",
@@ -426,41 +446,46 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
   },
   {
     id: "st-thomas",
-    name: "Bath & St. Thomas",
+    name: "Morant Point & St. Thomas",
     region: "East",
     parish: "St. Thomas",
     vibes: ["nature", "authentic", "chill"],
     rating: 4.4,
     priceLevel: 2,
-    headline: "Bath Fountain, Reggae Falls, Morant Point history, and east-coast road trips.",
+    headline: "Morant Point Lighthouse, Bath Fountain, Reggae Falls, and east-coast road trips.",
     description:
       "St. Thomas is an emerging east-side planner for mineral baths, waterfalls, lighthouse history, surfing pockets, and country food stops beyond Kingston.",
     highlights: [
+      "Morant Point lighthouse route",
       "Bath Fountain mineral soak",
       "Reggae Falls day trip",
-      "Morant Point lighthouse route",
       "Yallahs and east-coast food stops",
       "Blue Mountain foothill views",
     ],
-    heroAttraction: "Bath Fountain",
+    heroAttraction: "Morant Point Lighthouse",
     heroImage:
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1767191742511-350b50f397e8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w0NDcwNTl8MHwxfHNlYXJjaHwyfHxNb3JhbnQlMjBQb2ludCUyMExpZ2h0aG91c2UlMjBKYW1haWNhfGVufDB8MHx8fDE3NzkzODAzNTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+    heroImageCredit: {
+      provider: "Unsplash",
+      author: "Osheenei Graham",
+      sourceUrl: "https://unsplash.com/photos/rocky-coastline-with-a-stone-structure-and-ocean-waves-BC2sTyCXpp0?utm_source=irieverse&utm_medium=referral",
+    },
     entryRequirement: {
-      status: "ticket-required",
-      label: "Bath entry ticket",
-      note: "Bath Fountain and guided waterfall visits may charge. Confirm road conditions and entry before travelling.",
+      status: "varies",
+      label: "Remote heritage route",
+      note: "The lighthouse route is public-facing but remote; guided stops, private transport, parking, Bath Fountain, or waterfall visits may charge.",
     },
     placeLookup: {
-      query: "Bath Fountain, St. Thomas, Jamaica",
-      requiredTerms: ["bath"],
+      query: "Morant Point Lighthouse, St. Thomas, Jamaica",
+      requiredTerms: ["morant", "lighthouse"],
     },
-    latitude: 17.9483,
-    longitude: -76.349,
+    latitude: 17.9184,
+    longitude: -76.1844,
     airportCode: "KIN",
     quickFacts: [
       { label: "Parish", value: "St. Thomas" },
-      { label: "Hero stop", value: "Bath Fountain" },
-      { label: "Best for", value: "Mineral baths and local days" },
+      { label: "Hero stop", value: "Morant Point Lighthouse" },
+      { label: "Best for", value: "Heritage, mineral baths, waterfalls" },
     ],
     localTips: ["Check road and weather conditions before waterfall runs.", "Go with someone who knows the route for remote stops."],
     visitorTips: ["Best with a trusted driver from Kingston.", "Expect fewer polished tourist facilities than north-coast hubs."],
@@ -524,7 +549,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
       "Alligator Pond and Little Ochie route",
       "Central Jamaica countryside drive",
     ],
-    heroAttraction: "Manchester Club",
+    heroAttraction: "Mandeville Courthouse",
     heroImage:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Mandeville-courthouse.jpg?width=1200",
     entryRequirement: {
@@ -533,15 +558,15 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
       note: "Town exploration is free; golf, guided activities, and private venues require reservations or fees.",
     },
     placeLookup: {
-      query: "Manchester Club, Mandeville, Jamaica",
-      requiredTerms: ["manchester"],
+      query: "Mandeville Courthouse, Manchester, Jamaica",
+      requiredTerms: ["mandeville"],
     },
     latitude: 18.0417,
     longitude: -77.5071,
     airportCode: "KIN",
     quickFacts: [
       { label: "Parish", value: "Manchester" },
-      { label: "Hero stop", value: "Manchester Club" },
+      { label: "Hero stop", value: "Mandeville Courthouse" },
       { label: "Best for", value: "Cool hills and food routes" },
     ],
     localTips: ["Use Mandeville as a comfortable midpoint for south/central routes.", "Evenings can feel cooler than the coast."],
@@ -567,7 +592,12 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Spanish Town Square",
     heroImage:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/St.-Jago-de-la-Vega.JPG?width=1200",
+      "https://images.unsplash.com/photo-1659416071137-1b0e73ce261f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w0NDcwNTl8MHwxfHNlYXJjaHwxfHxTcGFuaXNoJTIwVG93biUyMFNxdWFyZSUyMEphbWFpY2F8ZW58MHwwfHx8MTc3OTM4MDM1N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+    heroImageCredit: {
+      provider: "Unsplash",
+      author: "Kemoi Brown",
+      sourceUrl: "https://unsplash.com/photos/a-building-with-a-clock-tower-M6Yrvga15cU?utm_source=irieverse&utm_medium=referral",
+    },
     entryRequirement: {
       status: "varies",
       label: "Mixed access",

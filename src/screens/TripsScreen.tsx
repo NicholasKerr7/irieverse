@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { BookingRecommendations } from "../components/BookingRecommendations";
 import { BudgetInsight } from "../components/BudgetInsight";
+import { ImageCredit } from "../components/ImageCredit";
 import { ItineraryView } from "../components/ItineraryView";
 import { LiveEventsFeed } from "../components/LiveEventsFeed";
 import type { MobileTabId } from "../components/mobile/BottomNav";
@@ -109,6 +110,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
               <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
                 {getTripHeroBody(app.planningMode)}
               </p>
+              <ImageCredit credit={app.destination.heroImageCredit} className="mt-3" />
             </div>
           </div>
 

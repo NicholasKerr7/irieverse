@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { ExperiencesGrid } from "../components/ExperiencesGrid";
+import { ImageCredit } from "../components/ImageCredit";
 import { PlacesGrid } from "../components/PlacesGrid";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCE_TYPES, EXPERIENCES, VIBE_OPTIONS } from "../data/content";
@@ -69,6 +70,7 @@ export function ExploreScreen({ app, onNavigate }: ExploreScreenProps) {
               <h1 className="mt-3 max-w-full text-balance text-2xl font-semibold tracking-tight text-white sm:text-4xl">
                 Parish guide, attractions, and island experiences.
               </h1>
+              <ImageCredit credit={app.destination.heroImageCredit} className="mt-3" />
             </div>
           </div>
 

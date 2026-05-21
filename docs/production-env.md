@@ -22,10 +22,13 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | `ROUTING_API_TIMEOUT_MS` | Optional | Max server wait for one routing-provider request. Defaults to `4500` ms. |
 | `ROUTING_PROVIDER_COOLDOWN_SECONDS` | Optional | Server-side throttle window for repeated routing-provider failure logs. Defaults to `45` seconds. |
 | `GOOGLE_PLACES_API_KEY` | Optional | Server-only Google Places key used by `api/place-details.ts` for live place address, hours, phone, website, and map links. |
+| `UNSPLASH_ACCESS_KEY` | Optional | Server/local-only key for curating richer parish images from Unsplash. Do not prefix with `VITE_`. |
+| `PIXABAY_API_KEY` | Optional | Server/local-only key for curating richer parish images from Pixabay. Do not prefix with `VITE_`. |
+| `PEXELS_API_KEY` | Optional | Server/local-only key for curating richer parish images from Pexels. Do not prefix with `VITE_`. |
 | `IRIEVERSE_ALLOWED_ORIGINS` | Optional | Comma-separated browser origins allowed to call the API proxies. Defaults include `https://irieverse.vercel.app`, the active Vercel deployment URL, and local dev origins. |
 | `IRIEVERSE_API_RATE_LIMIT_WINDOW_SECONDS` | Optional | Shared API rate-limit window. Defaults to `60` seconds. Per-route caps can be overridden with `IRIEVERSE_API_RATE_LIMIT_FLIGHTS`, `IRIEVERSE_API_RATE_LIMIT_BOOKINGS`, `IRIEVERSE_API_RATE_LIMIT_IMPORT_METADATA`, `IRIEVERSE_API_RATE_LIMIT_PLACE_DETAILS`, and `IRIEVERSE_API_RATE_LIMIT_ROAD_ROUTE`. |
 
-Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack, Amadeus, Places, and routing credentials server-only.
+Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack, Amadeus, Places, image-provider, and routing credentials server-only.
 
 ## Local Setup
 

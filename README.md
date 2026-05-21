@@ -165,6 +165,10 @@ AMADEUS_BASE_URL=https://test.api.amadeus.com
 
 GOOGLE_PLACES_API_KEY=your_google_places_key
 
+UNSPLASH_ACCESS_KEY=your_unsplash_access_key
+PIXABAY_API_KEY=your_pixabay_api_key
+PEXELS_API_KEY=your_pexels_api_key
+
 ROUTING_API_BASE_URL=https://router.project-osrm.org
 ROUTING_API_TIMEOUT_MS=4500
 ROUTING_PROVIDER_COOLDOWN_SECONDS=45
@@ -173,7 +177,7 @@ IRIEVERSE_ALLOWED_ORIGINS=https://irieverse.vercel.app
 IRIEVERSE_API_RATE_LIMIT_WINDOW_SECONDS=60
 ```
 
-Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack, Amadeus, Google Places, and routing credentials server-only.
+Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack, Amadeus, Google Places, image-provider, and routing credentials server-only.
 
 See [docs/production-env.md](docs/production-env.md) for provider setup, production environment commands, API contracts, and Supabase migration details.
 

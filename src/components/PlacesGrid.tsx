@@ -1,4 +1,5 @@
 import { CalendarDays, Heart, MapPin, Route, Star, Ticket } from "lucide-react";
+import { ImageCredit } from "./ImageCredit";
 import { EmptyStatePanel } from "./LoadingStates";
 import type { Destination, EntryRequirement } from "../types/travel";
 import { classNames } from "../utils/classNames";
@@ -76,6 +77,7 @@ export function PlacesGrid({
                     Hero stop: {destination.heroAttraction}
                   </p>
                 )}
+                <ImageCredit credit={destination.heroImageCredit} className="mt-2" />
               </div>
             </div>
 
