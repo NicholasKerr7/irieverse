@@ -16,6 +16,7 @@ import {
   Sparkles,
   Star,
   X,
+  Ticket,
   type LucideIcon,
 } from "lucide-react";
 import { TravelMap, type MapExtraMarker, type RouteDetail, type RouteRenderStatus } from "../components/TravelMap";
@@ -23,7 +24,7 @@ import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
 import { fetchPlaceDetails, type PlaceDetails, type PlaceDetailsSourceMeta } from "../services/placeDetails";
-import type { Destination, Experience, ImportedIdea, PlannerDay, RouteLeg } from "../types/travel";
+import type { Destination, EntryRequirement, Experience, ImportedIdea, PlannerDay, RouteLeg } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { formatDriveTime, formatMiles } from "../utils/format";
 import { logRecoverableWarning } from "../utils/logging";
@@ -95,6 +96,8 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       const searchableText = [
         destination.name,
         destination.region,
+        destination.parish ?? "",
+        destination.heroAttraction ?? "",
         destination.headline,
         destination.description,
         destination.highlights.join(" "),
@@ -1870,6 +1873,9 @@ function PlaceDetailSheet({
     : uniqueStrings([liveTypePill, target.experience.type, target.experience.energy, target.experience.bestTime, target.experience.approxCost]).slice(0, 4);
   const planFit = buildPlanFit(target, liveDetails);
   const whatToExpect = isDestination ? target.destination.highlights.slice(0, 4) : target.experience.whatToExpect.slice(0, 4);
+  const entryRequirement = isDestination ? target.destination.entryRequirement : target.experience.entryRequirement;
+  const localTips = isDestination ? target.destination.localTips ?? [] : [];
+  const visitorTips = isDestination ? target.destination.visitorTips ?? [] : [];
   const liveVisitRows = buildLiveVisitRows(liveDetails);
   const sourceStatus = getPlaceDetailsSourceStatus(sourceMeta, isLiveDetailsLoading);
   const openStatusLabel = isLiveDetailsLoading
@@ -1938,6 +1944,12 @@ function PlaceDetailSheet({
               <MiniPill key={pill}>{pill}</MiniPill>
             ))}
           </div>
+
+          {entryRequirement && <EntryRequirementNotice requirement={entryRequirement} />}
+
+          {(localTips.length > 0 || visitorTips.length > 0) && (
+            <AudienceTipsSection localTips={localTips} visitorTips={visitorTips} />
+          )}
 
           {(isLiveDetailsLoading || liveVisitRows.length > 0) && (
             <section className="mt-4 rounded-3xl border border-sky-100 bg-sky-50/80 p-4">
@@ -2021,6 +2033,54 @@ function PlaceDetailSheet({
           <DrawerAction icon={Plus} label="Add trip" onClick={onAddToTrip} primary />
         </div>
       </article>
+    </div>
+  );
+}
+
+function EntryRequirementNotice({ requirement }: { requirement: EntryRequirement }) {
+  return (
+    <section className="mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-[0.65rem] font-black uppercase tracking-[0.16em]">
+          <Ticket className="h-4 w-4" />
+          {requirement.label}
+        </p>
+        {requirement.officialUrl && (
+          <a
+            href={requirement.officialUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-8 items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-black text-amber-800"
+          >
+            Check entry <ArrowUpRight className="h-3.5 w-3.5" />
+          </a>
+        )}
+      </div>
+      <p className="mt-2 text-sm font-semibold leading-6">{requirement.note}</p>
+    </section>
+  );
+}
+
+function AudienceTipsSection({ localTips, visitorTips }: { localTips: string[]; visitorTips: string[] }) {
+  return (
+    <section className="mt-3 grid gap-3 sm:grid-cols-2">
+      {!!localTips.length && <TipsCard title="For locals" tips={localTips} />}
+      {!!visitorTips.length && <TipsCard title="For visitors" tips={visitorTips} />}
+    </section>
+  );
+}
+
+function TipsCard({ title, tips }: { title: string; tips: string[] }) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-4">
+      <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">{title}</h3>
+      <div className="mt-3 grid gap-2">
+        {tips.map((tip) => (
+          <p key={tip} className="rounded-2xl bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-600">
+            {tip}
+          </p>
+        ))}
+      </div>
     </div>
   );
 }

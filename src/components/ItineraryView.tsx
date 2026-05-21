@@ -1,6 +1,6 @@
-import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, Lock, MapPin, Music2, PartyPopper, Route, Sparkles, StickyNote, Unlock, Utensils, WalletCards, X } from "lucide-react";
+import { AlertTriangle, CalendarDays, Clock3, CloudSun, Gauge, Landmark, Lock, MapPin, Music2, Palmtree, PartyPopper, Route, Sparkles, StickyNote, Ticket, TreePalm, Unlock, Utensils, WalletCards, X } from "lucide-react";
 import { DESTINATIONS } from "../data/content";
-import type { ImportedIdea, ImportedIdeaDayAssignments, ItineraryPlan } from "../types/travel";
+import type { EntryRequirement, ImportedIdea, ImportedIdeaDayAssignments, ItineraryPlan } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { getBoardIdeasForDestination } from "../utils/boardIdeas";
 import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
@@ -135,6 +135,9 @@ export function ItineraryView({
           const canEditRouteStop = Boolean(onSetRouteStopForDay && routeStopForDay);
           const canToggleRouteStopLock = Boolean(onToggleRouteStopLock && routeStopForDay && !day.isBase);
           const isRouteStopLocked = lockedDestinationIds.has(day.destinationId);
+          const dayDestination = DESTINATIONS.find((destination) => destination.id === day.destinationId);
+          const destinationEntryRequirement = dayDestination?.entryRequirement;
+          const experienceEntryRequirement = day.experience?.entryRequirement;
 
           return (
             <li
@@ -236,6 +239,17 @@ export function ItineraryView({
             )}
             <p className="mt-4 text-sm leading-6 text-slate-300">{day.highlight}.</p>
 
+            {(destinationEntryRequirement || experienceEntryRequirement) && (
+              <div className="mt-3 grid gap-2">
+                {destinationEntryRequirement && (
+                  <EntryRequirementLine label="Main stop entry" requirement={destinationEntryRequirement} />
+                )}
+                {experienceEntryRequirement && (
+                  <EntryRequirementLine label="Add-on entry" requirement={experienceEntryRequirement} />
+                )}
+              </div>
+            )}
+
             {(canEditNotes || dayNote) && (
               <div className={classNames("mt-3 rounded-2xl p-3", glassControlMuted)}>
                 <label className="block">
@@ -336,6 +350,9 @@ export function ItineraryView({
                     {day.experience.type === "food" && <Utensils className="h-4 w-4 text-emerald-300" />}
                     {day.experience.type === "music" && <Music2 className="h-4 w-4 text-cyan-300" />}
                     {day.experience.type === "festival" && <PartyPopper className="h-4 w-4 text-amber-300" />}
+                    {day.experience.type === "nature" && <TreePalm className="h-4 w-4 text-lime-300" />}
+                    {day.experience.type === "heritage" && <Landmark className="h-4 w-4 text-cyan-300" />}
+                    {day.experience.type === "beach" && <Palmtree className="h-4 w-4 text-sky-300" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -422,6 +439,24 @@ function RouteMetric({
       <h3 className="mt-1 text-sm font-semibold text-slate-100">{value}</h3>
       <p className="mt-1 text-xs leading-5 text-slate-500">{helper}</p>
     </article>
+  );
+}
+
+function EntryRequirementLine({
+  label,
+  requirement,
+}: {
+  label: string;
+  requirement: EntryRequirement;
+}) {
+  return (
+    <div className="rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-2">
+      <p className="flex items-center gap-2 text-[0.62rem] font-bold uppercase tracking-[0.16em] text-amber-100">
+        <Ticket className="h-3.5 w-3.5" />
+        {label}: {requirement.label}
+      </p>
+      <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{requirement.note}</p>
+    </div>
   );
 }
 

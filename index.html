@@ -5,11 +5,8 @@
     <script>
       (() => {
         try {
-          const savedTheme = localStorage.getItem("irieverse_theme");
-          const systemTheme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-          const theme = savedTheme === "light" || savedTheme === "dark" ? savedTheme : systemTheme;
           document.documentElement.classList.remove("dark", "light");
-          document.documentElement.classList.add(theme);
+          document.documentElement.classList.add("dark");
         } catch {
           document.documentElement.classList.add("dark");
         }
@@ -22,8 +19,8 @@
       content="IrieVerse is a Jamaica-first trip planner for exploring places, mapping routes, saving ideas, and building shareable trips."
     />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#f4f8f8" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f8f8" />
+    <meta name="theme-color" content="#020617" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#020617" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#020617" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

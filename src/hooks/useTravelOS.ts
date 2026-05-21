@@ -75,6 +75,8 @@ import { logRecoverableWarning } from "../utils/logging";
 
 const AVERAGE_JET_SPEED_KMH = 850;
 const STORAGE_KEY_ORIGIN_AIRPORT = "irieverse_origin_airport";
+const STORAGE_KEY_ORIGIN_COORDINATES = "irieverse_origin_coordinates";
+const EXACT_ORIGIN_AIRPORT_ID = "gps";
 const STORAGE_KEY_SAVED_PLACES = "irieverse_saved_places";
 const STORAGE_KEY_SAVED_EXPERIENCES = "irieverse_saved_experiences";
 const STORAGE_KEY_IMPORTED_IDEAS = "irieverse_imported_ideas";
@@ -97,17 +99,37 @@ const AIRPORT_TIMEZONES: Record<string, string> = {
   KIN: "America/Jamaica",
   NEG: "America/Jamaica",
   OCJ: "America/Jamaica",
+  GPS: "America/Jamaica",
 };
 
 const ORIGIN_AIRPORTS: [OriginAirport, ...OriginAirport[]] = [
   { id: "jfk", name: "New York, USA (JFK)", code: "JFK", shortLabel: "NYC", latitude: 40.6413, longitude: -73.7781 },
+  { id: "ewr", name: "Newark, USA (EWR)", code: "EWR", shortLabel: "Newark", latitude: 40.6895, longitude: -74.1745 },
   { id: "mia", name: "Miami, USA (MIA)", code: "MIA", shortLabel: "Miami", latitude: 25.7959, longitude: -80.287 },
+  { id: "fll", name: "Fort Lauderdale, USA (FLL)", code: "FLL", shortLabel: "FLL", latitude: 26.0742, longitude: -80.1506 },
+  { id: "atl", name: "Atlanta, USA (ATL)", code: "ATL", shortLabel: "Atlanta", latitude: 33.6407, longitude: -84.4277 },
+  { id: "clt", name: "Charlotte, USA (CLT)", code: "CLT", shortLabel: "Charlotte", latitude: 35.2144, longitude: -80.9473 },
+  { id: "ord", name: "Chicago, USA (ORD)", code: "ORD", shortLabel: "Chicago", latitude: 41.9742, longitude: -87.9073 },
+  { id: "dfw", name: "Dallas-Fort Worth, USA (DFW)", code: "DFW", shortLabel: "Dallas", latitude: 32.8998, longitude: -97.0403 },
+  { id: "phl", name: "Philadelphia, USA (PHL)", code: "PHL", shortLabel: "Philly", latitude: 39.8744, longitude: -75.2424 },
+  { id: "iad", name: "Washington, USA (IAD)", code: "IAD", shortLabel: "D.C.", latitude: 38.9531, longitude: -77.4565 },
   { id: "yyz", name: "Toronto, CA (YYZ)", code: "YYZ", shortLabel: "Toronto", latitude: 43.6777, longitude: -79.6248 },
   { id: "lax", name: "Los Angeles, USA (LAX)", code: "LAX", shortLabel: "L.A.", latitude: 33.9416, longitude: -118.4085 },
   { id: "scl", name: "Santiago, CL (SCL)", code: "SCL", shortLabel: "Santiago", latitude: -33.4489, longitude: -70.7858 },
   { id: "mbj", name: "Montego Bay, Jamaica (MBJ)", code: "MBJ", shortLabel: "MoBay", latitude: 18.5037, longitude: -77.9134 },
   { id: "kin", name: "Kingston, Jamaica (KIN)", code: "KIN", shortLabel: "Kingston", latitude: 17.9357, longitude: -76.7875 },
   { id: "ocj", name: "Ocho Rios, Jamaica (OCJ)", code: "OCJ", shortLabel: "Ochi", latitude: 18.4042, longitude: -76.969 },
+  { id: "negril-start", name: "Negril, Jamaica", code: "NEG", shortLabel: "Negril", latitude: 18.2728, longitude: -78.3488, supportsFlights: false },
+  { id: "falmouth-start", name: "Falmouth, Jamaica", code: "FAL", shortLabel: "Falmouth", latitude: 18.4936, longitude: -77.6559, supportsFlights: false },
+  { id: "lucea-start", name: "Lucea, Jamaica", code: "LUC", shortLabel: "Lucea", latitude: 18.4508, longitude: -78.1736, supportsFlights: false },
+  { id: "port-antonio-start", name: "Port Antonio, Jamaica", code: "PAJ", shortLabel: "Port Antonio", latitude: 18.1801, longitude: -76.457, supportsFlights: false },
+  { id: "treasure-beach-start", name: "Treasure Beach, Jamaica", code: "TBJ", shortLabel: "Treasure Beach", latitude: 17.8815, longitude: -77.7675, supportsFlights: false },
+  { id: "savanna-la-mar-start", name: "Savanna-la-Mar, Jamaica", code: "SLM", shortLabel: "Sav-la-Mar", latitude: 18.2189, longitude: -78.1332, supportsFlights: false },
+  { id: "mandeville-start", name: "Mandeville, Jamaica", code: "MAN", shortLabel: "Mandeville", latitude: 18.0417, longitude: -77.5071, supportsFlights: false },
+  { id: "may-pen-start", name: "May Pen, Jamaica", code: "MAY", shortLabel: "May Pen", latitude: 17.9645, longitude: -77.2459, supportsFlights: false },
+  { id: "spanish-town-start", name: "Spanish Town, Jamaica", code: "SPA", shortLabel: "Spanish Town", latitude: 17.9959, longitude: -76.9551, supportsFlights: false },
+  { id: "portmore-start", name: "Portmore, Jamaica", code: "PMR", shortLabel: "Portmore", latitude: 17.9503, longitude: -76.8822, supportsFlights: false },
+  { id: "morant-bay-start", name: "Morant Bay, Jamaica", code: "MOR", shortLabel: "Morant Bay", latitude: 17.8817, longitude: -76.4093, supportsFlights: false },
 ];
 
 const DEFAULT_ORIGIN_AIRPORT_ID = ORIGIN_AIRPORTS[0].id;
@@ -139,8 +161,22 @@ type ImportedIdeaPatch = {
     ? ImportedIdeaDraft[Key] | undefined
     : ImportedIdeaDraft[Key];
 };
+type StoredOriginCoordinates = {
+  latitude: number;
+  longitude: number;
+};
+type InitialPlanningDefaults = {
+  mode: PlanningMode;
+  templateId: PlanningTemplateId;
+  baseId: string;
+  days: number;
+  vibe: Vibe;
+  budget: number;
+  manualRouteDestinationIds: string[];
+};
 
 export function useTravelOS() {
+  const initialPlanningDefaults = useMemo(() => getInitialPlanningDefaults(), []);
   const [viewMode, setViewMode] = useState<ViewMode>("places");
   const [vibe, setVibe] = useState<Vibe>("all");
   const [experienceType, setExperienceType] = useState<ExperienceType>("all");
@@ -156,19 +192,17 @@ export function useTravelOS() {
     readJsonFromStorage(STORAGE_KEY_IMPORTED_IDEAS, [], isImportedIdeaArray)
   );
   const [theme, setTheme] = useState<ThemeMode>(() => getInitialTheme());
-  const [planningMode, setPlanningModeState] = useState<PlanningMode>(() => getInitialPlanningMode());
-  const [planningTemplateId, setPlanningTemplateId] = useState<PlanningTemplateId>(() =>
-    getInitialPlanningTemplateId()
-  );
-  const [plannerBaseId, setPlannerBaseId] = useState("mobay");
-  const [plannerDays, setPlannerDays] = useState(5);
-  const [plannerVibe, setPlannerVibe] = useState<Vibe>("mixed");
-  const [plannerBudget, setPlannerBudget] = useState(150);
+  const [planningMode, setPlanningModeState] = useState<PlanningMode>(initialPlanningDefaults.mode);
+  const [planningTemplateId, setPlanningTemplateId] = useState<PlanningTemplateId>(initialPlanningDefaults.templateId);
+  const [plannerBaseId, setPlannerBaseId] = useState(initialPlanningDefaults.baseId);
+  const [plannerDays, setPlannerDays] = useState(initialPlanningDefaults.days);
+  const [plannerVibe, setPlannerVibe] = useState<Vibe>(initialPlanningDefaults.vibe);
+  const [plannerBudget, setPlannerBudget] = useState(initialPlanningDefaults.budget);
   const [plannerStartDate, setPlannerStartDate] = useState(() =>
     new Date().toISOString().slice(0, 10)
   );
-  const [manualRouteDestinationIds, setManualRouteDestinationIds] = useState<string[]>(() =>
-    readJsonFromStorage(STORAGE_KEY_MANUAL_ROUTE, [], isStringArray)
+  const [manualRouteDestinationIds, setManualRouteDestinationIds] = useState<string[]>(
+    initialPlanningDefaults.manualRouteDestinationIds
   );
   const [lockedRouteDestinationIds, setLockedRouteDestinationIds] = useState<string[]>(() =>
     readJsonFromStorage(STORAGE_KEY_LOCKED_ROUTE, [], isStringArray)
@@ -183,7 +217,11 @@ export function useTravelOS() {
     readJsonFromStorage(STORAGE_KEY_IMPORTED_IDEA_DAYS, {}, isStringRecord)
   );
   const [originAirportId, setOriginAirportId] = useState(() => getInitialOriginAirportId());
-  const [hasUserPreferredOrigin, setHasUserPreferredOrigin] = useState(() => Boolean(getStoredOriginAirportId()));
+  const [exactOriginCoordinates, setExactOriginCoordinates] = useState<StoredOriginCoordinates | null>(() =>
+    getStoredOriginCoordinates()
+  );
+  const [isLocatingOrigin, setIsLocatingOrigin] = useState(false);
+  const [originLocationError, setOriginLocationError] = useState<string | null>(null);
   const [liveFacts, setLiveFacts] = useState<QuickFact[] | null>(null);
   const [weatherPlan, setWeatherPlan] = useState<WeatherPlanDay[]>([]);
   const [isFetchingFacts, setIsFetchingFacts] = useState(false);
@@ -215,9 +253,15 @@ export function useTravelOS() {
     () => DESTINATIONS.find((item) => item.id === plannerBaseId) ?? DESTINATIONS[0],
     [plannerBaseId]
   );
+  const originAirports = useMemo<[OriginAirport, ...OriginAirport[]]>(
+    () => exactOriginCoordinates
+      ? [buildExactOriginAirport(exactOriginCoordinates), ...ORIGIN_AIRPORTS]
+      : ORIGIN_AIRPORTS,
+    [exactOriginCoordinates]
+  );
   const originAirport = useMemo(
-    () => ORIGIN_AIRPORTS.find((airport) => airport.id === originAirportId) ?? ORIGIN_AIRPORTS[0],
-    [originAirportId]
+    () => originAirports.find((airport) => airport.id === originAirportId) ?? originAirports[0],
+    [originAirportId, originAirports]
   );
   const activePlanningTemplate = useMemo(
     () => getPlanningTemplate(planningTemplateId),
@@ -306,34 +350,6 @@ export function useTravelOS() {
   }, [theme]);
 
   useEffect(() => {
-    if (hasUserPreferredOrigin) return;
-    if (typeof window === "undefined" || !("geolocation" in navigator)) return;
-
-    let cancelled = false;
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (cancelled) return;
-        const nearest = findNearestAirport(position.coords.latitude, position.coords.longitude);
-        setOriginAirportId(nearest.id);
-        writeStringToStorage(STORAGE_KEY_ORIGIN_AIRPORT, nearest.id);
-        setHasUserPreferredOrigin(true);
-      },
-      () => {
-        // Keep the default origin when permission is denied or unavailable.
-      },
-      {
-        enableHighAccuracy: false,
-        maximumAge: 600000,
-        timeout: 10000,
-      }
-    );
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hasUserPreferredOrigin]);
-
-  useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
 
@@ -372,7 +388,7 @@ export function useTravelOS() {
 
         const flightFact: QuickFact = {
           label: `From ${originAirport.shortLabel ?? originAirport.code}`,
-          value: estimateFlightDuration(originAirport, destination),
+          value: estimateOriginTravelSummary(originAirport, destination),
         };
 
         const timezone: string | undefined = data.timezone;
@@ -413,8 +429,20 @@ export function useTravelOS() {
     loadFacts();
 
     async function loadFlights() {
-      setIsFetchingFlights(true);
       setFlightsError(null);
+      if (originAirport.supportsFlights === false || originAirport.isExactLocation) {
+        setIsFetchingFlights(false);
+        setFlightOptions([]);
+        setFlightSourceMeta({
+          source: "local",
+          reason: originAirport.isExactLocation ? "exact-origin-road-start" : "local-starting-point",
+          endpointConfigured: false,
+          providerConfigured: false,
+        });
+        return;
+      }
+
+      setIsFetchingFlights(true);
       try {
         const { options, meta } = await fetchFlightOptions(originAirport.code, destination.airportCode);
         if (!cancelled) {
@@ -449,6 +477,7 @@ export function useTravelOS() {
 
   const loadEvents = useCallback(async () => {
     const selectedRegion = destination.region.toLowerCase();
+    const selectedParish = destination.parish?.toLowerCase();
 
     setIsLoadingEvents(true);
     setEventsError(null);
@@ -459,7 +488,11 @@ export function useTravelOS() {
       }
       const events: LiveEvent[] = await response.json();
       const filteredEvents = events
-        .filter((event) => event.region?.toLowerCase() === selectedRegion)
+        .filter((event) => {
+          const eventRegion = event.region?.toLowerCase();
+          const eventParish = event.parish?.toLowerCase();
+          return eventRegion === selectedRegion || Boolean(selectedParish && eventParish === selectedParish);
+        })
         .sort(
           (first, second) =>
             new Date(first.startDate).getTime() - new Date(second.startDate).getTime()
@@ -472,7 +505,7 @@ export function useTravelOS() {
     } finally {
       setIsLoadingEvents(false);
     }
-  }, [destination.region]);
+  }, [destination.parish, destination.region]);
 
   useEffect(() => {
     loadEvents();
@@ -530,8 +563,11 @@ export function useTravelOS() {
         (item) =>
           item.name.toLowerCase().includes(query) ||
           item.region.toLowerCase().includes(query) ||
+          item.parish?.toLowerCase().includes(query) ||
+          item.heroAttraction?.toLowerCase().includes(query) ||
           item.description.toLowerCase().includes(query) ||
-          item.headline.toLowerCase().includes(query)
+          item.headline.toLowerCase().includes(query) ||
+          item.highlights.join(" ").toLowerCase().includes(query)
       );
     }
 
@@ -559,7 +595,10 @@ export function useTravelOS() {
         (experience) =>
           experience.title.toLowerCase().includes(query) ||
           experience.description.toLowerCase().includes(query) ||
-          experience.region.toLowerCase().includes(query)
+          experience.region.toLowerCase().includes(query) ||
+          experience.parish?.toLowerCase().includes(query) ||
+          experience.location.toLowerCase().includes(query) ||
+          experience.whatToExpect.join(" ").toLowerCase().includes(query)
       );
     }
 
@@ -596,7 +635,7 @@ export function useTravelOS() {
 
   const defaultFlightFact: QuickFact = {
     label: `From ${originAirport.shortLabel ?? originAirport.code}`,
-    value: estimateFlightDuration(originAirport, destination),
+    value: estimateOriginTravelSummary(originAirport, destination),
   };
   const heroFacts =
     (!isFetchingFacts && liveFacts?.length ? liveFacts : null) ??
@@ -700,10 +739,43 @@ export function useTravelOS() {
   }, [applyTripPayload, collaborationReady]);
 
   const handleOriginAirportChange = (airportId: string) => {
+    if (!originAirports.some((airport) => airport.id === airportId)) return;
     setOriginAirportId(airportId);
-    setHasUserPreferredOrigin(true);
+    setOriginLocationError(null);
     writeStringToStorage(STORAGE_KEY_ORIGIN_AIRPORT, airportId);
   };
+
+  const useExactGpsOrigin = useCallback(() => {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      setOriginLocationError("Exact GPS is unavailable in this browser.");
+      return;
+    }
+
+    setIsLocatingOrigin(true);
+    setOriginLocationError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coordinates = normalizeStoredOriginCoordinates({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setExactOriginCoordinates(coordinates);
+        setOriginAirportId(EXACT_ORIGIN_AIRPORT_ID);
+        writeJsonToStorage(STORAGE_KEY_ORIGIN_COORDINATES, coordinates);
+        writeStringToStorage(STORAGE_KEY_ORIGIN_AIRPORT, EXACT_ORIGIN_AIRPORT_ID);
+        setIsLocatingOrigin(false);
+      },
+      (error) => {
+        setIsLocatingOrigin(false);
+        setOriginLocationError(getOriginLocationErrorMessage(error));
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 60000,
+        timeout: 12000,
+      }
+    );
+  }, []);
 
   const applyPlanningTemplate = useCallback((templateId: PlanningTemplateId) => {
     const template = getPlanningTemplate(templateId);
@@ -724,7 +796,6 @@ export function useTravelOS() {
     if (template.originAirportId && ORIGIN_AIRPORTS.some((airport) => airport.id === template.originAirportId)) {
       setOriginAirportId(template.originAirportId);
       writeStringToStorage(STORAGE_KEY_ORIGIN_AIRPORT, template.originAirportId);
-      setHasUserPreferredOrigin(true);
     }
   }, []);
 
@@ -762,7 +833,6 @@ export function useTravelOS() {
     if (template.originAirportId && ORIGIN_AIRPORTS.some((airport) => airport.id === template.originAirportId)) {
       setOriginAirportId(template.originAirportId);
       writeStringToStorage(STORAGE_KEY_ORIGIN_AIRPORT, template.originAirportId);
-      setHasUserPreferredOrigin(true);
     }
   }, [planningTemplateId]);
 
@@ -1277,7 +1347,11 @@ export function useTravelOS() {
     routeIsManual: manualRouteDestinationIds.length > 0,
     originAirportId,
     handleOriginAirportChange,
-    originAirports: ORIGIN_AIRPORTS,
+    originAirports,
+    exactOriginCoordinates,
+    isLocatingOrigin,
+    originLocationError,
+    useExactGpsOrigin,
     liveFacts,
     isFetchingFacts,
     flightOptions,
@@ -1383,21 +1457,42 @@ function getPatchedOptionalValue<Key extends keyof ImportedIdeaPatch>(
 }
 
 function getInitialTheme(): ThemeMode {
-  if (typeof window === "undefined") return "dark";
-
-  const savedTheme = readStringFromStorage(STORAGE_KEY_THEME);
-  if (savedTheme === "dark" || savedTheme === "light") return savedTheme;
-
-  return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  return "dark";
 }
 
 function getInitialOriginAirportId(): string {
   return getStoredOriginAirportId() ?? DEFAULT_ORIGIN_AIRPORT_ID;
 }
 
-function getInitialPlanningMode(): PlanningMode {
-  const savedMode = readStringFromStorage(STORAGE_KEY_PLANNING_MODE);
-  return isPlanningMode(savedMode) ? savedMode : DEFAULT_PLANNING_MODE;
+function getInitialPlanningDefaults(): InitialPlanningDefaults {
+  const templateId = getInitialPlanningTemplateId();
+  const template = getPlanningTemplate(templateId);
+  const days = clampPlannerDays(template.days);
+  const storedManualRoute = readStringFromStorage(STORAGE_KEY_MANUAL_ROUTE) === null
+    ? null
+    : readJsonFromStorage(STORAGE_KEY_MANUAL_ROUTE, [], isStringArray);
+
+  return {
+    mode: template.mode,
+    templateId: template.id,
+    baseId: template.baseId,
+    days,
+    vibe: template.vibe,
+    budget: clampPlannerBudget(template.budget),
+    manualRouteDestinationIds: normalizeRouteDestinationIds(
+      storedManualRoute ?? template.routeDestinationIds ?? [],
+      template.baseId,
+      days
+    ),
+  };
+}
+
+function getStoredOriginCoordinates(): StoredOriginCoordinates | null {
+  return readJsonFromStorage<StoredOriginCoordinates | null>(
+    STORAGE_KEY_ORIGIN_COORDINATES,
+    null,
+    isStoredOriginCoordinatesOrNull
+  );
 }
 
 function getInitialPlanningTemplateId(): PlanningTemplateId {
@@ -1544,9 +1639,64 @@ function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
 
 function getStoredOriginAirportId(): string | null {
   const storedOrigin = readStringFromStorage(STORAGE_KEY_ORIGIN_AIRPORT);
-  return storedOrigin && ORIGIN_AIRPORTS.some((airport) => airport.id === storedOrigin)
-    ? storedOrigin
-    : null;
+  if (!storedOrigin) return null;
+  if (storedOrigin === EXACT_ORIGIN_AIRPORT_ID) {
+    return getStoredOriginCoordinates() ? storedOrigin : null;
+  }
+  return ORIGIN_AIRPORTS.some((airport) => airport.id === storedOrigin) ? storedOrigin : null;
+}
+
+function isStoredOriginCoordinatesOrNull(value: unknown): value is StoredOriginCoordinates | null {
+  return value === null || isStoredOriginCoordinates(value);
+}
+
+function isStoredOriginCoordinates(value: unknown): value is StoredOriginCoordinates {
+  if (typeof value !== "object" || value === null) return false;
+  const coordinates = value as Partial<Record<keyof StoredOriginCoordinates, unknown>>;
+  return (
+    typeof coordinates.latitude === "number" &&
+    Number.isFinite(coordinates.latitude) &&
+    coordinates.latitude >= -90 &&
+    coordinates.latitude <= 90 &&
+    typeof coordinates.longitude === "number" &&
+    Number.isFinite(coordinates.longitude) &&
+    coordinates.longitude >= -180 &&
+    coordinates.longitude <= 180
+  );
+}
+
+function normalizeStoredOriginCoordinates(coordinates: StoredOriginCoordinates): StoredOriginCoordinates {
+  return {
+    latitude: roundCoordinate(coordinates.latitude),
+    longitude: roundCoordinate(coordinates.longitude),
+  };
+}
+
+function roundCoordinate(value: number): number {
+  return Math.round(value * 100000) / 100000;
+}
+
+function buildExactOriginAirport(coordinates: StoredOriginCoordinates): OriginAirport {
+  return {
+    id: EXACT_ORIGIN_AIRPORT_ID,
+    name: "Use my exact GPS location",
+    code: "GPS",
+    shortLabel: "GPS",
+    latitude: coordinates.latitude,
+    longitude: coordinates.longitude,
+    supportsFlights: false,
+    isExactLocation: true,
+  };
+}
+
+function getOriginLocationErrorMessage(error: GeolocationPositionError): string {
+  if (error.code === error.PERMISSION_DENIED) {
+    return "Location permission was denied. Pick a starting area instead.";
+  }
+  if (error.code === error.TIMEOUT) {
+    return "GPS lookup timed out. Try again or pick a starting area.";
+  }
+  return "Could not get your GPS point. Pick a starting area or try again.";
 }
 
 function isImportedIdeaArray(value: unknown): value is ImportedIdea[] {
@@ -1699,8 +1849,11 @@ function createImportedIdeaId(): string {
   return `idea-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function estimateFlightDuration(origin: OriginAirport, destination: Pick<Destination, "latitude" | "longitude">): string {
+function estimateOriginTravelSummary(origin: OriginAirport, destination: Pick<Destination, "latitude" | "longitude">): string {
   const distanceKm = haversineDistance(origin.latitude, origin.longitude, destination.latitude, destination.longitude);
+  if (origin.supportsFlights === false || origin.isExactLocation) {
+    return `${Math.max(1, Math.round(distanceKm))} km direct to base`;
+  }
   const hours = distanceKm / AVERAGE_JET_SPEED_KMH;
   return formatFlightDuration(hours);
 }
@@ -1713,21 +1866,6 @@ function formatFlightDuration(hours: number): string {
   const wholeHours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   return `${wholeHours}h ${minutes.toString().padStart(2, "0")}m flight`;
-}
-
-function findNearestAirport(latitude: number, longitude: number): OriginAirport {
-  let closest = ORIGIN_AIRPORTS[0];
-  let minDistance = Number.POSITIVE_INFINITY;
-
-  ORIGIN_AIRPORTS.forEach((airport) => {
-    const distance = haversineDistance(latitude, longitude, airport.latitude, airport.longitude);
-    if (distance < minDistance) {
-      closest = airport;
-      minDistance = distance;
-    }
-  });
-
-  return closest;
 }
 
 export function formatLocalTime(dateString: string, airportCode: string): string {

@@ -281,7 +281,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
               />
 
               <section className="grid gap-4 xl:grid-cols-2">
-                {app.planningMode === "local" ? <LocalPlanSnapshot app={app} /> : <FlightSnapshot app={app} />}
+                {app.planningMode === "local" || isGroundOrigin(app) ? <LocalPlanSnapshot app={app} /> : <FlightSnapshot app={app} />}
                 <SharePanel app={app} />
               </section>
             </div>
@@ -544,6 +544,10 @@ function QuickPlanControls({ app }: { app: TravelOS }) {
             app.setPlannerDays(2);
           }}
         />
+      </div>
+
+      <div className="mt-4">
+        <ExactGpsOriginControl app={app} />
       </div>
 
       <p className="mt-4 text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">Vibe</p>
@@ -1399,6 +1403,7 @@ function WizardPanel({
             onChange={app.handleOriginAirportChange}
             options={getOriginOptions(app).map((airport) => ({ value: airport.id, label: airport.name }))}
           />
+          <ExactGpsOriginControl app={app} />
         </div>
       )}
 
@@ -1653,6 +1658,45 @@ function PlannerSelect({
   );
 }
 
+function ExactGpsOriginControl({ app }: { app: TravelOS }) {
+  const selectedExactStart = app.originAirport.isExactLocation;
+  const savedExactStart = Boolean(app.exactOriginCoordinates);
+  const statusText = app.originLocationError
+    ? app.originLocationError
+    : selectedExactStart
+      ? "Exact GPS start is active for this plan."
+      : savedExactStart
+        ? "Exact GPS start is saved. Select it from the starting point list when needed."
+        : "Optional. Uses your browser location prompt only when you tap the button.";
+
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-[0.62rem] uppercase tracking-[0.18em] text-slate-500">Exact start</p>
+          <p
+            className={classNames(
+              "mt-1 text-xs leading-5",
+              app.originLocationError ? "text-amber-100" : selectedExactStart ? "text-cyan-100" : "text-slate-400"
+            )}
+          >
+            {statusText}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={app.useExactGpsOrigin}
+          disabled={app.isLocatingOrigin}
+          className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-cyan-300/45 px-4 py-2 text-xs font-bold text-cyan-100 disabled:cursor-wait disabled:opacity-60"
+        >
+          <MapPinned className="h-4 w-4" />
+          {app.isLocatingOrigin ? "Locating..." : selectedExactStart ? "Refresh GPS" : "Use exact GPS"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LocalPlanSnapshot({ app }: { app: TravelOS }) {
   const weatherReadyDays = app.itinerary.daysPlan.filter((day) => day.weather || day.weatherNote).length;
 
@@ -1660,10 +1704,12 @@ function LocalPlanSnapshot({ app }: { app: TravelOS }) {
     <div className={classNames("rounded-3xl p-4", glassPanel)}>
       <div>
         <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Local plan</p>
-        <h3 className="text-base font-semibold">{app.destination.name} start</h3>
+        <h3 className="text-base font-semibold">
+          {app.originAirport.shortLabel ?? app.originAirport.name} to {app.destination.name}
+        </h3>
       </div>
       <p className="mt-2 text-xs leading-5 text-slate-500">
-        Built for a local day or weekend, with route pacing, weather cues, and saved Jamaica ideas kept in view.
+        Built from your selected starting point, with route pacing, weather cues, and saved Jamaica ideas kept in view.
       </p>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         <RouteStat
@@ -1972,6 +2018,16 @@ function IntegrationBadge({ label, tone }: { label: string; tone: IntegrationTon
 
 function getFlightSourceStatus(app: TravelOS): { status: string; tone: IntegrationTone; body: string } {
   const meta = app.flightSourceMeta;
+
+  if (isGroundOrigin(app)) {
+    return {
+      status: app.originAirport.isExactLocation ? "GPS start" : "Road start",
+      tone: "fallback",
+      body: app.originAirport.isExactLocation
+        ? "This plan starts from your exact location, so flight lookup is skipped."
+        : "This plan starts from a Jamaica area, so flight lookup is skipped.",
+    };
+  }
 
   if (app.flightsError) {
     return {
@@ -2557,12 +2613,15 @@ function getDatesStepBody(mode: PlanningMode): string {
 function getOriginLabel(mode: PlanningMode): string {
   if (mode === "local") return "Starting area";
   if (mode === "hosting") return "Guest arrival or starting area";
-  return "Origin airport";
+  return "Origin or starting point";
 }
 
 function getOriginOptions(app: TravelOS) {
-  if (app.planningMode !== "local") return app.originAirports;
-  return app.originAirports.filter((airport) => ["MBJ", "KIN", "OCJ"].includes(airport.code));
+  return app.originAirports;
+}
+
+function isGroundOrigin(app: TravelOS): boolean {
+  return app.originAirport.supportsFlights === false || app.originAirport.isExactLocation === true;
 }
 
 function getDefaultBuilderLane(mode: PlanningMode): BuilderLane {
@@ -2832,6 +2891,8 @@ function getExampleFlightBody(reason: string | undefined, endpointConfigured: bo
     "missing-flight-metadata": "Flight details are limited right now, so example flight options are shown.",
     "flight-data-unavailable": "Flight data is unavailable right now, so example flight options are shown.",
     "local-sample-data": "Example flight options are shown until current schedules are available.",
+    "exact-origin-road-start": "This plan starts from your exact location, so flight lookup is skipped.",
+    "local-starting-point": "This plan starts from a Jamaica area, so flight lookup is skipped.",
   };
 
   if (reason && labels[reason]) return labels[reason];
