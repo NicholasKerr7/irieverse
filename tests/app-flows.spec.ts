@@ -517,6 +517,44 @@ test("map place details open with curated fallback content", async ({ page }) =>
   expect(issues).toEqual([]);
 });
 
+test("map trip drawer keeps every planned day visible", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await page.route("**/api/road-route**", async (route) => {
+    const url = new URL(route.request().url());
+    const from = url.searchParams.get("from") ?? "";
+    const to = url.searchParams.get("to") ?? "";
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          coordinates: buildMockRoadCoordinates(from, to),
+          distanceKm: 78.4,
+          durationMinutes: 108,
+          summary: "Road-aware preview",
+          steps: [],
+          source: "osrm",
+        },
+        meta: { source: "osrm", stepCount: 0 },
+      }),
+    });
+  });
+
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await expectVisibleMapDayTabs(page, 5);
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await expectVisibleMapDayTabs(page, 5);
+
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("map route preview keeps route notes secondary", async ({ page }) => {
   const issues = collectPageIssues(page);
 
@@ -893,6 +931,17 @@ function buildMockRoadCoordinates(from: string, to: string): Array<[number, numb
     midpoint,
     [toLongitude, toLatitude],
   ];
+}
+
+async function expectVisibleMapDayTabs(page: Page, expectedDays: number) {
+  const drawer = page.getByTestId("map-trip-drawer");
+  await expect(drawer).toBeVisible();
+
+  for (let day = 1; day <= expectedDays; day += 1) {
+    const dayTab = drawer.getByRole("button", { name: new RegExp(`Day ${day}`) });
+    await expect(dayTab, `Day ${day} tab should be visible in the map drawer`).toBeVisible();
+    await expect(dayTab, `Day ${day} tab should not be clipped offscreen`).toBeInViewport();
+  }
 }
 
 async function expectMapTopControlsToHaveSeparateHitTargets(page: Page) {

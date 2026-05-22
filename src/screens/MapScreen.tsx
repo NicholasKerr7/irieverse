@@ -937,43 +937,49 @@ function TripDrawerTabs({
   onSelectTab: (tab: MapDrawerTab) => void;
 }) {
   return (
-    <div className="mt-4 flex gap-2 overflow-x-auto scroll-px-4 pb-1">
-      <TripDrawerTabButton active={activeTab === "overview"} icon={Route} label="Overview" onClick={() => onSelectTab("overview")} />
-      <TripDrawerTabButton active={activeTab === "unplanned"} icon={Layers3} label="Unplanned" onClick={() => onSelectTab("unplanned")} muted />
-      {stops.map((stop) => {
-        const tab: MapDrawerTab = `day-${stop.day}`;
-        const routeLeg = routeLegOptions.find((option) => option.day === stop.day);
-        const routeDetail = routeLeg ? routeDetailsById.get(routeLeg.id) : null;
-        const color = routeLeg ? getRouteColor(routeLeg.index) : "#0ea5e9";
-        const dotClass = routeLeg && !routeDetail
-          ? "animate-pulse bg-sky-400"
-          : routeDetail?.source === "fallback"
-            ? "bg-amber-400"
-            : "bg-emerald-400";
+    <div className="mt-4 space-y-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        <TripDrawerTabButton active={activeTab === "overview"} icon={Route} label="Overview" onClick={() => onSelectTab("overview")} />
+        <TripDrawerTabButton active={activeTab === "unplanned"} icon={Layers3} label="Unplanned" onClick={() => onSelectTab("unplanned")} muted />
+      </div>
 
-        return (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => onSelectTab(tab)}
-            className={classNames(
-              "inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-black transition sm:min-h-14 sm:gap-2 sm:px-4 sm:text-sm",
-              activeTab === tab
-                ? "border-[#020617] bg-[#020617] text-white shadow-lg shadow-slate-300"
-                : "border-slate-200 bg-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-800"
-            )}
-          >
-            <span
-              className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-black text-white sm:h-7 sm:w-7"
-              style={{ backgroundColor: color }}
+      <div className="grid grid-cols-5 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
+        {stops.map((stop) => {
+          const tab: MapDrawerTab = `day-${stop.day}`;
+          const routeLeg = routeLegOptions.find((option) => option.day === stop.day);
+          const routeDetail = routeLeg ? routeDetailsById.get(routeLeg.id) : null;
+          const color = routeLeg ? getRouteColor(routeLeg.index) : "#0ea5e9";
+          const dotClass = routeLeg && !routeDetail
+            ? "animate-pulse bg-sky-400"
+            : routeDetail?.source === "fallback"
+              ? "bg-amber-400"
+              : "bg-emerald-400";
+
+          return (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => onSelectTab(tab)}
+              className={classNames(
+                "inline-flex min-h-12 min-w-0 items-center justify-center gap-1 rounded-2xl border px-1.5 py-2 text-[0.68rem] font-black transition sm:min-h-14 sm:shrink-0 sm:gap-2 sm:rounded-full sm:px-4 sm:text-sm",
+                activeTab === tab
+                  ? "border-[#020617] bg-[#020617] text-white shadow-lg shadow-slate-300"
+                  : "border-slate-200 bg-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-800"
+              )}
             >
-              {stop.day}
-            </span>
-            Day {stop.day}
-            <span className={classNames("h-2 w-2 rounded-full", dotClass)} />
-          </button>
-        );
-      })}
+              <span
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black text-white sm:h-7 sm:w-7"
+                style={{ backgroundColor: color }}
+              >
+                {stop.day}
+              </span>
+              <span className="hidden sm:inline">Day {stop.day}</span>
+              <span className="sr-only">Day {stop.day}</span>
+              <span className={classNames("h-1.5 w-1.5 shrink-0 rounded-full sm:h-2 sm:w-2", dotClass)} />
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -996,7 +1002,7 @@ function TripDrawerTabButton({
       type="button"
       onClick={onClick}
       className={classNames(
-        "inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-black transition sm:min-h-14 sm:gap-2 sm:px-4 sm:text-sm",
+        "inline-flex min-h-12 min-w-0 items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-xs font-black transition sm:min-h-14 sm:shrink-0 sm:gap-2 sm:px-4 sm:text-sm",
         active
           ? "border-[#020617] bg-[#020617] text-white shadow-lg shadow-slate-300"
           : muted
