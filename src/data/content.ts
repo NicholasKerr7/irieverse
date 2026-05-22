@@ -611,7 +611,7 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     ],
     bestTime: "Lunch to sunset",
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Old_Steamer_Beach_Jamaica_Photo_D_Ramey_Logan.jpg?width=1200",
+      "https://images.pexels.com/photos/27556985/pexels-photo-27556985.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
     approxCost: "$",
     entryRequirement: FREE_PUBLIC,
     placeLookup: {
@@ -719,7 +719,7 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     ],
     bestTime: "Specific dates each year",
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Accompong_Maroon_Festival_-_Jerk_Pork.jpg?width=1200",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Maroon_Accompong.jpg?width=1200",
     approxCost: "$$",
     entryRequirement: CONFIRM_LOCAL,
     placeLookup: {

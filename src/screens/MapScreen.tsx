@@ -2132,7 +2132,7 @@ function getPlaceDetailsSourceStatus(
 
   if (meta.reason === "google-places-rate-limited") {
     return {
-      label: "Provider limit",
+      label: "Live source limit",
       tone: "fallback",
       body: "Live place info is limited right now, so curated Jamaica notes stay in view.",
     };

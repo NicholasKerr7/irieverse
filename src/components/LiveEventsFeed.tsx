@@ -170,15 +170,15 @@ function getEventSourceStatus(
 
   if (meta.reason === "event-provider-rate-limited") {
     return {
-      label: "Provider limit",
+      label: "Live source limit",
       tone: "fallback",
-      body: "The live event provider limit was reached, so curated Jamaica calendar picks are shown for now.",
+      body: "The live event source is cooling down, so curated Jamaica calendar picks are shown for now.",
     };
   }
 
   if (meta.reason === "event-provider-request-failed") {
     return {
-      label: "Curated fallback",
+      label: "Curated picks",
       tone: "error",
       body: "Live event lookup did not complete, so curated Jamaica calendar picks are shown.",
     };
@@ -186,17 +186,17 @@ function getEventSourceStatus(
 
   if (meta.reason === "partial-event-provider-request-failed") {
     return {
-      label: "Partial provider",
+      label: "Partial live check",
       tone: "fallback",
-      body: "One live event provider did not complete. Curated Jamaica calendar picks are shown with any available live matches.",
+      body: "One live event source did not respond. Curated Jamaica calendar picks are shown with any available live matches.",
     };
   }
 
   if (meta.reason === "no-live-provider-events") {
     return {
-      label: "Curated fallback",
+      label: "Curated picks",
       tone: "fallback",
-      body: "Eventbrite and Ticketmaster returned no matching Jamaica listings for this area, so curated picks are shown.",
+      body: "No matching live Jamaica listings were found for this area, so curated picks are shown.",
     };
   }
 
@@ -204,7 +204,7 @@ function getEventSourceStatus(
     return {
       label: "Curated calendar",
       tone: "fallback",
-      body: "Server event keys are not active in this environment, so the built-in Jamaica calendar is shown.",
+      body: "Live event updates are not connected here yet, so the built-in Jamaica calendar is shown.",
     };
   }
 
@@ -220,7 +220,7 @@ function formatEventProviders(meta: EventsApiMeta): string {
     meta.providers.eventbrite ? "Eventbrite" : null,
     meta.providers.ticketmaster ? "Ticketmaster" : null,
   ].filter(Boolean);
-  return providers.length ? providers.join(" and ") : "live providers";
+  return providers.length ? providers.join(" and ") : "live event sources";
 }
 
 function formatEventTime(isoString: string): string {

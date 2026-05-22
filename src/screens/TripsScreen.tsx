@@ -2051,7 +2051,7 @@ function getFlightSourceStatus(app: TravelOS): { status: string; tone: Integrati
 
   if (meta.reason === "aviationstack-rate-limited") {
     return {
-      status: "Provider limit",
+      status: "Live source limit",
       tone: "fallback",
       body: getExampleFlightBody(meta.reason, true),
     };
@@ -2109,7 +2109,7 @@ function getBookingIntegrationStatus(app: TravelOS): { status: string; tone: Int
 
   if (meta.reason === "amadeus-rate-limited") {
     return {
-      status: "Provider limit",
+      status: "Live source limit",
       tone: "fallback",
       body: getCuratedStayBody(meta.reason, true),
     };
@@ -2159,15 +2159,15 @@ function getEventIntegrationStatus(app: TravelOS): { status: string; tone: Integ
 
   if (meta.reason === "event-provider-rate-limited") {
     return {
-      status: "Provider limit",
+      status: "Live source limit",
       tone: "fallback",
-      body: "The live event provider limit was reached, so curated events are shown.",
+      body: "The live event source is cooling down, so curated events are shown.",
     };
   }
 
   if (meta.reason === "event-provider-request-failed") {
     return {
-      status: "Curated fallback",
+      status: "Curated picks",
       tone: "fallback",
       body: "Live event lookup did not finish, so curated events are shown.",
     };
@@ -2175,25 +2175,25 @@ function getEventIntegrationStatus(app: TravelOS): { status: string; tone: Integ
 
   if (meta.reason === "partial-event-provider-request-failed") {
     return {
-      status: "Partial provider",
+      status: "Partial live check",
       tone: "fallback",
-      body: "One live event provider did not finish, so curated events are shown with any available live matches.",
+      body: "One live event source did not respond, so curated events are shown with any available live matches.",
     };
   }
 
   if (meta.reason === "no-live-provider-events") {
     return {
-      status: "Curated fallback",
+      status: "Curated picks",
       tone: "fallback",
-      body: "Live providers returned no matching Jamaica listings for this area.",
+      body: "No matching live Jamaica listings were found for this area.",
     };
   }
 
   return {
-    status: meta.providerConfigured ? "Curated fallback" : "Jamaica calendar",
+    status: meta.providerConfigured ? "Curated picks" : "Jamaica calendar",
     tone: "fallback",
     body: meta.providerConfigured
-      ? "Curated Jamaica events are shown while live providers have no matching listings."
+      ? "Curated Jamaica events are shown because no matching live listings were found."
       : "Regional events are shown from the built-in Jamaica calendar.",
   };
 }
@@ -2935,7 +2935,7 @@ function getCuratedStayBody(reason: string | undefined, endpointConfigured: bool
   const labels: Record<string, string> = {
     "missing-amadeus-credentials": "Live hotel pricing is not connected yet, so curated Jamaica stays are ready.",
     "no-amadeus-offers": "No current hotel matches came back for this combination, so curated Jamaica stay ideas are shown.",
-    "amadeus-rate-limited": "The live stay source is cooling down after a provider limit, so curated Jamaica stays are shown.",
+    "amadeus-rate-limited": "The live stay source is cooling down, so curated Jamaica stays are shown.",
     "amadeus-request-failed": "The latest hotel lookup did not finish, so curated Jamaica stay ideas are shown.",
     "booking-proxy-request-failed": "The stay source could not be reached, so curated Jamaica stays are shown.",
     "request-failed": "The latest stay lookup did not finish, so curated Jamaica stay ideas are shown.",
@@ -2955,7 +2955,7 @@ function getExampleFlightBody(reason: string | undefined, endpointConfigured: bo
     "pending-flight-proxy": "Flight lookup is warming up, so example flight options are shown for this route.",
     "missing-aviationstack-key": "Live flight schedules are not connected yet, so saved examples are shown.",
     "aviationstack-disabled": "Current flight schedules are paused here, so example flight options are shown.",
-    "aviationstack-rate-limited": "The live flight source is cooling down after a provider limit, so saved examples are shown.",
+    "aviationstack-rate-limited": "The live flight source is cooling down, so saved examples are shown.",
     "aviationstack-request-failed": "The latest flight lookup did not finish, so example flight options are shown.",
     "flight-proxy-request-failed": "The latest flight lookup did not finish, so example flight options are shown.",
     "missing-flight-metadata": "Flight details are limited right now, so example flight options are shown.",

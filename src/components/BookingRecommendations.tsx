@@ -165,7 +165,7 @@ function getBookingSourceStatus(meta: BookingSourceMeta): {
     if (meta.reason === "amadeus-rate-limited") {
       return {
         title: "Curated stays",
-        label: "Provider limit",
+        label: "Live source limit",
         tone: "fallback",
         body: getCuratedStayBody(meta.reason, true),
       };
@@ -191,7 +191,7 @@ function getCuratedStayBody(reason: string | undefined, endpointConfigured: bool
   const labels: Record<string, string> = {
     "missing-amadeus-credentials": "Live hotel pricing is not connected yet, so curated Jamaica stays are ready.",
     "no-amadeus-offers": "No current hotel matches came back for this combination, so curated Jamaica stay ideas are shown.",
-    "amadeus-rate-limited": "The live stay source is cooling down after a provider limit, so curated Jamaica stays are shown.",
+    "amadeus-rate-limited": "The live stay source is cooling down, so curated Jamaica stays are shown.",
     "amadeus-request-failed": "The latest hotel lookup did not finish, so curated Jamaica stay ideas are shown.",
     "booking-proxy-request-failed": "The stay source could not be reached, so curated Jamaica stays are shown.",
     "request-failed": "The latest stay lookup did not finish, so curated Jamaica stay ideas are shown.",
