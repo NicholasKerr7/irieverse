@@ -593,6 +593,54 @@ test("map route preview waits for road geometry before showing route details", a
   expect(issues).toEqual([]);
 });
 
+test("map route preview falls back to public road geometry when the app proxy fails", async ({ page }) => {
+  const issues = collectPageIssues(page);
+  let proxyRequests = 0;
+  let publicRouteRequests = 0;
+
+  await page.route("**/api/road-route**", async (route) => {
+    proxyRequests += 1;
+    await route.fulfill({
+      status: 500,
+      contentType: "text/plain",
+      body: "FUNCTION_INVOCATION_FAILED",
+    });
+  });
+
+  await page.route("https://router.project-osrm.org/route/v1/driving/**", async (route) => {
+    publicRouteRequests += 1;
+    const url = new URL(route.request().url());
+    const coordinatePath = decodeURIComponent(url.pathname.split("/driving/")[1] ?? "");
+    const [from = "", to = ""] = coordinatePath.split(";");
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        routes: [
+          {
+            geometry: {
+              coordinates: buildMockRoadCoordinates(from, to),
+            },
+            distance: 78400,
+            duration: 6480,
+            legs: [],
+          },
+        ],
+      }),
+    });
+  });
+
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await expect(page.getByText("Road-aware")).toBeVisible({ timeout: 15000 });
+
+  expect(proxyRequests).toBeGreaterThan(0);
+  expect(publicRouteRequests).toBeGreaterThan(0);
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("map route preview reuses identical startup road lookups", async ({ page }) => {
   const issues = collectPageIssues(page);
   const routeRequestCounts = new Map<string, number>();

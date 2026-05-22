@@ -5,7 +5,7 @@ import type {
   RoadRouteApiResponse,
   RoadRouteStep,
 } from "../src/types/api";
-import { guardApiRequest } from "./_shared/api-guard";
+import { guardApiRequest } from "./_shared/api-guard.js";
 
 const DEFAULT_ROUTING_BASE_URL = "https://router.project-osrm.org";
 const MAX_ROUTE_DISTANCE_KM = 400;

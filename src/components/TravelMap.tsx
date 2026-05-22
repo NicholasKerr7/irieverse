@@ -20,6 +20,9 @@ const JAMAICA_MAP_BOUNDS: [[number, number], [number, number]] = [
   [-73.8, 21.1],
 ];
 
+const ROAD_ROUTE_PROXY_PATH = "/api/road-route";
+const PUBLIC_OSRM_ROUTE_BASE_URL = "https://router.project-osrm.org/route/v1/driving";
+
 const CATEGORY_COLORS: Record<MapPinCategory, string> = {
   beaches: "#22d3ee",
   food: "#f59e0b",
@@ -840,52 +843,197 @@ async function fetchRoadRoute(request: RouteRequest, signal: AbortSignal): Promi
 }
 
 async function fetchRoadRouteUncached(request: RouteRequest): Promise<RoadRouteFetchResult> {
+  const proxyResult = await fetchRoadRouteFromProxy(request);
+  if (proxyResult.route || proxyResult.fallback?.reason === "unsupported-route") return proxyResult;
+
+  const publicResult = await fetchPublicOsrmRoadRoute(request);
+  return publicResult.route ? publicResult : proxyResult;
+}
+
+async function fetchRoadRouteFromProxy(request: RouteRequest): Promise<RoadRouteFetchResult> {
   const params = new URLSearchParams({
     from: `${request.from.longitude},${request.from.latitude}`,
     to: `${request.to.longitude},${request.to.latitude}`,
   });
-  const response = await fetch(`/api/road-route?${params}`);
-  if (!response.ok) {
+
+  try {
+    const response = await fetch(`${ROAD_ROUTE_PROXY_PATH}?${params}`, {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      return {
+        route: null,
+        fallback: {
+          reason: response.status === 400 ? "unsupported-route" : "request-failed",
+          message: response.status === 400
+            ? "This leg is outside the supported planning range, so the map is using an estimated path."
+            : "The road-following preview is limited here, so this leg is using an estimated path.",
+        },
+      };
+    }
+
+    const payload = await readJsonResponse(response);
+    if (!payload) {
+      return {
+        route: null,
+        fallback: {
+          reason: "invalid-response",
+          message: "The road route was incomplete, so this leg is using an estimated route.",
+        },
+      };
+    }
+
+    return normalizeProxyRoadRoutePayload(payload, request);
+  } catch {
     return {
       route: null,
       fallback: {
-        reason: response.status === 400 ? "unsupported-route" : "request-failed",
-        message: response.status === 400
-          ? "This leg is outside the supported planning range, so the map is using an estimated path."
-          : "The road-following preview is limited here, so this leg is using an estimated path.",
+        reason: "request-failed",
+        message: "The road-following preview is limited here, so this leg is using an estimated path.",
       },
     };
   }
+}
 
-  const payload = await response.json();
-  const data = payload?.data;
-  if (!data || !Array.isArray(data.coordinates) || data.coordinates.length < 2) {
-    return {
-      route: null,
-      fallback: normalizeFallbackInfo(payload?.meta),
-    };
-  }
-  const coordinates = data.coordinates
-    .map((coordinate: unknown) => normalizeCoordinatePair(coordinate))
-    .filter((coordinate: [number, number] | null): coordinate is [number, number] => Boolean(coordinate));
-  if (coordinates.length < 2) {
-    return {
-      route: null,
-      fallback: {
-        reason: "invalid-response",
-        message: "The road route was incomplete, so this leg is using an estimated route.",
+async function fetchPublicOsrmRoadRoute(request: RouteRequest): Promise<RoadRouteFetchResult> {
+  try {
+    const response = await fetch(buildPublicOsrmUrl(request), {
+      headers: {
+        Accept: "application/json",
       },
+    });
+
+    if (!response.ok) {
+      return buildRoadRouteRequestFallback();
+    }
+
+    const payload = await readJsonResponse(response);
+    if (!payload) {
+      return buildRoadRouteInvalidFallback();
+    }
+
+    return normalizePublicOsrmPayload(payload, request);
+  } catch {
+    return buildRoadRouteRequestFallback();
+  }
+}
+
+async function readJsonResponse(response: Response): Promise<unknown | null> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) return null;
+  return response.json();
+}
+
+function normalizeProxyRoadRoutePayload(payload: unknown, request: RouteRequest): RoadRouteFetchResult {
+  const record = isRecord(payload) ? payload : {};
+  const data = record.data;
+
+  if (!data) {
+    return {
+      route: null,
+      fallback: normalizeFallbackInfo(record.meta),
     };
   }
 
+  const route = buildRoadRouteFromData(data, request);
+  if (!route) {
+    return buildRoadRouteInvalidFallback();
+  }
+
+  return { route };
+}
+
+function buildRoadRouteFromData(data: unknown, request: RouteRequest): RoadRoute | null {
+  if (!isRecord(data)) return null;
+
+  const coordinates = normalizeCoordinateList(data.coordinates);
+  if (coordinates.length < 2) return null;
+
+  return {
+    coordinates,
+    distanceKm: asNumber(data.distanceKm) ?? request.fallbackDistanceKm,
+    durationMinutes: asNumber(data.durationMinutes) ?? request.fallbackDurationMinutes,
+    summary: asString(data.summary) ?? "",
+    steps: normalizeRouteSteps(data.steps),
+    source: "osrm",
+  };
+}
+
+function buildPublicOsrmUrl(request: RouteRequest): string {
+  const coordinates = `${request.from.longitude},${request.from.latitude};${request.to.longitude},${request.to.latitude}`;
+  const url = new URL(`${PUBLIC_OSRM_ROUTE_BASE_URL}/${coordinates}`);
+  url.searchParams.set("overview", "full");
+  url.searchParams.set("geometries", "geojson");
+  url.searchParams.set("steps", "true");
+  url.searchParams.set("alternatives", "false");
+  url.searchParams.set("annotations", "distance,duration");
+  return url.toString();
+}
+
+function normalizePublicOsrmPayload(payload: unknown, request: RouteRequest): RoadRouteFetchResult {
+  const record = isRecord(payload) ? payload : {};
+  const routes = Array.isArray(record.routes) ? record.routes : [];
+  const route = routes.find(isRecord);
+
+  if (!route) return buildRoadRouteInvalidFallback();
+
+  const geometry = isRecord(route.geometry) ? route.geometry : {};
+  const coordinates = normalizeCoordinateList(geometry.coordinates);
+  if (coordinates.length < 2) return buildRoadRouteInvalidFallback();
+
+  const distanceMeters = asNumber(route.distance);
+  const durationSeconds = asNumber(route.duration);
   return {
     route: {
       coordinates,
-      distanceKm: Number(data.distanceKm) || request.fallbackDistanceKm,
-      durationMinutes: Number(data.durationMinutes) || request.fallbackDurationMinutes,
-      summary: asString(data.summary) ?? "",
-      steps: normalizeRouteSteps(data.steps),
+      distanceKm: distanceMeters ? roundTo(distanceMeters / 1000, 1) : request.fallbackDistanceKm,
+      durationMinutes: durationSeconds ? Math.max(1, Math.round(durationSeconds / 60)) : request.fallbackDurationMinutes,
+      summary: buildOsrmSummary(route.legs),
+      steps: [],
       source: "osrm",
+    },
+  };
+}
+
+function normalizeCoordinateList(value: unknown): Array<[number, number]> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((coordinate: unknown) => normalizeCoordinatePair(coordinate))
+    .filter((coordinate: [number, number] | null): coordinate is [number, number] => Boolean(coordinate));
+}
+
+function buildOsrmSummary(legs: unknown): string {
+  const roadNames: string[] = [];
+  (Array.isArray(legs) ? legs : []).forEach((leg) => {
+    const legRecord = isRecord(leg) ? leg : {};
+    (Array.isArray(legRecord.steps) ? legRecord.steps : []).forEach((step) => {
+      const stepRecord = isRecord(step) ? step : {};
+      const roadName = asString(stepRecord.ref) ?? asString(stepRecord.name) ?? asString(stepRecord.destinations);
+      if (roadName && !roadNames.includes(roadName)) roadNames.push(roadName);
+    });
+  });
+  return roadNames.slice(0, 4).join(" · ");
+}
+
+function buildRoadRouteRequestFallback(): RoadRouteFetchResult {
+  return {
+    route: null,
+    fallback: {
+      reason: "request-failed",
+      message: "The road-following preview is limited here, so this leg is using an estimated path.",
+    },
+  };
+}
+
+function buildRoadRouteInvalidFallback(): RoadRouteFetchResult {
+  return {
+    route: null,
+    fallback: {
+      reason: "invalid-response",
+      message: "The road route was incomplete, so this leg is using an estimated route.",
     },
   };
 }
@@ -1013,6 +1161,12 @@ function asString(value: unknown): string | undefined {
 
 function asNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function roundTo(value: number, places: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  const multiplier = 10 ** places;
+  return Math.round(value * multiplier) / multiplier;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

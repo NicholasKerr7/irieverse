@@ -5,7 +5,7 @@ import type {
   PlaceDetailsApiResponse,
   QueryRecord,
 } from "../src/types/api";
-import { guardApiRequest } from "./_shared/api-guard";
+import { guardApiRequest } from "./_shared/api-guard.js";
 
 const GOOGLE_PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 const PLACE_DETAILS_CACHE_TTL_MS = 12 * 60 * 60 * 1000;

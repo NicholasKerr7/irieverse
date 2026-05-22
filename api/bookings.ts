@@ -1,6 +1,6 @@
 import type { ApiRequest, ApiResponse, BookingApiResponse } from "../src/types/api";
 import type { BookingOption } from "../src/types/travel";
-import { guardApiRequest } from "./_shared/api-guard";
+import { guardApiRequest } from "./_shared/api-guard.js";
 
 const AMADEUS_TEST_BASE_URL = "https://test.api.amadeus.com";
 const AMADEUS_PRODUCTION_BASE_URL = "https://api.amadeus.com";

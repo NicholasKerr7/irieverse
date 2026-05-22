@@ -10,7 +10,7 @@ import type {
   ImportMetadataPlace,
 } from "../src/types/api";
 import type { ImportedIdeaSourcePlatform } from "../src/types/travel";
-import { guardApiRequest } from "./_shared/api-guard";
+import { guardApiRequest } from "./_shared/api-guard.js";
 
 const MAX_URL_LENGTH = 2048;
 const MAX_HTML_BYTES = 300_000;

@@ -1,6 +1,6 @@
 import type { ApiRequest, ApiResponse, FlightApiResponse } from "../src/types/api";
 import type { FlightOption } from "../src/types/travel";
-import { guardApiRequest } from "./_shared/api-guard";
+import { guardApiRequest } from "./_shared/api-guard.js";
 
 const AVIATIONSTACK_BASE_URL = "https://api.aviationstack.com/v1/flights";
 const MAX_FLIGHT_OPTIONS = 4;

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { ApiRequest, ApiResponse, EventsApiResponse, QueryRecord } from "../src/types/api";
 import type { LiveEvent } from "../src/types/travel";
-import { guardApiRequest } from "./_shared/api-guard";
+import { guardApiRequest } from "./_shared/api-guard.js";
 
 const EVENTBRITE_API_BASE_URL = "https://www.eventbriteapi.com/v3";
 const TICKETMASTER_EVENTS_URL = "https://app.ticketmaster.com/discovery/v2/events.json";
