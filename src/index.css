@@ -5,6 +5,7 @@
 html {
   min-height: 100%;
   background: var(--app-bg);
+  scrollbar-width: none;
 }
 
 html.dark {
@@ -122,15 +123,46 @@ body {
   color: var(--app-text);
   min-height: 100%;
   margin: 0;
+  scrollbar-width: none;
   overflow-x: hidden;
   overscroll-behavior-y: none;
   text-rendering: optimizeLegibility;
+  -ms-overflow-style: none;
   -webkit-font-smoothing: antialiased;
 }
 
 #root {
   min-height: 100%;
   isolation: isolate;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+html,
+body,
+#root,
+.app-shell {
+  overscroll-behavior-x: none;
+}
+
+.app-shell,
+.app-shell * {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:focus-within {
+    scroll-behavior: smooth;
+  }
 }
 
 button,

@@ -397,6 +397,52 @@ test("traveler-facing screens avoid integration jargon", async ({ page }) => {
   expect(issues).toEqual([]);
 });
 
+test("app hides visual scrollbars while preserving page and panel scrolling", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await openCleanTab(page, "home", []);
+  await page.waitForTimeout(1000);
+
+  const pageScrollBefore = await page.evaluate(() => {
+    const scrollElement = document.scrollingElement ?? document.documentElement;
+    return {
+      canScroll: scrollElement.scrollHeight > scrollElement.clientHeight,
+      htmlScrollbarWidth: getComputedStyle(document.documentElement).scrollbarWidth,
+      bodyScrollbarWidth: getComputedStyle(document.body).scrollbarWidth,
+    };
+  });
+  expect(pageScrollBefore.canScroll).toBe(true);
+  expect(pageScrollBefore.htmlScrollbarWidth).toBe("none");
+  expect(pageScrollBefore.bodyScrollbarWidth).toBe("none");
+
+  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "auto" }));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await page.getByLabel("Expand trip drawer").click();
+
+  const scrollPanelStyles = await page.evaluate(() => {
+    const scrollableElements = [...document.querySelectorAll<HTMLElement>("*")]
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        const hasScrollOverflow = /(auto|scroll)/.test(`${style.overflowX} ${style.overflowY}`);
+        return hasScrollOverflow && (element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth);
+      })
+      .map((element) => getComputedStyle(element).scrollbarWidth);
+
+    return {
+      count: scrollableElements.length,
+      styles: scrollableElements,
+    };
+  });
+
+  expect(scrollPanelStyles.count).toBeGreaterThan(0);
+  expect(scrollPanelStyles.styles.every((style) => style === "none")).toBe(true);
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("legal pages are reachable from the footer", async ({ page }) => {
   const issues = collectPageIssues(page);
 
