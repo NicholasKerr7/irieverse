@@ -1,229 +1,161 @@
-# IrieVerse Travel OS
+# IrieVerse
 
-IrieVerse is a Jamaica-focused travel planning app for building a real trip from scattered ideas. It combines a 14-parish Jamaica guide, saved link imports, road-aware route planning, flight and stay snapshots, budget cues, local events, sharing, optional exact GPS starting points, and calendar export in one interactive workspace.
+IrieVerse is a Jamaica-first travel planning app for turning saved ideas, parish knowledge, road routes, events, budgets, flights, stays, and daily plans into one usable island itinerary.
 
-The app is built for people who want to plan Jamaica without bouncing between maps, notes, social posts, flight tabs, hotel tabs, and generic itinerary tools that do not understand the island.
+It is built for a specific planning problem: Jamaica trips are rarely solved by a generic itinerary builder. Visitors and locals need real parish context, realistic drive pacing, entry notes, local events, saved social links, and a map that understands the island.
 
-## What It Solves
+## Product Snapshot
 
-- Turns saved links, Google Maps places, TikToks, Instagram posts, YouTube links, and articles into usable trip ideas.
-- Helps travelers understand which Jamaica parish, region, hero attraction, event, and starting point fit their vibe, dates, budget, and pace.
-- Shows whether major attractions, beaches, tours, events, and experiences are free, ticketed, pass-based, or variable before users build the day around them.
-- Replaces straight-line map guesses with road-following route previews and fallback messaging when route data is limited.
-- Keeps planning useful when live providers are missing, rate-limited, or temporarily unavailable.
-- Separates live data from curated Jamaica content so users know what is current and what is an editorial planning aid.
-- Gives visitors and locals one place to compare stops, build day plans, choose a starting area or exact GPS start, save ideas, export calendars, and share trips.
+- **Audience:** Jamaica visitors, locals planning weekends, hosts, repeat travelers, and small trip planners.
+- **Core promise:** move from scattered links and vague ideas to a route-aware Jamaica plan.
+- **Coverage:** all 14 parishes with representative hero places, local tips, visitor tips, and entry guidance.
+- **Map:** MapLibre with road-following route previews and graceful estimated-route messaging.
+- **Planning mode:** usable without provider keys, stronger when live integrations are configured.
+- **Default feel:** mobile-first, dark-first, PWA-ready, and designed for quick planning on the go.
 
-## What Makes It Stand Out
+## Why It Stands Out
 
-- **Parish-by-parish guide**: all 14 parishes are represented with a hero attraction or place, hero image, parish context, entry guidance, local tips, and visitor tips.
-- **Jamaica-first planning**: destinations, experiences, route pacing, parish labels, airport and local starting points, events, and trip language are specific to Jamaica.
-- **Road-aware map planning**: MapLibre renders Jamaica pins and route geometry, while the route drawer keeps estimated lines available if detailed routing is unavailable.
-- **Saved idea intelligence**: imported URLs can extract titles, descriptions, images, place facts, coordinates, and map anchors when metadata is available.
-- **Live plus curated coverage**: flights, stays, place details, road routes, events, and sharing all label whether they are live, curated, limited, or paused.
-- **Graceful provider handling**: the app still works without Amadeus. Stays show curated Jamaica recommendations until live hotel pricing is connected.
-- **Trip-building workspace**: route order, day assignments, locked stops, notes, saved places, imported ideas, budgets, dates, and exports live together.
-- **Flexible starting points**: users can start from major airports, Jamaica towns, local meetup areas, or an optional exact browser GPS point.
-- **Dark-first interface**: the app boots in dark mode on every fresh load, regardless of saved or system preference, then lets users toggle after startup.
-- **PWA-ready experience**: app shortcuts, install icons, share target support, offline cached data, and production QA checks are included.
+Most travel tools treat Jamaica as a list of attractions. IrieVerse treats it as an island you have to move through.
 
-## Questions IrieVerse Can Answer
+- **Jamaica-specific content:** parish cards, hero attractions, beaches, food stops, culture, music, nightlife, road pacing, airports, starting areas, and event context.
+- **Saved idea intelligence:** paste Google Maps, TikTok, Instagram, YouTube, article, or normal web links and turn them into organized trip ideas.
+- **Route-aware planning:** compare stops on a live map, inspect route legs, and avoid plans that look good on a list but break down on the road.
+- **Entry clarity:** attractions and events can show whether a ticket, pass, cover, guide, parking fee, or local confirmation may be needed.
+- **Live plus curated data:** flights, stays, events, place details, routes, and sharing all stay transparent about whether data is live, curated, limited, or unavailable.
+- **Local and visitor use cases:** plan a vacation, a weekend, a food run, a beach day, a route for guests, or a multi-stop island trip.
 
-- Where should I start my Jamaica trip based on my vibe?
-- Which stops fit a food, beach, music, culture, nightlife, or family-friendly trip?
-- How many days do I need for this route?
-- What is the drive time between the places I picked?
-- Is this route road-aware or only an estimated preview right now?
-- Which saved places and imported ideas are already mapped?
-- Which saved ideas still need Jamaica map anchors?
-- Does this stop require a ticket, pass, registration, cover charge, parking fee, guide, or local confirmation?
-- Which attraction is the hero stop for each parish?
-- Which flights are live and which are saved examples?
-- Are stays live-priced, curated, or limited by provider availability?
-- What can I do near my selected base?
-- Which day should a saved place or imported idea belong to?
-- Can I export this itinerary to a calendar?
-- Can I share this trip as a view-only link?
-- What still needs setup before a production launch?
+## What You Can Do
 
-## How To Use The App
+- Explore Jamaica by parish, region, vibe, attraction type, and experience category.
+- Save places and experiences from inside the app.
+- Import outside links into a saved board and attach them to Jamaica map areas.
+- Build trips by days, base, budget, vibe, dates, route order, and starting point.
+- Start from major airports, Jamaica towns, local meetup areas, or optional exact GPS.
+- Lock important stops, reorder route days, assign saved ideas, and add day notes.
+- Preview road-aware drive legs before opening Google Maps or another navigation app.
+- Check live or curated events for the selected region.
+- Review flight snapshots and stay recommendations when available.
+- Export an itinerary to calendar and optionally share a view-only trip link.
 
-1. **Explore Jamaica**
-   - Browse all 14 parish guide cards, each with a renowned hero attraction/place and hero image.
-   - Filter destinations and experiences by vibe, parish, region, attraction, and category.
-   - Check entry notes before adding a stop: free public access, ticket required, pass recommended, or confirm locally.
-   - Save places or experiences that fit the trip.
+## Questions It Answers
 
-2. **Open The Map**
-   - Compare destinations, imported pins, and route stops.
-   - Use route tabs to inspect each travel leg.
-   - Open place details to see live place info when available or curated notes when not.
+- Which Jamaica parish or region fits this trip?
+- What is the famous or representative place for each parish?
+- Is this stop free, ticketed, pass-based, or something to confirm locally?
+- How many days does this route need?
+- What drive time am I really taking on between stops?
+- Which saved links are already useful, and which still need map cleanup?
+- Are events, flights, stays, and place details live right now or curated?
+- Can this become a day-by-day plan I can export or share?
 
-3. **Import Saved Ideas**
-   - Paste a Google Maps, TikTok, Instagram, YouTube, article, or normal web URL into Saved.
-   - IrieVerse extracts the best available preview and links the idea to a Jamaica planning area when possible.
-   - Place imported ideas on the map if they need manual cleanup.
+## User Flow
 
-4. **Build A Trip**
-   - Choose visitor or local mode.
-   - Select a starting base, dates, trip length, vibe, budget, and starting point.
-   - Pick a major origin airport, Jamaica starting area, or tap **Use exact GPS** to set a browser-provided starting coordinate.
-   - Edit route order, lock important stops, add day notes, and assign saved ideas to days.
+1. **Explore**
+   Browse parishes, destinations, and experiences. Filter by vibe and category, then save the ideas that fit.
 
-5. **Check Travel Support**
-   - Trips shows a compact live/curated status panel for sharing, stays, flights, road planning, and events.
-   - Current sources are labeled separately from curated or limited sources.
+2. **Save**
+   Paste outside links into Saved. IrieVerse extracts the best available title, description, source, image, and place details, then keeps the idea ready for trip planning.
 
-6. **Export Or Share**
-   - Export the itinerary as an ICS calendar file.
-   - If Supabase sharing is enabled, create a view-only share link with local edit-token updates from the creating browser.
+3. **Map**
+   Compare Jamaica pins, imported ideas, route stops, and day tabs. The drawer shows the complete route and keeps every planned day visible across mobile and desktop.
 
-## Main Features
+4. **Build Trip**
+   Pick a base, dates, days, budget, vibe, route stops, starting point, and notes. Use curated planning data immediately or connect live providers over time.
 
-- Destination and experience explorer with vibe filters and search
-- 14-parish Jamaica guide with hero attractions, hero images, local tips, visitor tips, and ticket/pass notes
-- Interactive MapLibre map with road-following route overlays
-- Jamaica-specific road pacing, weather cues, local content, and trip language
-- Saved boards with link import parsing and metadata enrichment
-- Google Maps import enrichment when `GOOGLE_PLACES_API_KEY` is configured
-- Optional email sign-in for cloud-saved Jamaica boards
-- PWA share target for sending external travel links into the Saved import flow
-- Region-aware trip planner with editable route order, route locks, pacing, budget, dates, and notes
-- Expanded origin picker with US/Canada airports, Jamaica starting areas, and optional exact GPS start
-- Trip planning support panel for share links, stays, flights, road routes, and events
-- Flight snapshots through AviationStack or saved examples
-- Stay recommendations through Amadeus when available or curated Jamaica picks when not
-- Place detail enrichment through Google Places or curated Jamaica notes
-- Optional Supabase-backed cloud boards and view-only trip sharing
-- Production QA that validates routes, APIs, PWA assets, and cleanup behavior
-- PWA manifest, install icons, shortcuts, share target, and same-origin offline cache
+5. **Export Or Share**
+   Download an ICS calendar file, open route handoff links, or enable Supabase sharing for view-only trip links.
 
-## Live Integrations And Curated Mode
+## Live Data Model
 
-IrieVerse does not require every provider key to be present. It is designed to stay honest and usable:
+IrieVerse is designed to launch without every provider key. Missing providers do not break the app; the UI labels what is live and what is curated.
 
-| Area | Live when configured | When missing or limited |
+| Area | Live source | If not configured |
 | --- | --- | --- |
-| Flights | AviationStack through `/api/flights` | Saved flight examples |
-| Stays | Amadeus through `/api/bookings` | Curated Jamaica stays |
-| Place details | Google Places through `/api/place-details` | Curated Jamaica notes |
-| Saved imports | Metadata and Google Places enrichment through `/api/import-metadata` | Local link parsing |
-| Road routes | OSRM-compatible route provider through `/api/road-route` | Estimated route preview |
-| Sharing | Supabase Auth and trip RPCs | Local planning and calendar export |
-| Events | Built-in Jamaica calendar today | Curated regional calendar |
+| Places | Google Places | Curated Jamaica notes |
+| Flights | AviationStack | Saved flight examples |
+| Stays | Amadeus | Curated Jamaica stays |
+| Events | Eventbrite and Ticketmaster | Built-in Jamaica event calendar |
+| Routes | OSRM-compatible routing | Estimated route preview |
+| Sharing | Supabase | Local planning plus calendar export |
+| Saved imports | Metadata and Google Places enrichment | Local link parsing |
 
-No Amadeus key is required to launch the app. If Amadeus is not connected, stays intentionally show curated Jamaica recommendations.
+Amadeus is optional. If hotel pricing is not connected, IrieVerse intentionally shows curated Jamaica stay recommendations.
 
-Exact GPS is optional. The app does not prompt for location on load; it asks only when a user taps **Use exact GPS** in the trip builder.
+Only variables prefixed with `VITE_` are exposed to the browser. Keep provider credentials server-only.
 
-## Quick Start
+## Tech Stack
 
-1. Install Node 22.x. The `.nvmrc` file is set to the Node 22 LTS line.
-2. Install dependencies:
+- React 18
+- Vite
+- TypeScript
+- Tailwind CSS
+- MapLibre via `react-map-gl`
+- Vercel serverless API routes
+- Supabase for optional auth, cloud boards, and trip sharing
+- Playwright for local and production QA
+
+## Run Locally
+
+Requirements:
+
+- Node `22.x`
+- npm `>=10`
 
 ```bash
 npm install
-```
-
-3. Start local development:
-
-```bash
 npm run dev
 ```
 
-4. Build for production:
+Production build:
 
 ```bash
 npm run build
 ```
 
-## Environment
-
-Copy the template and fill only the integrations you are ready to use:
+Optional environment setup:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Common optional variables:
+Fill only the providers you want to use. The app remains usable with no live keys.
 
-```text
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_SUPABASE_DISABLED=false
+Detailed provider setup lives in [docs/production-env.md](docs/production-env.md).
 
-AVIATIONSTACK_API_KEY=your_aviationstack_key
-AVIATIONSTACK_DISABLED=false
-AVIATIONSTACK_CACHE_TTL_SECONDS=900
-AVIATIONSTACK_COOLDOWN_SECONDS=1800
-VITE_FLIGHTS_API_URL=/api/flights
-
-VITE_BOOKING_API_URL=/api/bookings
-AMADEUS_CLIENT_ID=your_amadeus_api_key
-AMADEUS_CLIENT_SECRET=your_amadeus_api_secret
-AMADEUS_BASE_URL=https://test.api.amadeus.com
-
-GOOGLE_PLACES_API_KEY=your_google_places_key
-
-EVENTBRITE_PRIVATE_TOKEN=your_eventbrite_private_token
-EVENTBRITE_ORGANIZATION_ID=optional_eventbrite_organization_id
-TICKETMASTER_API_KEY=your_ticketmaster_discovery_key
-EVENTS_CACHE_TTL_SECONDS=1800
-
-UNSPLASH_ACCESS_KEY=your_unsplash_access_key
-PIXABAY_API_KEY=your_pixabay_api_key
-PEXELS_API_KEY=your_pexels_api_key
-
-ROUTING_API_BASE_URL=https://router.project-osrm.org
-ROUTING_API_TIMEOUT_MS=4500
-ROUTING_PROVIDER_COOLDOWN_SECONDS=45
-
-IRIEVERSE_ALLOWED_ORIGINS=https://irieverse.vercel.app
-IRIEVERSE_API_RATE_LIMIT_WINDOW_SECONDS=60
-```
-
-Only variables prefixed with `VITE_` are exposed to the browser. Keep AviationStack, Amadeus, Google Places, image-provider, and routing credentials server-only.
-
-See [docs/production-env.md](docs/production-env.md) for provider setup, production environment commands, API contracts, and Supabase migration details.
-
-## Development Scripts
+## Scripts
 
 ```bash
 npm run dev             # Start Vite
 npm run typecheck       # TypeScript checks
 npm run test:api        # API handler regression tests
 npm run build           # Service worker build plus production Vite build
-npm run qa:local        # Playwright app-flow QA against a local dev server
+npm run qa:local        # Playwright app-flow QA against local dev
 npm run qa:production   # Playwright production QA against IRIEVERSE_APP_URL
-npm run verify          # Typecheck, API tests, maintenance checks, audit, build
-npm run verify:full     # Full verify plus local browser QA
+npm run verify          # Standard pre-push verification
+npm run verify:full     # Verification plus browser QA
 npm run maintenance     # Production audit plus outdated package report
 ```
 
 ## Deployment
 
-Recommended deployment target: Vercel.
+Recommended target: Vercel.
 
 - Framework: Vite
 - Build command: `npm run build`
 - Output directory: `dist`
-- Serverless API routes: `api/*.ts`
+- API routes: `api/*.ts`
 
-Production checklist:
+Production priorities:
 
-- Add `GOOGLE_PLACES_API_KEY` for live place details and richer Google Maps imports.
-- Add `EVENTBRITE_PRIVATE_TOKEN` and/or `TICKETMASTER_API_KEY` for automatic live event listings; curated events remain as fallback.
+- Add `GOOGLE_PLACES_API_KEY` for live place details and better Google Maps imports.
+- Add `EVENTBRITE_PRIVATE_TOKEN` and/or `TICKETMASTER_API_KEY` for automatic live event listings.
 - Add `AVIATIONSTACK_API_KEY` for live flight snapshots.
-- Leave Amadeus unset until you have credentials. Curated stays will remain active.
-- Add `AMADEUS_CLIENT_ID`, `AMADEUS_CLIENT_SECRET`, and `AMADEUS_BASE_URL` when hotel pricing is ready.
-- Add `IRIEVERSE_ALLOWED_ORIGINS` for any custom domain beyond the default production domain.
-- Push Supabase migrations before enabling cloud boards or shared trips.
-- Run `npm run verify:full` before shipping a major UI or integration change.
+- Keep Amadeus unset until hotel pricing credentials are ready.
+- Add Supabase migrations before enabling cloud boards or shared trips.
+- Run `npm run verify:full` before major releases.
 - Run `npm run qa:production` after deployment.
 
 ## Screenshots
-
-Generated by the Playwright QA flow against the current app build.
 
 | Home | Explore | Map |
 | --- | --- | --- |
@@ -233,41 +165,25 @@ Generated by the Playwright QA flow against the current app build.
 | --- | --- | --- |
 | ![Mobile explore experiences](public/screenshots/mobile-explore-experiences.png) | ![Mobile saved import](public/screenshots/mobile-saved-import.png) | ![Mobile trips](public/screenshots/mobile-trips.png) |
 
-Desktop home:
+Desktop:
 
 ![Desktop home](public/screenshots/desktop-home.png)
 
-Desktop map:
-
 ![Desktop map](public/screenshots/desktop-map.png)
 
-## Marketing Kit
+## Documentation
 
-- Strategy: [docs/marketing-strategy.md](docs/marketing-strategy.md)
-- Local mode plan: [docs/local-mode-plan.md](docs/local-mode-plan.md)
-- Static press kit page: [public/press-kit.html](public/press-kit.html)
-- Production press kit URL after deploy: `https://irieverse.vercel.app/press-kit.html`
+- [Production environment](docs/production-env.md)
+- [Production QA](docs/production-qa.md)
+- [Dependency maintenance](docs/dependency-maintenance.md)
+- [Marketing strategy](docs/marketing-strategy.md)
+- [Local mode plan](docs/local-mode-plan.md)
+- [Press kit](public/press-kit.html)
 
-The marketing kit uses QA-generated screenshots, so launch visuals stay aligned with the app.
-
-## Tech Stack
-
-- React 18
-- Vite
-- TypeScript
-- Tailwind CSS
-- MapLibre through `react-map-gl`
-- Supabase for optional auth, cloud boards, and trip sharing
-- Vercel serverless functions for provider-safe API proxies
-- Playwright for local and production QA
-
-## Maintenance
+## Maintenance Notes
 
 - Dependabot checks npm packages and GitHub Actions weekly.
-- Major dependency upgrades are handled manually because React, Vite, Tailwind, MapLibre, and TypeScript major bumps can affect UI and build behavior.
+- Major dependency upgrades are reviewed manually because UI, build, and map behavior can shift.
 - Dependency Review blocks high-severity vulnerable additions.
-- `npm run verify` runs the standard pre-push safety checks.
-- `npm run verify:full` adds the browser QA suite.
-- `npm run audit:all` runs the deeper moderate-severity audit.
-
-See [docs/dependency-maintenance.md](docs/dependency-maintenance.md) for the full dependency review runbook.
+- `npm run verify` is the standard safety check.
+- `npm run verify:full` adds browser coverage.
