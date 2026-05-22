@@ -4,15 +4,6 @@ IrieVerse is a Jamaica-first travel planning app for turning saved ideas, parish
 
 It is built for a specific planning problem: Jamaica trips are rarely solved by a generic itinerary builder. Visitors and locals need real parish context, realistic drive pacing, entry notes, local events, saved social links, and a map that understands the island.
 
-## Product Snapshot
-
-- **Audience:** Jamaica visitors, locals planning weekends, hosts, repeat travelers, and small trip planners.
-- **Core promise:** move from scattered links and vague ideas to a route-aware Jamaica plan.
-- **Coverage:** all 14 parishes with representative hero places, local tips, visitor tips, and entry guidance.
-- **Map:** MapLibre with road-following route previews and graceful estimated-route messaging.
-- **Planning mode:** usable without provider keys, stronger when live integrations are configured.
-- **Default feel:** mobile-first, dark-first, PWA-ready, and designed for quick planning on the go.
-
 ## Why It Stands Out
 
 Most travel tools treat Jamaica as a list of attractions. IrieVerse treats it as an island you have to move through.
@@ -23,30 +14,6 @@ Most travel tools treat Jamaica as a list of attractions. IrieVerse treats it as
 - **Entry clarity:** attractions and events can show whether a ticket, pass, cover, guide, parking fee, or local confirmation may be needed.
 - **Live plus curated data:** flights, stays, events, place details, routes, and sharing all stay transparent about whether data is live, curated, limited, or unavailable.
 - **Local and visitor use cases:** plan a vacation, a weekend, a food run, a beach day, a route for guests, or a multi-stop island trip.
-
-## What You Can Do
-
-- Explore Jamaica by parish, region, vibe, attraction type, and experience category.
-- Save places and experiences from inside the app.
-- Import outside links into a saved board and attach them to Jamaica map areas.
-- Build trips by days, base, budget, vibe, dates, route order, and starting point.
-- Start from major airports, Jamaica towns, local meetup areas, or optional exact GPS.
-- Lock important stops, reorder route days, assign saved ideas, and add day notes.
-- Preview road-aware drive legs before opening Google Maps or another navigation app.
-- Check live or curated events for the selected region.
-- Review flight snapshots and stay recommendations when available.
-- Export an itinerary to calendar and optionally share a view-only trip link.
-
-## Questions It Answers
-
-- Which Jamaica parish or region fits this trip?
-- What is the famous or representative place for each parish?
-- Is this stop free, ticketed, pass-based, or something to confirm locally?
-- How many days does this route need?
-- What drive time am I really taking on between stops?
-- Which saved links are already useful, and which still need map cleanup?
-- Are events, flights, stays, and place details live right now or curated?
-- Can this become a day-by-day plan I can export or share?
 
 ## User Flow
 
