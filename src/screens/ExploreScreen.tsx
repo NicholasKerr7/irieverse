@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { ExperiencesGrid } from "../components/ExperiencesGrid";
 import { PlacesGrid } from "../components/PlacesGrid";
+import { SafeImage } from "../components/SafeImage";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCE_TYPES, EXPERIENCES, VIBE_OPTIONS } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
@@ -55,7 +56,7 @@ export function ExploreScreen({ app, onNavigate }: ExploreScreenProps) {
       <header className={classNames("overflow-hidden rounded-[1.75rem]", glassPanel)}>
         <div className="grid min-w-0 grid-cols-1 gap-0 lg:grid-cols-[0.95fr_1.05fr]">
           <div className="relative min-h-64 min-w-0 overflow-hidden">
-            <img
+            <SafeImage
               src={app.destination.heroImage}
               alt={app.destination.name}
               className="absolute inset-0 h-full w-full object-cover"

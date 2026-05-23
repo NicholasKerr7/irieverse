@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { EmptyStatePanel } from "../components/LoadingStates";
+import { SafeImage } from "../components/SafeImage";
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
 import type { TravelOS } from "../hooks/useTravelOS";
 import {
@@ -1029,9 +1030,10 @@ function ImportIntelligenceSummary({
       {(previewTitle || previewDescription || metadata?.imageUrl) && (
         <div className="mt-3 flex gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-3">
           {metadata?.imageUrl && (
-            <img
+            <SafeImage
               src={metadata.imageUrl}
               alt=""
+              fallbackLabel={previewTitle || "Saved idea"}
               className="h-16 w-16 shrink-0 rounded-2xl object-cover"
               loading="lazy"
             />
@@ -1439,7 +1441,7 @@ function ImportAnchorCard({
     <article className="rounded-2xl border border-amber-300/20 bg-slate-950/65 p-3">
       <div className="flex items-start gap-3">
         {idea.imageUrl ? (
-          <img src={idea.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-2xl object-cover" loading="lazy" />
+          <SafeImage src={idea.imageUrl} alt="" fallbackLabel={idea.title} className="h-12 w-12 shrink-0 rounded-2xl object-cover" loading="lazy" />
         ) : (
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-300/15 text-amber-100">
             <StickyNote className="h-4 w-4" />
@@ -1553,7 +1555,7 @@ function SavedCard({
     <article className={classNames("overflow-hidden rounded-3xl", glassCard)}>
       <div className="relative h-40">
         {image ? (
-          <img src={image} alt={title} className="h-full w-full object-cover" />
+          <SafeImage src={image} alt={title} className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-slate-950">
             <div className="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 p-4">

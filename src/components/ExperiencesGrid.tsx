@@ -15,6 +15,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { EmptyStatePanel } from "./LoadingStates";
+import { SafeImage } from "./SafeImage";
 import type { EntryRequirement, Experience } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassControlMuted } from "../utils/glass";
@@ -52,7 +53,7 @@ export function ExperiencesGrid({ items, saved, onToggleSaved, onAddToTrip }: Ex
             className={classNames("group overflow-hidden rounded-[1.35rem] transition duration-300 hover:-translate-y-0.5 hover:border-emerald-300/35", glassCard)}
           >
             <div className="relative h-48 overflow-hidden">
-              <img
+              <SafeImage
                 src={experience.imageUrl}
                 alt={experience.title}
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"

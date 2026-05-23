@@ -484,6 +484,29 @@ test("app hides visual scrollbars while preserving page and panel scrolling", as
   expect(issues).toEqual([]);
 });
 
+test("image cards recover when remote provider images fail", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await page.route(
+    /https:\/\/(images\.pexels\.com|images\.unsplash\.com|upload\.wikimedia\.org|commons\.wikimedia\.org|pixabay\.com)\//,
+    (route) => route.abort()
+  );
+
+  await openCleanTab(page, "explore", []);
+  await expect(page.getByRole("heading", { name: "Parish guide, attractions, and island experiences." })).toBeVisible();
+  await expect(page.getByText("Montego Bay").first()).toBeVisible();
+  await page.waitForTimeout(1000);
+
+  const brokenImages = await page.evaluate(() =>
+    Array.from(document.images)
+      .filter((image) => image.complete && image.naturalWidth === 0)
+      .map((image) => image.alt || image.currentSrc)
+  );
+  expect(brokenImages).toEqual([]);
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("legal pages are reachable from the footer", async ({ page }) => {
   const issues = collectPageIssues(page);
 

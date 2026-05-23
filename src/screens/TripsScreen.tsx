@@ -33,6 +33,7 @@ import { BookingRecommendations } from "../components/BookingRecommendations";
 import { BudgetInsight } from "../components/BudgetInsight";
 import { ItineraryView } from "../components/ItineraryView";
 import { LiveEventsFeed } from "../components/LiveEventsFeed";
+import { SafeImage } from "../components/SafeImage";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCES, VIBE_OPTIONS } from "../data/content";
 import { PLANNING_MODE_LABELS } from "../data/plannerTemplates";
@@ -99,7 +100,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
       <header className={classNames("overflow-hidden rounded-3xl", glassPanel)}>
         <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="relative min-h-72">
-            <img src={app.destination.heroImage} alt={app.destination.name} className="absolute inset-0 h-full w-full object-cover" />
+            <SafeImage src={app.destination.heroImage} alt={app.destination.name} className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-transparent" />
             <div className="media-overlay absolute bottom-5 left-5 right-5">
               <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/90">

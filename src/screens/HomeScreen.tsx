@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { HeroSection } from "../components/HeroSection";
 import { PageFooter } from "../components/PageFooter";
+import { SafeImage } from "../components/SafeImage";
 import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS } from "../data/content";
 import { PLANNING_MODE_LABELS } from "../data/plannerTemplates";
@@ -210,7 +211,7 @@ export function HomeScreen({ app, onNavigate }: HomeScreenProps) {
 
         <aside className={classNames("overflow-hidden rounded-3xl", glassPanel)}>
           <div className="relative h-44 overflow-hidden">
-            <img
+            <SafeImage
               src={app.destination.heroImage}
               alt={app.destination.name}
               className="h-full w-full object-cover"
@@ -321,7 +322,7 @@ function StarterRouteCard({
     >
       <div className="relative h-28">
         {leadDestination && (
-          <img
+          <SafeImage
             src={leadDestination.heroImage}
             alt=""
             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"

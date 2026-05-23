@@ -1,5 +1,6 @@
 import { CalendarDays, Heart, MapPin, Route, Star, Ticket } from "lucide-react";
 import { EmptyStatePanel } from "./LoadingStates";
+import { SafeImage } from "./SafeImage";
 import type { Destination, EntryRequirement } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassPanelStrong } from "../utils/glass";
@@ -46,7 +47,7 @@ export function PlacesGrid({
             className={classNames("group overflow-hidden rounded-[1.35rem] transition duration-300 hover:-translate-y-0.5 hover:border-cyan-300/35", glassCard)}
           >
             <div className="relative h-56 overflow-hidden">
-              <img
+              <SafeImage
                 src={destination.heroImage}
                 alt={destination.name}
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"

@@ -42,6 +42,7 @@ import {
   type MapCategoryId,
   type MapPinCategory,
 } from "../utils/mapRoutes";
+import { SafeImage } from "../components/SafeImage";
 
 type MapScreenProps = {
   app: TravelOS;
@@ -578,7 +579,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
 
         <div className="px-4 pb-4">
           <div className="flex gap-2 sm:gap-3">
-            <img
+            <SafeImage
               src={app.destination.heroImage}
               alt={app.destination.name}
               className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-lg shadow-slate-300/60 sm:h-24 sm:w-24"
@@ -1166,7 +1167,7 @@ function UnplannedPlacesPanel({
             className="overflow-hidden rounded-3xl border border-cyan-200 bg-cyan-50 text-left transition hover:border-sky-300"
           >
             {pin.idea.imageUrl ? (
-              <img src={pin.idea.imageUrl} alt={pin.name} className="h-28 w-full object-cover" loading="lazy" />
+              <SafeImage src={pin.idea.imageUrl} alt={pin.name} className="h-28 w-full object-cover" loading="lazy" />
             ) : (
               <span className="flex h-28 w-full items-center justify-center bg-gradient-to-br from-cyan-100 via-white to-emerald-100">
                 <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-cyan-200 shadow-xl">
@@ -1187,7 +1188,7 @@ function UnplannedPlacesPanel({
             onClick={() => onSelectDestination(destination.id)}
             className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 text-left transition hover:border-sky-300"
           >
-            <img src={destination.heroImage} alt={destination.name} className="h-28 w-full object-cover" />
+            <SafeImage src={destination.heroImage} alt={destination.name} className="h-28 w-full object-cover" />
             <span className="block p-3">
               <span className="block truncate text-sm font-black">{destination.name}</span>
               <span className="mt-1 block truncate text-xs font-semibold text-slate-500">{destination.region}</span>
@@ -1367,7 +1368,7 @@ function DayPlanPanel({
               key={experience.id}
               className="flex min-w-0 gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 text-left"
             >
-              <img src={experience.imageUrl} alt={experience.title} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
+              <SafeImage src={experience.imageUrl} alt={experience.title} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
               <span className="min-w-0 flex-1 py-1">
                 <span className="block truncate text-sm font-black">{experience.title}</span>
                 <span className="mt-1 block text-xs font-semibold capitalize text-slate-500">
@@ -1452,7 +1453,7 @@ function TimelineDestinationCard({
     <article className="relative min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
       <TimelineDot label={String(day)} />
       <div className="flex min-w-0 gap-3">
-        <img src={destination.heroImage} alt={destination.name} className="h-20 w-20 shrink-0 rounded-2xl object-cover sm:h-24 sm:w-24" />
+        <SafeImage src={destination.heroImage} alt={destination.name} className="h-20 w-20 shrink-0 rounded-2xl object-cover sm:h-24 sm:w-24" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -1552,7 +1553,7 @@ function TimelineImportedStopCard({
       <TimelineDot label={String(index + 1)} tone="imported" />
       <div className="flex min-w-0 gap-3">
         {pin.idea.imageUrl ? (
-          <img src={pin.idea.imageUrl} alt={pin.name} className="h-20 w-20 shrink-0 rounded-2xl object-cover" />
+          <SafeImage src={pin.idea.imageUrl} alt={pin.name} className="h-20 w-20 shrink-0 rounded-2xl object-cover" />
         ) : (
           <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-100 via-white to-emerald-100">
             <Sparkles className="h-7 w-7 text-sky-600" />
@@ -1629,7 +1630,7 @@ function TimelineExperienceCard({
     <article className="relative mt-3 min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
       <TimelineDot label="2" tone="experience" />
       <div className="flex min-w-0 gap-3">
-        <img src={experience.imageUrl} alt={experience.title} className="h-20 w-20 shrink-0 rounded-2xl object-cover" />
+        <SafeImage src={experience.imageUrl} alt={experience.title} className="h-20 w-20 shrink-0 rounded-2xl object-cover" />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -1748,7 +1749,7 @@ function ImportedPlaceDetailSheet({
       >
         <div className="flex items-start gap-3 p-4 sm:p-5">
           {pin.idea.imageUrl ? (
-            <img src={pin.idea.imageUrl} alt={pin.name} className="h-20 w-20 shrink-0 rounded-3xl object-cover shadow-lg shadow-slate-200" />
+            <SafeImage src={pin.idea.imageUrl} alt={pin.name} className="h-20 w-20 shrink-0 rounded-3xl object-cover shadow-lg shadow-slate-200" />
           ) : (
             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-cyan-100 via-white to-emerald-100 shadow-lg shadow-slate-200">
               <Sparkles className="h-8 w-8 text-sky-600" />
@@ -1899,7 +1900,7 @@ function PlaceDetailSheet({
         className="map-glass-sheet flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border"
       >
         <div className="flex items-start gap-3 p-4 sm:p-5">
-          <img src={imageUrl} alt={title} className="h-24 w-24 shrink-0 rounded-3xl object-cover shadow-lg shadow-slate-200 sm:h-28 sm:w-28" />
+          <SafeImage src={imageUrl} alt={title} className="h-24 w-24 shrink-0 rounded-3xl object-cover shadow-lg shadow-slate-200 sm:h-28 sm:w-28" />
           <div className="min-w-0 flex-1">
             <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-sky-600">{kicker}</p>
             <h2 className="mt-1 text-3xl font-black leading-tight tracking-tight">{title}</h2>
@@ -1920,7 +1921,7 @@ function PlaceDetailSheet({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-5 sm:pb-5">
-          <img src={imageUrl} alt="" className="h-56 w-full rounded-3xl object-cover shadow-xl shadow-slate-200" />
+          <SafeImage src={imageUrl} alt="" fallbackLabel={title} className="h-56 w-full rounded-3xl object-cover shadow-xl shadow-slate-200" />
 
           <section
             className={classNames(
