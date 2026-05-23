@@ -37,12 +37,12 @@ import type { MobileTabId } from "../components/mobile/BottomNav";
 import { DESTINATIONS, EXPERIENCES, VIBE_OPTIONS } from "../data/content";
 import { PLANNING_MODE_LABELS } from "../data/plannerTemplates";
 import { formatLocalTime, type TravelOS } from "../hooks/useTravelOS";
-import type { Destination, Experience, ImportedIdea, PlanningMode, PlanningTemplate, RouteStop, Vibe } from "../types/travel";
+import type { CurrencyCode, Destination, Experience, ImportedIdea, PlanningMode, PlanningTemplate, RouteStop, Vibe } from "../types/travel";
 import { classNames } from "../utils/classNames";
 import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
 import { getBoardIdeasForDestination } from "../utils/boardIdeas";
 import { getDayPlanningReasons, type DayPlanningReasonTone } from "../utils/dayPlanningReasons";
-import { formatDriveTime } from "../utils/format";
+import { formatCurrency, formatDriveTime } from "../utils/format";
 import { glassCard, glassControlMuted, glassPanel, glassPanelStrong } from "../utils/glass";
 
 type TripsScreenProps = {
@@ -115,8 +115,8 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
           <div className="grid grid-cols-2 bg-slate-950/50 sm:grid-cols-4 lg:grid-cols-2">
             <TripMetric label="Base" value={app.destination.name} />
             <TripMetric label="Days" value={app.plannerDays.toString()} />
-            <TripMetric label="Budget" value={`$${app.plannerBudget}/day`} />
-            <TripMetric label="Estimate" value={`$${estimatedTotal.toLocaleString()}`} />
+            <TripMetric label="Budget" value={`${formatCurrency(app.plannerBudget, app.plannerCurrency, { compact: true })}/day`} />
+            <TripMetric label="Estimate" value={formatCurrency(estimatedTotal, app.plannerCurrency, { compact: true })} />
           </div>
         </div>
       </header>
@@ -223,7 +223,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                     title="Local ideas"
                     body={`${savedDestinations.length + savedExperiences.length + importedIdeas.length} saved places, experiences, and imports.`}
                   />
-                  <MiniCard icon={WalletCards} title="Budget" body={`$${estimatedTotal.toLocaleString()} trip estimate.`} />
+                  <MiniCard icon={WalletCards} title="Budget" body={`${formatCurrency(estimatedTotal, app.plannerCurrency)} trip estimate.`} />
                 </div>
               </section>
 
@@ -278,6 +278,7 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
                 transportPerTrip={app.transportBudget}
                 days={app.plannerDays}
                 vibe={app.plannerVibe}
+                currency={app.plannerCurrency}
               />
 
               <section className="grid gap-4 xl:grid-cols-2">
@@ -442,7 +443,7 @@ function QuickPlanExperience({
               <RouteStat icon={Clock3} label="Drive time" value={formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)} />
               <RouteStat icon={Route} label="Distance" value={`${app.itinerary.routeSummary.totalDistanceKm} km`} />
               <RouteStat icon={CloudSun} label="Weather" value={weatherReadyDays ? `${weatherReadyDays} days` : "Pending"} />
-              <RouteStat icon={WalletCards} label="Estimate" value={`$${estimatedTotal.toLocaleString()}`} />
+              <RouteStat icon={WalletCards} label="Estimate" value={formatCurrency(estimatedTotal, app.plannerCurrency, { compact: true })} />
             </div>
 
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -521,7 +522,7 @@ function QuickTemplatePicker({ app }: { app: TravelOS }) {
 
 function QuickPlanControls({ app }: { app: TravelOS }) {
   const quickVibes: Vibe[] = ["authentic", "chill", "adventure", "culture", "nightlife", "romantic"];
-  const budgetOptions = [65, 100, 150, 225];
+  const budgetOptions = getBudgetOptions(app.plannerCurrency);
 
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-950/60 p-3">
@@ -551,6 +552,27 @@ function QuickPlanControls({ app }: { app: TravelOS }) {
         <ExactGpsOriginControl app={app} />
       </div>
 
+      {app.planningMode === "local" && (
+        <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-3">
+          <p className="text-[0.62rem] uppercase tracking-[0.18em] text-emerald-100/80">Near me</p>
+          <p className="mt-1 text-xs leading-5 text-slate-400">
+            Build a local plan from the selected starting area or exact GPS point.
+          </p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {[60, 90, 120].map((minutes) => (
+              <button
+                key={minutes}
+                type="button"
+                onClick={() => app.applyLocalRadiusPlan(minutes)}
+                className="rounded-2xl border border-emerald-300/35 bg-slate-950/45 px-2 py-2 text-xs font-bold text-emerald-100 transition hover:border-emerald-200"
+              >
+                {minutes} min
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <p className="mt-4 text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">Vibe</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {quickVibes.map((vibe) => (
@@ -571,6 +593,7 @@ function QuickPlanControls({ app }: { app: TravelOS }) {
       </div>
 
       <p className="mt-4 text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">Budget</p>
+      <CurrencyToggle currency={app.plannerCurrency} onChange={app.setPlannerCurrency} />
       <div className="mt-2 grid grid-cols-4 gap-2">
         {budgetOptions.map((budget) => (
           <button
@@ -584,7 +607,7 @@ function QuickPlanControls({ app }: { app: TravelOS }) {
                 : "border-slate-700 text-slate-300 hover:border-emerald-300/60"
             )}
           >
-            ${budget}
+            {formatCurrency(budget, app.plannerCurrency, { compact: true })}
           </button>
         ))}
       </div>
@@ -615,6 +638,34 @@ function QuickControlButton({
       <span className="block text-sm font-semibold text-slate-100">{label}</span>
       <span className="mt-1 block text-xs text-slate-500">{body}</span>
     </button>
+  );
+}
+
+function CurrencyToggle({
+  currency,
+  onChange,
+}: {
+  currency: CurrencyCode;
+  onChange: (currency: CurrencyCode) => void;
+}) {
+  return (
+    <div className="mt-2 grid grid-cols-2 gap-2">
+      {(["JMD", "USD"] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() => onChange(option)}
+          className={classNames(
+            "rounded-2xl border px-3 py-2 text-xs font-bold transition",
+            currency === option
+              ? "border-emerald-300 bg-emerald-300 text-slate-950"
+              : "border-slate-700 text-slate-300 hover:border-emerald-300/60"
+          )}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -1038,7 +1089,7 @@ function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <QuickDayFact label="Drive" value={day.driveMinutesFromPrevious ? formatDriveTime(day.driveMinutesFromPrevious) : "Stay nearby"} />
               <QuickDayFact label="Energy" value={day.energyLevel} />
-              <QuickDayFact label="Budget" value={`$${day.suggestedBudget}`} />
+              <QuickDayFact label="Budget" value={formatCurrency(day.suggestedBudget, app.plannerCurrency, { compact: true })} />
             </div>
             {routeStopForDay && (
               <div className="mt-3 grid gap-2 rounded-2xl border border-slate-800 bg-slate-950/60 p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -1361,7 +1412,7 @@ function TemplateButton({
       <span className="mt-1 block text-sm font-semibold text-slate-100">{template.title}</span>
       <span className="mt-1 block text-xs leading-5 text-slate-500">{template.body}</span>
       <span className="mt-2 block text-[0.68rem] text-slate-400">
-        {template.days} day{template.days === 1 ? "" : "s"} · ${template.budget}/day · {template.vibe}
+        {template.days} day{template.days === 1 ? "" : "s"} · {formatCurrency(template.budget, template.budgetCurrency ?? getDefaultCurrencyForMode(template.mode), { compact: true })}/day · {template.vibe}
       </span>
     </button>
   );
@@ -1454,18 +1505,19 @@ function WizardPanel({
       {activeStep === "budget" && (
         <div className="space-y-3">
           <WizardTitle title="Choose budget" body="Tune the daily target used by the budget and itinerary cards." />
+          <CurrencyToggle currency={app.plannerCurrency} onChange={app.setPlannerCurrency} />
           <label className="flex flex-col gap-2 text-sm text-slate-300">
             <span className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">Budget per day</span>
             <input
               type="range"
-              min={75}
-              max={400}
-              step={25}
+              min={app.plannerCurrency === "JMD" ? 3000 : 50}
+              max={app.plannerCurrency === "JMD" ? 90000 : 600}
+              step={app.plannerCurrency === "JMD" ? 500 : 25}
               value={app.plannerBudget}
               onChange={(event) => app.setPlannerBudget(Number(event.target.value))}
               className="accent-cyan-300"
             />
-            <span className="text-2xl font-semibold text-cyan-200">${app.plannerBudget}</span>
+            <span className="text-2xl font-semibold text-cyan-200">{formatCurrency(app.plannerBudget, app.plannerCurrency)}</span>
           </label>
         </div>
       )}
@@ -2690,8 +2742,16 @@ function getOriginOptions(app: TravelOS) {
   return app.originAirports;
 }
 
+function getBudgetOptions(currency: CurrencyCode): number[] {
+  return currency === "JMD" ? [6000, 9000, 15000, 24000] : [65, 100, 150, 225];
+}
+
+function getDefaultCurrencyForMode(mode: PlanningMode): CurrencyCode {
+  return mode === "local" ? "JMD" : "USD";
+}
+
 function isGroundOrigin(app: TravelOS): boolean {
-  return app.originAirport.supportsFlights === false || app.originAirport.isExactLocation === true;
+  return app.planningMode === "local" || app.originAirport.supportsFlights === false || app.originAirport.isExactLocation === true;
 }
 
 function getDefaultBuilderLane(mode: PlanningMode): BuilderLane {

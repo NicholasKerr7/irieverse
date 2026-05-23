@@ -88,6 +88,12 @@ For this Vercel app, `VITE_BOOKING_API_URL` should be:
 
 Cloud-saved boards use Supabase Auth email sign-in plus an owner-scoped table named `user_boards`.
 
+Supabase production readiness has three separate pieces:
+
+- Migrations: run every file in `supabase/migrations`.
+- Data API access: keep explicit grants for `public.user_boards` and the public trip-share RPC wrappers.
+- RLS: keep row-level security enabled before exposing any table access to browser roles.
+
 ```text
 id uuid primary key
 user_id uuid references auth.users(id)
@@ -101,7 +107,12 @@ The migration in `supabase/migrations/20260506120000_create_user_boards.sql` cre
 
 Saved board data includes saved places, saved experiences, imported ideas, collection assignments, and map anchors. The app still keeps the local board active when the user is signed out or Supabase is not configured.
 
-In the Supabase dashboard, keep Email Auth enabled and add the production app URL to the allowed redirect URLs so magic-link sign-in can return to `/?tab=saved`.
+In the Supabase dashboard, keep Email Auth enabled and configure Authentication > URL Configuration:
+
+- Site URL: `https://irieverse.vercel.app`
+- Additional Redirect URLs: `https://irieverse.vercel.app/**`, `http://localhost:5173/**`, and the Vercel preview URL pattern for the active team.
+
+Magic-link sign-in returns to `/?tab=saved`, so the redirect allow list must cover that path.
 
 Trip sharing expects a Supabase table named `trips` with this shape:
 
@@ -122,9 +133,12 @@ To apply it with the Supabase CLI:
 ```bash
 supabase link --project-ref your-project-ref
 supabase db push
+npm run check:supabase
 ```
 
 For manual setup, run `supabase/schema.sql` in the Supabase SQL editor. Keep it mirrored with the migration if the table shape changes.
+
+New Supabase projects may not expose newly created tables to the Data API automatically. The latest grant-hardening migration keeps `user_boards` accessible only to authenticated users, keeps direct `trips` table access revoked from browser roles, and grants browser roles execute access only to the public trip-share RPC wrappers.
 
 If the app reports share setup incomplete, run `supabase/schema.sql` or push all migrations, wait for the schema cache to refresh, then retry Share. If `supabase db push` fails with a remote Postgres password error, re-run `supabase link --project-ref your-project-ref --password your-current-db-password` before pushing migrations.
 

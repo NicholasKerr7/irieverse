@@ -1,4 +1,4 @@
-import type { DayExperienceOverrides, DayNotes, ImportedIdea, ImportedIdeaDayAssignments, PlanningMode, PlanningTemplateId } from "../types/travel";
+import type { CurrencyCode, DayExperienceOverrides, DayNotes, ImportedIdea, ImportedIdeaDayAssignments, PlanningMode, PlanningTemplateId } from "../types/travel";
 import { hasSupabaseBackend, supabaseClient } from "./supabaseClient";
 
 const EDIT_TOKEN_STORAGE_KEY = "irieverse_trip_edit_tokens";
@@ -31,6 +31,7 @@ export type TripPayload = {
   plannerDays: number;
   plannerVibe: string;
   plannerBudget: number;
+  plannerCurrency?: CurrencyCode;
   plannerStartDate: string;
   originAirportId: string;
   manualRouteDestinationIds?: string[];
@@ -150,6 +151,7 @@ export function serializeTripState(args: {
   plannerDays: number;
   plannerVibe: string;
   plannerBudget: number;
+  plannerCurrency: CurrencyCode;
   plannerStartDate: string;
   originAirportId: string;
   manualRouteDestinationIds: string[];
@@ -167,6 +169,7 @@ export function serializeTripState(args: {
     plannerDays: args.plannerDays,
     plannerVibe: args.plannerVibe,
     plannerBudget: args.plannerBudget,
+    plannerCurrency: args.plannerCurrency,
     plannerStartDate: args.plannerStartDate,
     originAirportId: args.originAirportId,
     manualRouteDestinationIds: args.manualRouteDestinationIds,

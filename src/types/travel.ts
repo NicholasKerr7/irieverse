@@ -15,6 +15,7 @@ type ExperienceCategory = "food" | "music" | "festival" | "nature" | "heritage" 
 export type ExperienceType = "all" | ExperienceCategory;
 
 export type PlanningMode = "visitor" | "local" | "hosting";
+export type CurrencyCode = "USD" | "JMD";
 
 export type PlanningTemplateId =
   | "first-jamaica-trip"
@@ -34,6 +35,7 @@ export interface PlanningTemplate {
   days: number;
   vibe: Vibe;
   budget: number;
+  budgetCurrency?: CurrencyCode;
   originAirportId?: string;
   routeDestinationIds?: string[];
 }
@@ -243,6 +245,7 @@ export interface ItineraryPlan {
   days: number;
   plannerVibe: Vibe | "mixed";
   budgetPerDay: number;
+  budgetCurrency: CurrencyCode;
   daysPlan: PlannerDay[];
   routeSummary: RouteSummary;
 }

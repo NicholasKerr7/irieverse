@@ -36,6 +36,7 @@ import {
 } from "../services/flights";
 import type {
   BookingOption,
+  CurrencyCode,
   Destination,
   ExperienceType,
   FlightOption,
@@ -89,6 +90,13 @@ const STORAGE_KEY_IMPORTED_IDEA_DAYS = "irieverse_imported_idea_days";
 const STORAGE_KEY_THEME = "irieverse_theme";
 const STORAGE_KEY_PLANNING_MODE = "irieverse_planning_mode";
 const STORAGE_KEY_PLANNING_TEMPLATE = "irieverse_planning_template";
+const STORAGE_KEY_PLANNER_BASE = "irieverse_planner_base";
+const STORAGE_KEY_PLANNER_DAYS = "irieverse_planner_days";
+const STORAGE_KEY_PLANNER_VIBE = "irieverse_planner_vibe";
+const STORAGE_KEY_PLANNER_BUDGET = "irieverse_planner_budget";
+const STORAGE_KEY_PLANNER_CURRENCY = "irieverse_planner_currency";
+const STORAGE_KEY_PLANNER_START_DATE = "irieverse_planner_start_date";
+const DEFAULT_USD_TO_JMD = 155;
 
 const AIRPORT_TIMEZONES: Record<string, string> = {
   JFK: "America/New_York",
@@ -154,6 +162,30 @@ const BUDGET_PROFILES: Record<string, BudgetProfile> & { mixed: BudgetProfile } 
   mixed: { lodging: 200, dining: 70, experiences: 95, transport: 60 },
 };
 
+const LOCAL_USD_BUDGET_PROFILES: Record<string, BudgetProfile> & { mixed: BudgetProfile } = {
+  chill: { lodging: 0, dining: 45, experiences: 45, transport: 35 },
+  nightlife: { lodging: 0, dining: 65, experiences: 55, transport: 45 },
+  adventure: { lodging: 0, dining: 50, experiences: 70, transport: 55 },
+  culture: { lodging: 0, dining: 45, experiences: 50, transport: 35 },
+  nature: { lodging: 0, dining: 45, experiences: 55, transport: 45 },
+  authentic: { lodging: 0, dining: 40, experiences: 45, transport: 35 },
+  family: { lodging: 0, dining: 70, experiences: 65, transport: 55 },
+  romantic: { lodging: 0, dining: 75, experiences: 80, transport: 45 },
+  mixed: { lodging: 0, dining: 55, experiences: 60, transport: 45 },
+};
+
+const LOCAL_JMD_BUDGET_PROFILES: Record<string, BudgetProfile> & { mixed: BudgetProfile } = {
+  chill: { lodging: 0, dining: 6500, experiences: 6500, transport: 4500 },
+  nightlife: { lodging: 0, dining: 9500, experiences: 8500, transport: 6500 },
+  adventure: { lodging: 0, dining: 7500, experiences: 10500, transport: 8000 },
+  culture: { lodging: 0, dining: 6500, experiences: 7500, transport: 5000 },
+  nature: { lodging: 0, dining: 6500, experiences: 8500, transport: 6500 },
+  authentic: { lodging: 0, dining: 5500, experiences: 6500, transport: 4500 },
+  family: { lodging: 0, dining: 10500, experiences: 9500, transport: 8000 },
+  romantic: { lodging: 0, dining: 11000, experiences: 12000, transport: 6500 },
+  mixed: { lodging: 0, dining: 8000, experiences: 9000, transport: 6500 },
+};
+
 export type ViewMode = "places" | "experiences";
 export type ThemeMode = "dark" | "light";
 type ImportedIdeaDraft = Omit<ImportedIdea, "id" | "createdAt">;
@@ -173,6 +205,8 @@ type InitialPlanningDefaults = {
   days: number;
   vibe: Vibe;
   budget: number;
+  currency: CurrencyCode;
+  startDate: string;
   manualRouteDestinationIds: string[];
 };
 
@@ -199,9 +233,8 @@ export function useTravelOS() {
   const [plannerDays, setPlannerDays] = useState(initialPlanningDefaults.days);
   const [plannerVibe, setPlannerVibe] = useState<Vibe>(initialPlanningDefaults.vibe);
   const [plannerBudget, setPlannerBudget] = useState(initialPlanningDefaults.budget);
-  const [plannerStartDate, setPlannerStartDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
-  );
+  const [plannerCurrency, setPlannerCurrencyState] = useState<CurrencyCode>(initialPlanningDefaults.currency);
+  const [plannerStartDate, setPlannerStartDate] = useState(initialPlanningDefaults.startDate);
   const [manualRouteDestinationIds, setManualRouteDestinationIds] = useState<string[]>(
     initialPlanningDefaults.manualRouteDestinationIds
   );
@@ -290,6 +323,30 @@ export function useTravelOS() {
   useEffect(() => {
     writeStringToStorage(STORAGE_KEY_PLANNING_TEMPLATE, planningTemplateId);
   }, [planningTemplateId]);
+
+  useEffect(() => {
+    writeStringToStorage(STORAGE_KEY_PLANNER_BASE, plannerBaseId);
+  }, [plannerBaseId]);
+
+  useEffect(() => {
+    writeStringToStorage(STORAGE_KEY_PLANNER_DAYS, String(plannerDays));
+  }, [plannerDays]);
+
+  useEffect(() => {
+    writeStringToStorage(STORAGE_KEY_PLANNER_VIBE, plannerVibe);
+  }, [plannerVibe]);
+
+  useEffect(() => {
+    writeStringToStorage(STORAGE_KEY_PLANNER_BUDGET, String(plannerBudget));
+  }, [plannerBudget]);
+
+  useEffect(() => {
+    writeStringToStorage(STORAGE_KEY_PLANNER_CURRENCY, plannerCurrency);
+  }, [plannerCurrency]);
+
+  useEffect(() => {
+    writeStringToStorage(STORAGE_KEY_PLANNER_START_DATE, plannerStartDate);
+  }, [plannerStartDate]);
 
   useEffect(() => {
     writeJsonToStorage(STORAGE_KEY_MANUAL_ROUTE, manualRouteDestinationIds);
@@ -432,7 +489,7 @@ export function useTravelOS() {
 
     async function loadFlights() {
       setFlightsError(null);
-      if (originAirport.supportsFlights === false || originAirport.isExactLocation) {
+      if (planningMode === "local" || originAirport.supportsFlights === false || originAirport.isExactLocation) {
         setIsFetchingFlights(false);
         setFlightOptions([]);
         setFlightSourceMeta({
@@ -475,7 +532,7 @@ export function useTravelOS() {
       cancelled = true;
       controller.abort();
     };
-  }, [destination, originAirport]);
+  }, [destination, originAirport, planningMode]);
 
   const loadEvents = useCallback(async () => {
     const selectedRegion = destination.region.toLowerCase();
@@ -654,6 +711,7 @@ export function useTravelOS() {
       importedIdeas,
       plannerVibe,
       plannerBudget,
+      plannerCurrency,
       plannerDays,
       plannerStartDate,
       weatherPlan,
@@ -665,6 +723,7 @@ export function useTravelOS() {
     importedIdeas,
     manualRouteDestinationIds,
     plannerBudget,
+    plannerCurrency,
     plannerDays,
     plannerStartDate,
     plannerVibe,
@@ -685,7 +744,7 @@ export function useTravelOS() {
       { label: "Current vibes", value: "28°C · trade winds" },
     ];
 
-  const budgetProfile = BUDGET_PROFILES[plannerVibe] ?? BUDGET_PROFILES.mixed;
+  const budgetProfile = getBudgetProfile(planningMode, plannerCurrency, plannerVibe);
   const perDayBudget = {
     lodging: budgetProfile.lodging,
     dining: budgetProfile.dining,
@@ -705,10 +764,14 @@ export function useTravelOS() {
     if (isPlanningTemplateId(planningTemplateId)) {
       setPlanningTemplateId(planningTemplateId);
     }
+    const nextCurrency = isCurrencyCode(payload.plannerCurrency)
+      ? payload.plannerCurrency
+      : getDefaultCurrencyForMode(isPlanningMode(planningMode) ? planningMode : "visitor");
     setPlannerBaseId(payload.plannerBaseId ?? "mobay");
     setPlannerDays(clampPlannerDays(payload.plannerDays ?? 5));
     setPlannerVibe((payload.plannerVibe as Vibe) ?? "mixed");
-    setPlannerBudget(clampPlannerBudget(payload.plannerBudget ?? 150));
+    setPlannerCurrencyState(nextCurrency);
+    setPlannerBudget(clampPlannerBudget(payload.plannerBudget ?? getDefaultBudgetForCurrency(nextCurrency), nextCurrency));
     if (payload.plannerStartDate) {
       setPlannerStartDate(payload.plannerStartDate);
     }
@@ -819,12 +882,14 @@ export function useTravelOS() {
 
   const applyPlanningTemplate = useCallback((templateId: PlanningTemplateId) => {
     const template = getPlanningTemplate(templateId);
+    const templateCurrency = template.budgetCurrency ?? getDefaultCurrencyForMode(template.mode);
     setPlanningModeState(template.mode);
     setPlanningTemplateId(template.id);
     setPlannerBaseId(template.baseId);
     setPlannerDays(clampPlannerDays(template.days));
     setPlannerVibe(template.vibe);
-    setPlannerBudget(clampPlannerBudget(template.budget));
+    setPlannerCurrencyState(templateCurrency);
+    setPlannerBudget(clampPlannerBudget(template.budget, templateCurrency));
     setManualRouteDestinationIds(
       normalizeRouteDestinationIds(template.routeDestinationIds ?? [], template.baseId, template.days)
     );
@@ -841,6 +906,7 @@ export function useTravelOS() {
 
   const buildTripFromDestinations = useCallback((destinationIds: string[], templateId?: PlanningTemplateId) => {
     const template = getPlanningTemplate(templateId ?? planningTemplateId);
+    const templateCurrency = template.budgetCurrency ?? getDefaultCurrencyForMode(template.mode);
     const validDestinationIds = new Set(DESTINATIONS.map((item) => item.id));
     const selectedDestinationIds = Array.from(new Set(destinationIds)).filter((id) => validDestinationIds.has(id));
     const baseId = selectedDestinationIds[0] ?? template.baseId;
@@ -856,7 +922,8 @@ export function useTravelOS() {
     setPlannerBaseId(baseId);
     setPlannerDays(targetDays);
     setPlannerVibe(template.vibe);
-    setPlannerBudget(clampPlannerBudget(template.budget));
+    setPlannerCurrencyState(templateCurrency);
+    setPlannerBudget(clampPlannerBudget(template.budget, templateCurrency));
     setManualRouteDestinationIds(
       normalizeRouteDestinationIds(routeDestinationIds, baseId, targetDays)
     );
@@ -885,8 +952,45 @@ export function useTravelOS() {
   };
 
   const handlePlannerBudgetChange = (budget: number) => {
-    setPlannerBudget(clampPlannerBudget(budget));
+    setPlannerBudget(clampPlannerBudget(budget, plannerCurrency));
   };
+
+  const setPlannerCurrency = useCallback((currency: CurrencyCode) => {
+    setPlannerCurrencyState((currentCurrency) => {
+      if (currentCurrency === currency) return currentCurrency;
+      setPlannerBudget((currentBudget) => clampPlannerBudget(
+        convertBudgetAmount(currentBudget, currentCurrency, currency),
+        currency
+      ));
+      return currency;
+    });
+  }, []);
+
+  const applyLocalRadiusPlan = useCallback((radiusMinutes: number) => {
+    const safeRadius = clampLocalRadiusMinutes(radiusMinutes);
+    const startPoint = getLocalPlanStartPoint(originAirport, destination);
+    const localStops = rankDestinationsByLocalRadius(startPoint, safeRadius, plannerVibe, savedPlaces);
+    const fallbackTemplate = getPlanningTemplate(safeRadius <= 60 ? "local-food-run" : "river-and-beach-day");
+    const targetDays = safeRadius <= 60 ? 1 : safeRadius <= 90 ? 2 : 3;
+    const base = localStops[0]?.destination ?? DESTINATIONS.find((item) => item.id === fallbackTemplate.baseId) ?? destination;
+    const routeDestinationIds = localStops
+      .filter((stop) => stop.destination.id !== base.id)
+      .slice(0, Math.max(0, targetDays - 1))
+      .map((stop) => stop.destination.id);
+
+    setPlanningModeState("local");
+    setPlanningTemplateId(fallbackTemplate.id);
+    setPlannerBaseId(base.id);
+    setPlannerDays(targetDays);
+    setPlannerCurrencyState("JMD");
+    setPlannerBudget(clampPlannerBudget(fallbackTemplate.budget, "JMD"));
+    setPlannerStartDate(safeRadius <= 60 ? getTodayISODate() : getNextWeekendISODate());
+    setManualRouteDestinationIds(normalizeRouteDestinationIds(routeDestinationIds, base.id, targetDays));
+    setLockedRouteDestinationIds([]);
+    setDayExperienceOverrides({});
+    setDayNotes({});
+    setImportedIdeaDayAssignments({});
+  }, [destination, originAirport, plannerVibe, savedPlaces]);
 
   const toggleSavedPlace = (id: string) => {
     setSavedPlaces((prev) => {
@@ -1001,6 +1105,7 @@ export function useTravelOS() {
         plannerDays,
         plannerVibe,
         plannerBudget,
+        plannerCurrency,
         plannerStartDate,
         originAirportId,
         manualRouteDestinationIds,
@@ -1295,6 +1400,7 @@ export function useTravelOS() {
       plannerDays,
       plannerVibe,
       plannerBudget,
+      plannerCurrency,
       plannerStartDate,
       originAirportId,
       manualRouteDestinationIds,
@@ -1333,6 +1439,7 @@ export function useTravelOS() {
     plannerDays,
     plannerVibe,
     plannerBudget,
+    plannerCurrency,
     plannerStartDate,
     originAirportId,
     manualRouteDestinationIds,
@@ -1367,6 +1474,7 @@ export function useTravelOS() {
     planningTemplates,
     activePlanningTemplate,
     applyPlanningTemplate,
+    applyLocalRadiusPlan,
     buildTripFromDestinations,
     applyCloudBoard,
     plannerBaseId,
@@ -1377,6 +1485,8 @@ export function useTravelOS() {
     setPlannerVibe,
     plannerBudget,
     setPlannerBudget: handlePlannerBudgetChange,
+    plannerCurrency,
+    setPlannerCurrency,
     plannerStartDate,
     setPlannerStartDate,
     manualRouteDestinationIds,
@@ -1519,7 +1629,19 @@ function getInitialOriginAirportId(): string {
 function getInitialPlanningDefaults(): InitialPlanningDefaults {
   const templateId = getInitialPlanningTemplateId();
   const template = getPlanningTemplate(templateId);
-  const days = clampPlannerDays(template.days);
+  const storedCurrency = readStringFromStorage(STORAGE_KEY_PLANNER_CURRENCY);
+  const currency = isCurrencyCode(storedCurrency)
+    ? storedCurrency
+    : template.budgetCurrency ?? getDefaultCurrencyForMode(template.mode);
+  const storedDays = readStoredFiniteNumber(STORAGE_KEY_PLANNER_DAYS);
+  const days = clampPlannerDays(storedDays ?? template.days);
+  const storedBaseId = readStringFromStorage(STORAGE_KEY_PLANNER_BASE);
+  const baseId = isDestinationId(storedBaseId) ? storedBaseId : template.baseId;
+  const storedVibe = readStringFromStorage(STORAGE_KEY_PLANNER_VIBE);
+  const vibe = isPlannerVibe(storedVibe) ? storedVibe : template.vibe;
+  const storedBudget = readStoredFiniteNumber(STORAGE_KEY_PLANNER_BUDGET);
+  const budget = clampPlannerBudget(storedBudget ?? template.budget, currency);
+  const storedStartDate = readStringFromStorage(STORAGE_KEY_PLANNER_START_DATE);
   const storedManualRoute = readStringFromStorage(STORAGE_KEY_MANUAL_ROUTE) === null
     ? null
     : readJsonFromStorage(STORAGE_KEY_MANUAL_ROUTE, [], isStringArray);
@@ -1527,16 +1649,25 @@ function getInitialPlanningDefaults(): InitialPlanningDefaults {
   return {
     mode: template.mode,
     templateId: template.id,
-    baseId: template.baseId,
+    baseId,
     days,
-    vibe: template.vibe,
-    budget: clampPlannerBudget(template.budget),
+    vibe,
+    budget,
+    currency,
+    startDate: isISODateString(storedStartDate) ? storedStartDate : getTodayISODate(),
     manualRouteDestinationIds: normalizeRouteDestinationIds(
       storedManualRoute ?? template.routeDestinationIds ?? [],
-      template.baseId,
+      baseId,
       days
     ),
   };
+}
+
+function readStoredFiniteNumber(key: string): number | undefined {
+  const storedValue = readStringFromStorage(key);
+  if (storedValue === null || storedValue.trim() === "") return undefined;
+  const numberValue = Number(storedValue);
+  return Number.isFinite(numberValue) ? numberValue : undefined;
 }
 
 function getStoredOriginCoordinates(): StoredOriginCoordinates | null {
@@ -1554,6 +1685,120 @@ function getInitialPlanningTemplateId(): PlanningTemplateId {
   const savedMode = readStringFromStorage(STORAGE_KEY_PLANNING_MODE);
   const mode = isPlanningMode(savedMode) ? savedMode : DEFAULT_PLANNING_MODE;
   return getDefaultTemplateForMode(mode).id ?? DEFAULT_PLANNING_TEMPLATE_ID;
+}
+
+function getDefaultCurrencyForMode(mode: PlanningMode): CurrencyCode {
+  return mode === "local" ? "JMD" : "USD";
+}
+
+function getDefaultBudgetForCurrency(currency: CurrencyCode): number {
+  return currency === "JMD" ? 9000 : 150;
+}
+
+function isCurrencyCode(value: unknown): value is CurrencyCode {
+  return value === "USD" || value === "JMD";
+}
+
+function isDestinationId(value: unknown): value is string {
+  return typeof value === "string" && DESTINATIONS.some((destination) => destination.id === value);
+}
+
+function isPlannerVibe(value: unknown): value is Vibe {
+  return typeof value === "string" && ["chill", "nightlife", "family", "romantic", "adventure", "culture", "nature", "authentic", "mixed"].includes(value);
+}
+
+function isISODateString(value: unknown): value is string {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00`).getTime());
+}
+
+function getBudgetProfile(mode: PlanningMode, currency: CurrencyCode, vibe: Vibe): BudgetProfile {
+  if (mode === "local") {
+    const profiles = currency === "JMD" ? LOCAL_JMD_BUDGET_PROFILES : LOCAL_USD_BUDGET_PROFILES;
+    return profiles[vibe] ?? profiles.mixed;
+  }
+  return BUDGET_PROFILES[vibe] ?? BUDGET_PROFILES.mixed;
+}
+
+function convertBudgetAmount(amount: number, fromCurrency: CurrencyCode, toCurrency: CurrencyCode): number {
+  if (fromCurrency === toCurrency) return amount;
+  if (toCurrency === "JMD") return amount * DEFAULT_USD_TO_JMD;
+  return amount / DEFAULT_USD_TO_JMD;
+}
+
+function clampLocalRadiusMinutes(radiusMinutes: number): 60 | 90 | 120 {
+  if (radiusMinutes <= 60) return 60;
+  if (radiusMinutes <= 90) return 90;
+  return 120;
+}
+
+type LocalPlanPoint = {
+  latitude: number;
+  longitude: number;
+};
+
+function getLocalPlanStartPoint(originAirport: OriginAirport, destination: Destination): LocalPlanPoint {
+  if (
+    originAirport.isExactLocation ||
+    originAirport.supportsFlights === false ||
+    ["KIN", "MBJ", "OCJ", "GPS"].includes(originAirport.code)
+  ) {
+    return originAirport;
+  }
+  return destination;
+}
+
+function rankDestinationsByLocalRadius(
+  startPoint: LocalPlanPoint,
+  radiusMinutes: number,
+  plannerVibe: Vibe,
+  savedPlaces: Set<string>
+): Array<{ destination: Destination; driveMinutes: number }> {
+  return DESTINATIONS
+    .map((destination) => {
+      const distanceKm = haversineDistance(startPoint.latitude, startPoint.longitude, destination.latitude, destination.longitude);
+      return {
+        destination,
+        driveMinutes: estimateLocalDriveMinutes(distanceKm),
+      };
+    })
+    .filter((item) => item.driveMinutes <= radiusMinutes)
+    .sort((first, second) => (
+      localDestinationScore(first, plannerVibe, savedPlaces) - localDestinationScore(second, plannerVibe, savedPlaces)
+    ));
+}
+
+function localDestinationScore(
+  item: { destination: Destination; driveMinutes: number },
+  plannerVibe: Vibe,
+  savedPlaces: Set<string>
+): number {
+  const savedBoost = savedPlaces.has(item.destination.id) ? -40 : 0;
+  const vibeBoost = plannerVibe !== "all" && plannerVibe !== "mixed" && item.destination.vibes.includes(plannerVibe) ? -20 : 0;
+  const ratingBoost = item.destination.rating * -2;
+  return item.driveMinutes + savedBoost + vibeBoost + ratingBoost;
+}
+
+function estimateLocalDriveMinutes(distanceKm: number): number {
+  if (!distanceKm) return 0;
+  return Math.max(15, Math.round((distanceKm / 52) * 60));
+}
+
+function getTodayISODate(): string {
+  return toLocalISODate(new Date());
+}
+
+function getNextWeekendISODate(): string {
+  const today = new Date();
+  const day = today.getDay();
+  const daysUntilSaturday = (6 - day + 7) % 7 || 7;
+  const nextWeekend = new Date(today);
+  nextWeekend.setDate(today.getDate() + daysUntilSaturday);
+  return toLocalISODate(nextWeekend);
+}
+
+function toLocalISODate(date: Date): string {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
 }
 
 function normalizeDayExperienceOverrides(

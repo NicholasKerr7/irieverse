@@ -1,5 +1,6 @@
 import { BedDouble, Car, Utensils, Waves } from "lucide-react";
 import { classNames } from "../utils/classNames";
+import { formatCurrency } from "../utils/format";
 import { glassCard, glassPanel } from "../utils/glass";
 
 interface BudgetInsightProps {
@@ -11,9 +12,10 @@ interface BudgetInsightProps {
   transportPerTrip: number;
   days: number;
   vibe: string;
+  currency: "USD" | "JMD";
 }
 
-export function BudgetInsight({ perDay, transportPerTrip, days, vibe }: BudgetInsightProps) {
+export function BudgetInsight({ perDay, transportPerTrip, days, vibe, currency }: BudgetInsightProps) {
   const perDayTotal = perDay.lodging + perDay.dining + perDay.experiences;
   const tripTotal = perDayTotal * days + transportPerTrip;
   const lines = [
@@ -61,8 +63,8 @@ export function BudgetInsight({ perDay, transportPerTrip, days, vibe }: BudgetIn
         </div>
         <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-5 py-4 text-right">
           <p className="text-[0.65rem] uppercase tracking-[0.2em] text-emerald-200">Estimated total</p>
-          <p className="text-3xl font-semibold text-emerald-200">${tripTotal.toLocaleString()}</p>
-          <p className="text-xs text-slate-400">${perDayTotal.toFixed(0)} per day + transport</p>
+          <p className="text-3xl font-semibold text-emerald-200">{formatCurrency(tripTotal, currency)}</p>
+          <p className="text-xs text-slate-400">{formatCurrency(perDayTotal, currency)} per day + transport</p>
         </div>
       </div>
 
@@ -81,7 +83,7 @@ export function BudgetInsight({ perDay, transportPerTrip, days, vibe }: BudgetIn
                     <p className="text-xs text-slate-500">{line.helper}</p>
                   </div>
                 </div>
-                <p className="text-lg font-semibold text-slate-100">${line.amount.toFixed(0)}</p>
+                <p className="text-lg font-semibold text-slate-100">{formatCurrency(line.amount, currency)}</p>
               </div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
                 <div

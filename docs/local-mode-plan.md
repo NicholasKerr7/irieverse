@@ -1,6 +1,6 @@
 # Local Mode Plan
 
-IrieVerse should eventually support people who live in Jamaica, not only visitors planning a vacation. The local angle is strongest when the app becomes a weekend, day-trip, hosting, and island-movement planner.
+IrieVerse supports people who live in Jamaica, not only visitors planning a vacation. The local angle is strongest when the app becomes a weekend, day-trip, hosting, and island-movement planner.
 
 ## Positioning
 
@@ -20,11 +20,11 @@ The app should still keep the Jamaica-first route, weather, saved-ideas, and sha
 
 ## Product Changes
 
-- Add an onboarding choice: "I am visiting Jamaica" or "I live in Jamaica."
-- Let local users set a home parish, common base, or current location.
-- Default local mode to JMD budgeting while still allowing USD.
-- Add day-trip and weekend-trip templates.
-- Add "near me this weekend" and "within 60/90/120 minutes" planning views.
+- Add an onboarding choice: "I am visiting Jamaica" or "I live in Jamaica." Shipped through the Home and Trips planning mode selector.
+- Let local users set a home parish, common base, or current location. Shipped through starting-area selection and optional exact GPS.
+- Default local mode to JMD budgeting while still allowing USD. Shipped through the Trips budget controls.
+- Add day-trip and weekend-trip templates. Shipped through local food run and river/beach templates.
+- Add "near me this weekend" and "within 60/90/120 minutes" planning views. Shipped in the Quick Plan local controls.
 - Add local event and pop-up discovery as a first-class Saved/Explore source.
 - Add group planning for friends: shared board, quick vote, and final plan.
 - Add route handoff to Waze or Google Maps for actual driving.
@@ -48,10 +48,9 @@ Local mode should feel faster and less formal than trip planning:
 
 ## Build Order
 
-1. Add local/traveler onboarding mode and persist it locally.
-2. Add home parish/current base setting.
-3. Add local templates for food runs, beach days, river days, date nights, and hosting visitors.
-4. Add JMD budget defaults and local-friendly copy.
-5. Add near-me/weekend filters.
+1. Add local/traveler onboarding mode and persist it locally. Done.
+2. Add home parish/current base setting. Done.
+3. Add local templates for food runs, beach days, river days, date nights, and hosting visitors. Mostly done.
+4. Add JMD budget defaults and local-friendly copy. Done.
+5. Add near-me/weekend filters. Done.
 6. Add group-share improvements once cloud boards/auth are stronger.
-

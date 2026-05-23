@@ -13,6 +13,18 @@ export function formatMiles(distanceKm: number, fallback = "0 mi"): string {
   return `${Math.max(1, Math.round(distanceKm * 0.621371))} mi`;
 }
 
+export function formatCurrency(amount: number, currency: "USD" | "JMD", options: { compact?: boolean } = {}): string {
+  if (!Number.isFinite(amount)) return currency === "JMD" ? "J$0" : "$0";
+  const roundedAmount = Math.round(amount);
+  if (currency === "JMD") {
+    if (options.compact && Math.abs(roundedAmount) >= 1000) {
+      return `J$${Math.round(roundedAmount / 1000)}k`;
+    }
+    return `J$${roundedAmount.toLocaleString("en-US")}`;
+  }
+  return `$${roundedAmount.toLocaleString("en-US")}`;
+}
+
 export function formatLocalTimeForAirport(
   dateString: string,
   airportCode: string,

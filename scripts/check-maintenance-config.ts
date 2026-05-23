@@ -80,6 +80,7 @@ if (lockedRoot?.engines?.npm !== packageJson.engines.npm) {
   "test:api",
   "qa:local",
   "check:maintenance",
+  "check:supabase",
   "check:sw",
   "verify",
   "verify:full",
@@ -107,10 +108,12 @@ assertIncludes(getScript("build"), "npm run build:sw", "build script");
 assertIncludes(getScript("build"), "vite build", "build script");
 assertIncludes(getScript("build:sw"), "tsconfig.service-worker.json", "build:sw script");
 assertIncludes(getScript("check:sw"), "scripts/check-service-worker-output.ts", "check:sw script");
+assertIncludes(getScript("check:supabase"), "scripts/check-supabase-readiness.ts", "check:supabase script");
 assertIncludes(getScript("typecheck"), "tsconfig.service-worker.json", "typecheck script");
 assertIncludes(verifyScript, "npm run typecheck", "verify script");
 assertIncludes(verifyScript, "npm run test:api", "verify script");
 assertIncludes(verifyScript, "npm run check:maintenance", "verify script");
+assertIncludes(verifyScript, "npm run check:supabase", "verify script");
 assertIncludes(verifyScript, "npm run check:sw", "verify script");
 assertIncludes(verifyScript, "npm run audit:prod", "verify script");
 assertIncludes(verifyScript, "npm run build", "verify script");

@@ -264,6 +264,47 @@ test("unplaced imported map ideas ask to be placed before trip use", async ({ pa
   expect(issues).toEqual([]);
 });
 
+test("local mode uses JMD budgets, radius starts, and persisted quick planning", async ({ page }) => {
+  const issues = collectPageIssues(page);
+  const plannerKeys = [
+    "irieverse_planning_mode",
+    "irieverse_planning_template",
+    "irieverse_planner_base",
+    "irieverse_planner_days",
+    "irieverse_planner_vibe",
+    "irieverse_planner_budget",
+    "irieverse_planner_currency",
+    "irieverse_planner_start_date",
+    "irieverse_manual_route",
+  ];
+
+  await openCleanTab(page, "home", plannerKeys);
+  await page.getByRole("button", { name: /I live here/ }).click();
+  await expectLocalStorageText(page, "irieverse_planning_mode", (value) => value === "local");
+
+  await page.getByTestId("mobile-bottom-nav").getByRole("button", { name: /^Trips$/ }).click();
+  await expect(page.getByText("Plan a Jamaica day without overthinking it.")).toBeVisible();
+  await expect(page.getByText("Quick Plan").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "JMD" }).first()).toBeVisible();
+  await expect(page.getByText(/J\$9k|J\$9,000/).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "90 min" }).click();
+  await expectLocalStorageText(page, "irieverse_planner_currency", (value) => value === "JMD");
+  await expectLocalStorageText(page, "irieverse_planner_days", (value) => value === "2");
+  await expectLocalStorageText(page, "irieverse_planning_template", (value) => value === "river-and-beach-day");
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByText("Plan a Jamaica day without overthinking it.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "JMD" }).first()).toBeVisible();
+  await expect(page.getByText("2 days").first()).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.goto("/manifest.webmanifest", { waitUntil: "domcontentloaded" });
+  await page.evaluate((keys) => {
+    keys.forEach((key) => window.localStorage.removeItem(key));
+  }, plannerKeys);
+  expect(issues).toEqual([]);
+});
+
 test("share-target imports preserve provided titles", async ({ page }) => {
   const issues = collectPageIssues(page);
   const params = new URLSearchParams({
@@ -865,11 +906,21 @@ test("map place details reject mismatched live data", async ({ page }) => {
 });
 
 async function openCleanTab(page: Page, tab: string, storageKeys: string[]) {
-  await page.goto(`/?tab=${tab}`, { waitUntil: "domcontentloaded" });
+  const defaultStorageKeys = [
+    "irieverse_planning_mode",
+    "irieverse_planning_template",
+    "irieverse_planner_base",
+    "irieverse_planner_days",
+    "irieverse_planner_vibe",
+    "irieverse_planner_budget",
+    "irieverse_planner_currency",
+    "irieverse_planner_start_date",
+  ];
+  await page.goto("/manifest.webmanifest", { waitUntil: "domcontentloaded" });
   await page.evaluate((keys) => {
-    keys.forEach((key) => window.localStorage.removeItem(key));
-  }, storageKeys);
-  await page.reload({ waitUntil: "domcontentloaded" });
+    Array.from(new Set(keys)).forEach((key) => window.localStorage.removeItem(key));
+  }, [...defaultStorageKeys, ...storageKeys]);
+  await page.goto(`/?tab=${tab}`, { waitUntil: "domcontentloaded" });
 }
 
 async function waitForImportedIdeas(
@@ -891,6 +942,16 @@ async function expectLocalStorage<T>(page: Page, key: string, predicate: (value:
   await page.waitForFunction(
     ({ storageKey, predicateSource }) => {
       const value = JSON.parse(window.localStorage.getItem(storageKey) || "null");
+      return Function("value", `return (${predicateSource})(value);`)(value);
+    },
+    { storageKey: key, predicateSource: predicate.toString() }
+  );
+}
+
+async function expectLocalStorageText(page: Page, key: string, predicate: (value: string | null) => boolean) {
+  await page.waitForFunction(
+    ({ storageKey, predicateSource }) => {
+      const value = window.localStorage.getItem(storageKey);
       return Function("value", `return (${predicateSource})(value);`)(value);
     },
     { storageKey: key, predicateSource: predicate.toString() }

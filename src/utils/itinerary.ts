@@ -1,5 +1,5 @@
 import { DESTINATIONS, EXPERIENCES } from "../data/content";
-import type { DayExperienceOverrides, Destination, Experience, ImportedIdea, ItineraryPlan, PlannerDay, Vibe, WeatherPlanDay } from "../types/travel";
+import type { CurrencyCode, DayExperienceOverrides, Destination, Experience, ImportedIdea, ItineraryPlan, PlannerDay, Vibe, WeatherPlanDay } from "../types/travel";
 import { formatDriveTime } from "./format";
 
 const EARTH_RADIUS_KM = 6371;
@@ -13,6 +13,7 @@ type BuildItineraryArgs = {
   importedIdeas: ImportedIdea[];
   plannerVibe: Vibe;
   plannerBudget: number;
+  plannerCurrency: CurrencyCode;
   plannerDays: number;
   plannerStartDate?: string;
   weatherPlan?: WeatherPlanDay[];
@@ -29,6 +30,7 @@ export function buildItineraryPlan({
   importedIdeas,
   plannerVibe,
   plannerBudget,
+  plannerCurrency,
   plannerDays,
   plannerStartDate,
   weatherPlan = [],
@@ -129,6 +131,7 @@ export function buildItineraryPlan({
     days: safeDays,
     plannerVibe,
     budgetPerDay: plannerBudget,
+    budgetCurrency: plannerCurrency,
     daysPlan,
     routeSummary: buildRouteSummary(routeDestinations, destination, routeMode),
   };
@@ -148,8 +151,11 @@ export function clampPlannerDays(days: number): number {
   return Math.max(1, Math.min(Math.round(days), 14));
 }
 
-export function clampPlannerBudget(budget: number): number {
-  if (!Number.isFinite(budget)) return 150;
+export function clampPlannerBudget(budget: number, currency: CurrencyCode = "USD"): number {
+  if (!Number.isFinite(budget)) return currency === "JMD" ? 9000 : 150;
+  if (currency === "JMD") {
+    return Math.max(3000, Math.min(Math.round(budget / 500) * 500, 90000));
+  }
   return Math.max(50, Math.min(Math.round(budget), 600));
 }
 

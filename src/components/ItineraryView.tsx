@@ -5,7 +5,7 @@ import { classNames } from "../utils/classNames";
 import { getBoardIdeasForDestination } from "../utils/boardIdeas";
 import { getExperienceOptionsForDay } from "../utils/dayExperienceOptions";
 import { getDayPlanningReasons, type DayPlanningReasonTone } from "../utils/dayPlanningReasons";
-import { formatDriveTime } from "../utils/format";
+import { formatCurrency, formatDriveTime } from "../utils/format";
 import { glassCard, glassControlMuted } from "../utils/glass";
 import { capitalise } from "../utils/text";
 
@@ -71,7 +71,7 @@ export function ItineraryView({
           </div>
           <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 px-4 py-3 text-right">
             <p className="text-[0.65rem] uppercase tracking-[0.2em] text-cyan-200">Activity budget</p>
-            <p className="text-xl font-semibold text-slate-100">${(budgetPerDay * days).toLocaleString()}</p>
+            <p className="text-xl font-semibold text-slate-100">{formatCurrency(budgetPerDay * days, itinerary.budgetCurrency)}</p>
           </div>
         </div>
       </div>
@@ -167,7 +167,7 @@ export function ItineraryView({
                 {capitalise(day.vibe)}
               </span>
               <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.14em] text-emerald-100">
-                <WalletCards className="h-3 w-3" /> ${day.suggestedBudget}
+                <WalletCards className="h-3 w-3" /> {formatCurrency(day.suggestedBudget, itinerary.budgetCurrency, { compact: true })}
               </span>
               <span className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-[0.68rem] uppercase tracking-[0.14em] text-slate-300">
                 <Clock3 className="h-3 w-3" />
