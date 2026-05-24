@@ -11,6 +11,87 @@ const DEFAULT_EVENT_RANGE_DAYS = 365;
 const DEFAULT_CACHE_TTL_SECONDS = 30 * 60;
 const MAX_LIVE_EVENTS_PER_PROVIDER = 12;
 const MAX_EVENTS_RESPONSE = 18;
+const TICKETMASTER_GEOHASH_PRECISION = 7;
+const GEOHASH_BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
+const JAMAICA_EVENT_TERMS = [
+  "jamaica",
+  "jm",
+  "kingston",
+  "montego bay",
+  "mobay",
+  "ocho rios",
+  "negril",
+  "port antonio",
+  "portland",
+  "st. ann",
+  "st ann",
+  "st. james",
+  "st james",
+  "st. mary",
+  "st mary",
+  "st. elizabeth",
+  "st elizabeth",
+  "st. thomas",
+  "st thomas",
+  "st. catherine",
+  "st catherine",
+  "trelawny",
+  "hanover",
+  "westmoreland",
+  "clarendon",
+  "manchester",
+  "spanish town",
+  "portmore",
+  "falmouth",
+  "lucea",
+  "mandeville",
+  "morant bay",
+  "may pen",
+];
+const REGION_EVENT_TERMS: Record<string, string[]> = {
+  "kingston": ["kingston", "st. andrew", "st andrew", "new kingston", "half way tree", "liguanea", "hope road", "waterfront", "national stadium"],
+  "south-east": ["kingston", "st. andrew", "st andrew", "st. catherine", "st catherine", "spanish town", "portmore", "hellshire", "fort clarence"],
+  "north coast": ["montego bay", "mobay", "st. james", "st james", "falmouth", "trelawny", "ocho rios", "st. ann", "st ann", "priory", "plantation cove", "runaway bay", "discovery bay", "st. mary", "st mary", "oracabessa", "port maria"],
+  "north-east": ["st. mary", "st mary", "oracabessa", "port maria", "highgate", "portland", "port antonio"],
+  "north-west": ["hanover", "lucea", "montego bay", "mobay", "negril", "st. james", "st james"],
+  "west coast": ["negril", "westmoreland", "hanover", "lucea", "savanna-la-mar", "seven mile", "west end"],
+  "east": ["portland", "port antonio", "boston bay", "st. thomas", "st thomas", "morant", "morant bay", "bath", "blue lagoon"],
+  "south coast": ["st. elizabeth", "st elizabeth", "black river", "treasure beach", "clarendon", "may pen", "denbigh", "alligator pond"],
+  "south-west": ["st. elizabeth", "st elizabeth", "black river", "treasure beach", "accompong", "ys falls", "westmoreland"],
+  "central highlands": ["manchester", "mandeville", "christiana", "cockpit country", "accompong", "st. elizabeth", "st elizabeth"],
+};
+const PARISH_EVENT_TERMS: Record<string, string[]> = {
+  "kingston": ["kingston", "waterfront", "national stadium"],
+  "st. andrew": ["st. andrew", "st andrew", "new kingston", "half way tree", "liguanea", "hope road"],
+  "st. catherine": ["st. catherine", "st catherine", "spanish town", "portmore", "hellshire", "fort clarence"],
+  "st. ann": ["st. ann", "st ann", "ocho rios", "priory", "plantation cove", "runaway bay", "discovery bay"],
+  "st. james": ["st. james", "st james", "montego bay", "mobay", "gloucester", "hip strip"],
+  "st. mary": ["st. mary", "st mary", "oracabessa", "port maria", "highgate"],
+  "st. elizabeth": ["st. elizabeth", "st elizabeth", "black river", "treasure beach", "accompong", "ys falls"],
+  "st. thomas": ["st. thomas", "st thomas", "morant", "morant bay", "bath"],
+  "trelawny": ["trelawny", "falmouth", "albert town"],
+  "hanover": ["hanover", "lucea"],
+  "westmoreland": ["westmoreland", "negril", "savanna-la-mar", "seven mile", "west end"],
+  "clarendon": ["clarendon", "may pen", "denbigh"],
+  "manchester": ["manchester", "mandeville", "alligator pond"],
+  "portland": ["portland", "port antonio", "boston bay", "blue lagoon"],
+};
+const PARISH_DEFAULT_REGION: Record<string, string> = {
+  "kingston": "Kingston",
+  "st. andrew": "Kingston",
+  "st. catherine": "South-East",
+  "st. ann": "North Coast",
+  "st. james": "North Coast",
+  "st. mary": "North-East",
+  "st. elizabeth": "South-West",
+  "st. thomas": "East",
+  "trelawny": "North Coast",
+  "hanover": "North-West",
+  "westmoreland": "West Coast",
+  "clarendon": "South Coast",
+  "manchester": "Central Highlands",
+  "portland": "East",
+};
 
 const EVENT_CACHE = new Map<string, { payload: EventsApiResponse; expiresAt: number }>();
 let cachedCuratedEvents: LiveEvent[] | null = null;
@@ -112,13 +193,14 @@ async function fetchEventbriteEvents(apiKey: string, query: EventQuery): Promise
   try {
     organizationIds = await getEventbriteOrganizationIds(apiKey);
   } catch (error) {
-    console.warn(`Eventbrite organization lookup unavailable; checking user events. ${formatErrorForLog(error)}`);
+    console.warn(`Eventbrite organization lookup unavailable. ${formatErrorForLog(error)}`);
   }
 
-  const eventRequests: Array<Promise<unknown[]>> = [
-    fetchEventbriteUserEvents(apiKey),
-    ...organizationIds.slice(0, 3).map((organizationId) => fetchEventbriteOrganizationEvents(apiKey, organizationId)),
-  ];
+  if (!organizationIds.length) return [];
+
+  const eventRequests = organizationIds
+    .slice(0, 3)
+    .map((organizationId) => fetchEventbriteOrganizationEvents(apiKey, organizationId));
 
   const settled = await Promise.allSettled(eventRequests);
   const fulfilledEvents = settled.flatMap((result) => result.status === "fulfilled" ? result.value : []);
@@ -146,15 +228,6 @@ async function getEventbriteOrganizationIds(apiKey: string): Promise<string[]> {
   return organizations
     .map((organization) => isRecord(organization) ? asString(organization.id) : undefined)
     .filter((id): id is string => Boolean(id));
-}
-
-async function fetchEventbriteUserEvents(apiKey: string): Promise<unknown[]> {
-  const url = new URL(`${EVENTBRITE_API_BASE_URL}/users/me/events/`);
-  addEventbriteEventSearchParams(url);
-
-  const payload = await fetchEventbriteJson(apiKey, url);
-  const payloadRecord = isRecord(payload) ? payload : {};
-  return Array.isArray(payloadRecord.events) ? payloadRecord.events : [];
 }
 
 async function fetchEventbriteOrganizationEvents(apiKey: string, organizationId: string): Promise<unknown[]> {
@@ -229,6 +302,12 @@ function buildTicketmasterEventUrls(apiKey: string, query: EventQuery): URL[] {
   const radiusKm = getPositiveEnvNumber("EVENTS_TICKETMASTER_RADIUS_KM", DEFAULT_TICKETMASTER_RADIUS_KM);
 
   if (query.latitude !== undefined && query.longitude !== undefined) {
+    const geoPointUrl = createTicketmasterBaseUrl(apiKey);
+    geoPointUrl.searchParams.set("geoPoint", encodeGeohash(query.latitude, query.longitude, TICKETMASTER_GEOHASH_PRECISION));
+    geoPointUrl.searchParams.set("radius", String(radiusKm));
+    geoPointUrl.searchParams.set("unit", "km");
+    addUniqueUrl(urls, seen, geoPointUrl);
+
     const localUrl = createTicketmasterBaseUrl(apiKey);
     localUrl.searchParams.set("latlong", `${query.latitude},${query.longitude}`);
     localUrl.searchParams.set("radius", String(radiusKm));
@@ -254,6 +333,8 @@ function createTicketmasterBaseUrl(apiKey: string): URL {
   const url = new URL(TICKETMASTER_EVENTS_URL);
   url.searchParams.set("apikey", apiKey);
   url.searchParams.set("countryCode", "JM");
+  url.searchParams.set("locale", "*");
+  url.searchParams.set("includeTBA", "yes");
   url.searchParams.set("size", String(MAX_LIVE_EVENTS_PER_PROVIDER));
   url.searchParams.set("sort", "date,asc");
   url.searchParams.set("startDateTime", rangeStart);
@@ -281,13 +362,31 @@ function normalizeEventbriteEvent(event: unknown, query: EventQuery): LiveEvent 
   const description = isRecord(event.description) ? asString(event.description.text) : undefined;
   const isFree = event.is_free === true;
   const officialUrl = asString(event.url);
+  const latitude = asCoordinate(venue.latitude, -90, 90) ?? asCoordinate(address.latitude, -90, 90);
+  const longitude = asCoordinate(venue.longitude, -180, 180) ?? asCoordinate(address.longitude, -180, 180);
+  const searchableText = [
+    title,
+    description,
+    officialUrl,
+    asString(venue.name),
+    asString(address.city),
+    asString(address.region),
+    asString(address.country),
+    asString(address.localized_address_display),
+    asString(address.address_1),
+    asString(address.address_2),
+  ].filter(Boolean).join(" ");
+
+  if (!isTrustedProviderEvent(searchableText, query, latitude, longitude, asString(address.country))) return null;
+
+  const inferredArea = inferJamaicaEventArea(searchableText);
 
   return {
     id: `eventbrite-${id}`,
     title,
     city: asString(address.city) ?? asString(venue.name) ?? query.parish ?? "Jamaica",
-    region: query.region ?? query.parish ?? "Jamaica",
-    ...(query.parish ? { parish: query.parish } : {}),
+    region: inferredArea.region ?? query.region ?? query.parish ?? "Jamaica",
+    ...(inferredArea.parish ?? query.parish ? { parish: inferredArea.parish ?? query.parish } : {}),
     venue: asString(venue.name) ?? "Eventbrite venue",
     startDate: asString(start.local) ?? asString(start.utc) ?? new Date().toISOString(),
     vibes: uniqueStrings(["eventbrite", asString(event.format_id), asString(event.category_id)]).slice(0, 3),
@@ -310,6 +409,10 @@ function normalizeTicketmasterEvent(event: unknown, query: EventQuery): LiveEven
   const venues = Array.isArray(embedded.venues) ? embedded.venues : [];
   const venue = isRecord(venues[0]) ? venues[0] : {};
   const cityRecord = isRecord(venue.city) ? venue.city : {};
+  const countryRecord = isRecord(venue.country) ? venue.country : {};
+  const stateRecord = isRecord(venue.state) ? venue.state : {};
+  const addressRecord = isRecord(venue.address) ? venue.address : {};
+  const locationRecord = isRecord(venue.location) ? venue.location : {};
   const dates = isRecord(event.dates) ? event.dates : {};
   const start = isRecord(dates.start) ? dates.start : {};
   const classifications = Array.isArray(event.classifications) ? event.classifications : [];
@@ -317,13 +420,38 @@ function normalizeTicketmasterEvent(event: unknown, query: EventQuery): LiveEven
   const segment = isRecord(firstClassification.segment) ? asString(firstClassification.segment.name) : undefined;
   const genre = isRecord(firstClassification.genre) ? asString(firstClassification.genre.name) : undefined;
   const officialUrl = asString(event.url);
+  const latitude = asCoordinate(locationRecord.latitude, -90, 90);
+  const longitude = asCoordinate(locationRecord.longitude, -180, 180);
+  const searchableText = [
+    title,
+    asString(event.info),
+    asString(event.pleaseNote),
+    officialUrl,
+    asString(venue.name),
+    asString(cityRecord.name),
+    asString(stateRecord.name),
+    asString(stateRecord.stateCode),
+    asString(countryRecord.name),
+    asString(countryRecord.countryCode),
+    asString(addressRecord.line1),
+  ].filter(Boolean).join(" ");
+
+  if (!isTrustedProviderEvent(
+    searchableText,
+    query,
+    latitude,
+    longitude,
+    [asString(countryRecord.countryCode), asString(countryRecord.name)].filter(Boolean).join(" ")
+  )) return null;
+
+  const inferredArea = inferJamaicaEventArea(searchableText);
 
   return {
     id: `ticketmaster-${id}`,
     title,
     city: asString(cityRecord.name) ?? query.parish ?? "Jamaica",
-    region: query.region ?? query.parish ?? "Jamaica",
-    ...(query.parish ? { parish: query.parish } : {}),
+    region: inferredArea.region ?? query.region ?? query.parish ?? "Jamaica",
+    ...(inferredArea.parish ?? query.parish ? { parish: inferredArea.parish ?? query.parish } : {}),
     venue: asString(venue.name) ?? "Ticketmaster venue",
     startDate: asString(start.dateTime) ?? normalizeLocalDate(asString(start.localDate)) ?? new Date().toISOString(),
     vibes: uniqueStrings(["ticketmaster", segment, genre]).slice(0, 3),
@@ -424,6 +552,168 @@ function buildTicketmasterKeywords(query: EventQuery): string[] {
     query.parish ? `${query.parish} Jamaica` : undefined,
     query.region ? `${query.region} Jamaica` : undefined,
   ]).filter((keyword) => keyword !== "jamaica");
+}
+
+function isTrustedProviderEvent(
+  searchableText: string,
+  query: EventQuery,
+  latitude: number | undefined,
+  longitude: number | undefined,
+  countryValue?: string
+): boolean {
+  const normalizedText = normalizeSearchText(searchableText);
+  const normalizedCountry = normalizeSearchText(countryValue ?? "");
+  if (normalizedCountry && !isJamaicaCountry(normalizedCountry)) return false;
+  if (isNearbyQueryEvent(query, latitude, longitude)) return true;
+  if (!isJamaicaCountry(normalizedCountry) && !containsAnyTerm(normalizedText, JAMAICA_EVENT_TERMS)) return false;
+
+  const areaTerms = getEventQueryAreaTerms(query);
+  return !areaTerms.length || containsAnyTerm(normalizedText, areaTerms);
+}
+
+function isJamaicaCountry(normalizedCountry: string): boolean {
+  return containsAnyTerm(normalizedCountry, ["jm", "jamaica"]);
+}
+
+function isNearbyQueryEvent(
+  query: EventQuery,
+  latitude: number | undefined,
+  longitude: number | undefined
+): boolean {
+  if (
+    query.latitude === undefined ||
+    query.longitude === undefined ||
+    latitude === undefined ||
+    longitude === undefined
+  ) return false;
+
+  const radiusKm = getPositiveEnvNumber("EVENTS_TICKETMASTER_RADIUS_KM", DEFAULT_TICKETMASTER_RADIUS_KM);
+  return getDistanceKm(query.latitude, query.longitude, latitude, longitude) <= radiusKm + 25;
+}
+
+function getEventQueryAreaTerms(query: EventQuery): string[] {
+  return uniqueStrings([
+    query.region,
+    query.parish,
+    ...getTermsForLookup(REGION_EVENT_TERMS, query.region),
+    ...getTermsForLookup(PARISH_EVENT_TERMS, query.parish),
+  ]);
+}
+
+function inferJamaicaEventArea(searchableText: string): { region?: string; parish?: string } {
+  const normalizedText = normalizeSearchText(searchableText);
+
+  for (const [parish, terms] of Object.entries(PARISH_EVENT_TERMS)) {
+    if (containsAnyTerm(normalizedText, [parish, ...terms])) {
+      const region = PARISH_DEFAULT_REGION[parish];
+      return {
+        parish: titleCaseArea(parish),
+        ...(region ? { region } : {}),
+      };
+    }
+  }
+
+  for (const [region, terms] of Object.entries(REGION_EVENT_TERMS)) {
+    if (containsAnyTerm(normalizedText, [region, ...terms])) {
+      return {
+        region: titleCaseArea(region),
+      };
+    }
+  }
+
+  return {};
+}
+
+function getTermsForLookup(source: Record<string, string[]>, value: string | undefined): string[] {
+  const key = normalizeAreaKey(value);
+  return key ? source[key] ?? [] : [];
+}
+
+function normalizeAreaKey(value: string | undefined): string {
+  return normalizeSearchText(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function normalizeSearchText(value: string): string {
+  return value.toLowerCase().replace(/[’']/g, "").replace(/\s+/g, " ").trim();
+}
+
+function containsAnyTerm(normalizedText: string, terms: string[]): boolean {
+  return terms.some((term) => containsTerm(normalizedText, term));
+}
+
+function containsTerm(normalizedText: string, term: string): boolean {
+  const normalizedTerm = normalizeSearchText(term);
+  if (!normalizedTerm) return false;
+  const escapedTerm = normalizedTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+  return new RegExp(`(^|[^a-z0-9])${escapedTerm}($|[^a-z0-9])`, "i").test(normalizedText);
+}
+
+function titleCaseArea(value: string): string {
+  return value
+    .split(/(\s+|-)/)
+    .map((part) => {
+      if (/^\s+$|-$/.test(part)) return part;
+      if (part === "st.") return "St.";
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    })
+    .join("");
+}
+
+function getDistanceKm(fromLatitude: number, fromLongitude: number, toLatitude: number, toLongitude: number): number {
+  const earthRadiusKm = 6371;
+  const latitudeDelta = toRadians(toLatitude - fromLatitude);
+  const longitudeDelta = toRadians(toLongitude - fromLongitude);
+  const fromLatitudeRad = toRadians(fromLatitude);
+  const toLatitudeRad = toRadians(toLatitude);
+  const a =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(fromLatitudeRad) * Math.cos(toLatitudeRad) * Math.sin(longitudeDelta / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function toRadians(value: number): number {
+  return (value * Math.PI) / 180;
+}
+
+function encodeGeohash(latitude: number, longitude: number, precision: number): string {
+  let latitudeRange: [number, number] = [-90, 90];
+  let longitudeRange: [number, number] = [-180, 180];
+  let isLongitude = true;
+  let bit = 0;
+  let character = 0;
+  let hash = "";
+  const bits = [16, 8, 4, 2, 1];
+
+  while (hash.length < precision) {
+    if (isLongitude) {
+      const mid = (longitudeRange[0] + longitudeRange[1]) / 2;
+      if (longitude >= mid) {
+        character |= bits[bit] ?? 0;
+        longitudeRange = [mid, longitudeRange[1]];
+      } else {
+        longitudeRange = [longitudeRange[0], mid];
+      }
+    } else {
+      const mid = (latitudeRange[0] + latitudeRange[1]) / 2;
+      if (latitude >= mid) {
+        character |= bits[bit] ?? 0;
+        latitudeRange = [mid, latitudeRange[1]];
+      } else {
+        latitudeRange = [latitudeRange[0], mid];
+      }
+    }
+
+    isLongitude = !isLongitude;
+    if (bit < 4) {
+      bit += 1;
+    } else {
+      hash += GEOHASH_BASE32[character];
+      bit = 0;
+      character = 0;
+    }
+  }
+
+  return hash;
 }
 
 function getEventRange() {
@@ -542,9 +832,8 @@ function asNumber(value: unknown): number | undefined {
 }
 
 function asCoordinate(value: unknown, min: number, max: number): number | undefined {
-  const item = asString(value);
-  if (!item) return undefined;
-  const parsed = Number(item);
+  const item = Array.isArray(value) ? value[0] : value;
+  const parsed = typeof item === "number" ? item : typeof item === "string" && item.trim() ? Number(item) : Number.NaN;
   return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : undefined;
 }
 

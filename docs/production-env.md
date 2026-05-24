@@ -267,6 +267,12 @@ Trips includes a compact planning confidence panel for launch QA:
 | Road planning | `Road-aware` through `api/road-route.ts`. | The map keeps preview route lines if the proxy fails. |
 | Island events | `Live events` through `api/events.ts` when Eventbrite or Ticketmaster returns matching Jamaica listings. | `Curated calendar` from `public/data/events.json`. |
 
+Event provider limits are intentional:
+
+- Eventbrite private tokens expose events from organizations the account can manage, not a full public Jamaica event search.
+- Ticketmaster only returns Jamaica events when its Discovery inventory currently has matching listings.
+- Live provider events are accepted only when the venue or event text can be trusted as Jamaica-specific and, when an area is selected, relevant to that area. Otherwise IrieVerse keeps the curated Jamaica calendar instead of showing a wrong live listing.
+
 Use this panel after each deploy to confirm the app is honest about which trip services are live, estimated, or curated.
 
 ## Verification

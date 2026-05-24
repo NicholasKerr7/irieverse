@@ -2238,7 +2238,7 @@ function getEventIntegrationStatus(app: TravelOS): { status: string; tone: Integ
     return {
       status: "Curated picks",
       tone: "fallback",
-      body: "No matching live Jamaica listings were found for this area.",
+      body: "Connected event sources were checked, but no verified live Jamaica listings matched this area.",
     };
   }
 

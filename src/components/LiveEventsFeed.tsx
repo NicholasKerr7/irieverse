@@ -196,7 +196,7 @@ function getEventSourceStatus(
     return {
       label: "Curated picks",
       tone: "fallback",
-      body: "No matching live Jamaica listings were found for this area, so curated picks are shown.",
+      body: `${formatEventProviders(meta)} are connected, but no verified live Jamaica listings matched this area. Curated picks are shown so the calendar still stays useful.`,
     };
   }
 

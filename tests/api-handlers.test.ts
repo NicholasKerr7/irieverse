@@ -43,6 +43,7 @@ async function main() {
   await testEventsFallbackWithoutCredentials();
   await testEventsLiveProviderNormalization();
   await testEventsTicketmasterKeywordFallback();
+  await testEventsRejectUntrustedProviderLocation();
   await testFlightsLiveAviationStackNormalization();
   await testFlightsRateLimitFallbackAndCooldown();
   await testImportMetadataBlocksPrivateUrls();
@@ -514,16 +515,6 @@ async function testEventsLiveProviderNormalization() {
       });
     }
 
-    if (requestUrl.origin + requestUrl.pathname === "https://www.eventbriteapi.com/v3/users/me/events/") {
-      assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-eventbrite-private-token");
-      assert.equal(requestUrl.searchParams.get("status"), "live");
-      assert.equal(requestUrl.searchParams.get("order_by"), "start_asc");
-      assert.equal(requestUrl.searchParams.get("expand"), "venue,ticket_availability");
-      return jsonResponse({
-        events: [],
-      });
-    }
-
     if (requestUrl.origin + requestUrl.pathname === "https://www.eventbriteapi.com/v3/organizations/org-1/events/") {
       assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-eventbrite-private-token");
       assert.equal(requestUrl.searchParams.get("status"), "live");
@@ -540,7 +531,7 @@ async function testEventsLiveProviderNormalization() {
             start: { local: "2026-07-01T19:00:00" },
             venue: {
               name: "Ocho Rios Bay",
-              address: { city: "Ocho Rios" },
+              address: { city: "Ocho Rios", country: "Jamaica" },
             },
             ticket_availability: { is_sold_out: false },
           },
@@ -551,7 +542,8 @@ async function testEventsLiveProviderNormalization() {
     if (requestUrl.origin + requestUrl.pathname === "https://app.ticketmaster.com/discovery/v2/events.json") {
       assert.equal(requestUrl.searchParams.get("apikey"), "test-ticketmaster-key");
       assert.equal(requestUrl.searchParams.get("countryCode"), "JM");
-      assert.equal(requestUrl.searchParams.get("latlong"), "18.4029,-76.974");
+      assert.equal(typeof requestUrl.searchParams.get("geoPoint"), "string");
+      assert.equal(requestUrl.searchParams.get("latlong"), null);
       assert.equal(requestUrl.searchParams.get("radius"), "160");
       assert.equal(requestUrl.searchParams.get("keyword"), null);
       return jsonResponse({
@@ -569,6 +561,8 @@ async function testEventsLiveProviderNormalization() {
                   {
                     name: "Plantation Cove",
                     city: { name: "Priory" },
+                    country: { countryCode: "JM", name: "Jamaica" },
+                    location: { latitude: "18.423", longitude: "-77.193" },
                   },
                 ],
               },
@@ -645,7 +639,7 @@ async function testEventsTicketmasterKeywordFallback() {
     assert.equal(requestUrl.searchParams.get("countryCode"), "JM");
     ticketmasterCalls.push(requestUrl);
 
-    if (requestUrl.searchParams.get("latlong")) {
+    if (requestUrl.searchParams.get("geoPoint") || requestUrl.searchParams.get("latlong")) {
       return jsonResponse({
         page: {
           totalElements: 0,
@@ -669,6 +663,8 @@ async function testEventsTicketmasterKeywordFallback() {
                 {
                   name: "Ocho Rios Bay",
                   city: { name: "Ocho Rios" },
+                  country: { countryCode: "JM", name: "Jamaica" },
+                  location: { latitude: "18.407", longitude: "-77.104" },
                 },
               ],
             },
@@ -706,7 +702,78 @@ async function testEventsTicketmasterKeywordFallback() {
     assert.equal(body.meta.providers.eventbrite, false);
     assert.equal(body.meta.providers.ticketmaster, true);
     assert.ok(body.data.some((event) => event.id === "ticketmaster-tm-keyword-1"));
-    assert.equal(ticketmasterCalls.length, 2);
+    assert.equal(ticketmasterCalls.length, 3);
+  } finally {
+    resetEventsHandlerStateForTest();
+    globalThis.fetch = originalFetch;
+    restoreEnv();
+  }
+}
+
+async function testEventsRejectUntrustedProviderLocation() {
+  resetEventsHandlerStateForTest();
+  const restoreEnv = withEnv({
+    EVENTBRITE_API_KEY: undefined,
+    EVENTBRITE_PRIVATE_TOKEN: "test-eventbrite-private-token",
+    TICKETMASTER_API_KEY: undefined,
+    EVENTS_CACHE_TTL_SECONDS: "60",
+  });
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (url, init) => {
+    const requestUrl = new URL(String(url));
+
+    if (requestUrl.origin + requestUrl.pathname === "https://www.eventbriteapi.com/v3/users/me/organizations/") {
+      assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-eventbrite-private-token");
+      return jsonResponse({
+        organizations: [{ id: "org-1" }],
+      });
+    }
+
+    if (requestUrl.origin + requestUrl.pathname === "https://www.eventbriteapi.com/v3/organizations/org-1/events/") {
+      assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-eventbrite-private-token");
+      return jsonResponse({
+        events: [
+          {
+            id: "eb-wrong-place",
+            name: { text: "Brooklyn Rooftop Party" },
+            description: { text: "A live event outside Jamaica." },
+            url: "https://eventbrite.example/brooklyn",
+            is_free: true,
+            start: { local: "2026-07-04T19:00:00" },
+            venue: {
+              name: "Brooklyn Loft",
+              address: { city: "Brooklyn", region: "NY", country: "United States" },
+            },
+          },
+        ],
+      });
+    }
+
+    throw new Error(`Unexpected events fetch: ${String(url)}`);
+  };
+
+  try {
+    const response = createResponse();
+    await eventsHandler(
+      {
+        method: "GET",
+        query: {
+          region: "Kingston",
+          parish: "Kingston",
+          latitude: "17.9712",
+          longitude: "-76.7936",
+        },
+      },
+      response
+    );
+
+    assert.equal(response.statusCode, 200);
+    const body = assertBody<EventsApiResponse>(response.body);
+    assert.equal(body.meta.source, "curated");
+    assert.equal(body.meta.reason, "no-live-provider-events");
+    assert.equal(body.meta.providerConfigured, true);
+    assert.equal(body.data.some((event) => event.id === "eventbrite-eb-wrong-place"), false);
   } finally {
     resetEventsHandlerStateForTest();
     globalThis.fetch = originalFetch;
