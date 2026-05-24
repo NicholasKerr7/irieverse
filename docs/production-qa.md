@@ -2,10 +2,10 @@
 
 ## Current readiness note
 
-- `supabase migration list` shows the linked project `xvfyljebjwfccfthbzcl` is missing the local grant-hardening migration `20260522205437_harden_data_api_grants.sql`.
+- `supabase migration list --password ...` shows local and remote migration history are aligned through `20260522205437_harden_data_api_grants.sql`.
 - `supabase db lint --linked --schema public,private --fail-on error` reports no schema errors.
-- `supabase db push --dry-run` is currently blocked by Supabase CLI temp-role database authentication, so the migration still needs to be applied after database auth is refreshed.
-- Before marking Supabase production sharing fully ready again, apply `20260522205437_harden_data_api_grants.sql`, rerun `supabase migration list`, and confirm the local and remote columns match.
+- `npm run check:supabase` reports the repo migration, grant, RLS, and production docs checks pass.
+- Plain `supabase migration list` can still fail on the CLI temp role; pass the current database password when checking remote migration history.
 
 ## Supabase sharing check
 
@@ -15,10 +15,11 @@ Result: Passed production sharing and cloud board setup on the replacement Supab
 
 - Linked project: `xvfyljebjwfccfthbzcl`.
 - Remote migration history now includes:
-  `20260427120000`, `20260427195500`, `20260429120000`, `20260506120000`, and `20260515161350`.
+  `20260427120000`, `20260427195500`, `20260429120000`, `20260506120000`, `20260515161350`, and `20260522205437`.
 - The Supabase probe created a `trips` row, read it back through the trip-share RPC, updated it with the correct local edit token, deleted it through the protected cleanup RPC, and verified the row was gone.
 - Cloud board storage is migrated through `20260506120000_create_user_boards.sql`; the table has row-level security enabled and authenticated-only grants.
 - The trip-share RPC hardening migration, `20260515161350_harden_trip_share_rpc.sql`, is applied and keeps privileged implementation functions in the private schema.
+- The data API grant hardening migration, `20260522205437_harden_data_api_grants.sql`, is applied and keeps direct trip table access revoked from browser roles while preserving the public trip-share RPC wrappers.
 - `supabase db lint --linked --schema public,private --fail-on error` reports no schema errors.
 
 ## Full QA run
