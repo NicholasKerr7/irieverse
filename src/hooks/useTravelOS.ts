@@ -579,6 +579,7 @@ export function useTravelOS() {
           providers: {
             eventbrite: false,
             ticketmaster: false,
+            verifiedCalendar: false,
           },
           region: destination.region,
           ...(destination.parish ? { parish: destination.parish } : {}),
@@ -594,6 +595,7 @@ export function useTravelOS() {
           providers: {
             eventbrite: false,
             ticketmaster: false,
+            verifiedCalendar: false,
           },
           region: destination.region,
           ...(destination.parish ? { parish: destination.parish } : {}),
@@ -1618,6 +1620,7 @@ function getInitialEventSourceMeta(): EventsApiMeta {
     providers: {
       eventbrite: false,
       ticketmaster: false,
+      verifiedCalendar: false,
     },
   };
 }

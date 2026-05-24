@@ -148,7 +148,7 @@ function getEventSourceStatus(
     return {
       label: "Checking events",
       tone: "fallback",
-      body: "Refreshing Eventbrite, Ticketmaster, and the curated Jamaica calendar for this area.",
+      body: "Refreshing the verified island calendar, Eventbrite, Ticketmaster, and curated Jamaica picks for this area.",
     };
   }
 
@@ -217,6 +217,7 @@ function getEventSourceStatus(
 
 function formatEventProviders(meta: EventsApiMeta): string {
   const providers = [
+    meta.providers.verifiedCalendar ? "verified island calendar" : null,
     meta.providers.eventbrite ? "Eventbrite" : null,
     meta.providers.ticketmaster ? "Ticketmaster" : null,
   ].filter(Boolean);

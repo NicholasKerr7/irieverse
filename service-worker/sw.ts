@@ -86,6 +86,7 @@ function shouldCache(url: URL): boolean {
   return (
     url.pathname.startsWith("/assets/") ||
     url.pathname.startsWith("/data/") ||
+    url.pathname.startsWith("/media/") ||
     url.pathname === "/favicon-16.png" ||
     url.pathname === "/favicon-32.png" ||
     url.pathname === "/icon-72.png" ||

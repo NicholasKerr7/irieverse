@@ -6,9 +6,9 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 
 | Name | Required | Purpose |
 | --- | --- | --- |
-| `VITE_SUPABASE_URL` | Optional | Enables email sign-in, cloud-saved boards, and shared trip links with Supabase. |
+| `VITE_SUPABASE_URL` | Optional | Enables email sign-in, cloud-saved boards, shared trip links, and the verified island events table with Supabase. |
 | `VITE_SUPABASE_ANON_KEY` | Optional | Public anon key for the Supabase project. |
-| `VITE_SUPABASE_DISABLED` | Optional | Set to `true` to keep online boards and shared trip links disabled even when Supabase env vars are present. |
+| `VITE_SUPABASE_DISABLED` | Optional | Set to `true` to keep Supabase-backed boards, share links, and verified island events disabled even when Supabase env vars are present. |
 | `AVIATIONSTACK_API_KEY` | Optional | Server-only AviationStack key used by `api/flights.ts`. |
 | `AVIATIONSTACK_DISABLED` | Optional | Set to `true` to force saved flight examples and avoid live AviationStack requests in an environment. |
 | `AVIATIONSTACK_CACHE_TTL_SECONDS` | Optional | Server-side live flight cache TTL. Defaults to `900` seconds. |
@@ -265,10 +265,11 @@ Trips includes a compact planning confidence panel for launch QA:
 | Flights | `Live schedule` when `/api/flights` returns AviationStack data. | `Saved examples` from `public/data/flights-sample.json`. |
 | Place details | `Live details` when `/api/place-details` returns a trusted Google Places match. | `Curated details` when the key is missing, the provider is limited, or a live result does not match the selected stop. |
 | Road planning | `Road-aware` through `api/road-route.ts`. | The map keeps preview route lines if the proxy fails. |
-| Island events | `Live events` through `api/events.ts` when Eventbrite or Ticketmaster returns matching Jamaica listings. | `Curated calendar` from `public/data/events.json`. |
+| Island events | `Live events` through `api/events.ts` when Supabase verified events, Eventbrite, or Ticketmaster returns matching Jamaica listings. | `Curated calendar` from `public/data/events.json`. |
 
 Event provider limits are intentional:
 
+- The verified island calendar reads published rows from `public.verified_events` when Supabase is configured. This gives IrieVerse a Jamaica-specific live source you can update without redeploying.
 - Eventbrite private tokens expose events from organizations the account can manage, not a full public Jamaica event search.
 - Ticketmaster only returns Jamaica events when its Discovery inventory currently has matching listings.
 - Live provider events are accepted only when the venue or event text can be trusted as Jamaica-specific and, when an area is selected, relevant to that area. Otherwise IrieVerse keeps the curated Jamaica calendar instead of showing a wrong live listing.

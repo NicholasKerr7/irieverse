@@ -6,6 +6,7 @@ import { guardApiRequest } from "./_shared/api-guard.js";
 
 const EVENTBRITE_API_BASE_URL = "https://www.eventbriteapi.com/v3";
 const TICKETMASTER_EVENTS_URL = "https://app.ticketmaster.com/discovery/v2/events.json";
+const VERIFIED_EVENTS_TABLE = "verified_events";
 const DEFAULT_TICKETMASTER_RADIUS_KM = 160;
 const DEFAULT_EVENT_RANGE_DAYS = 365;
 const DEFAULT_CACHE_TTL_SECONDS = 30 * 60;
@@ -103,6 +104,22 @@ type EventQuery = {
   longitude?: number;
 };
 
+type SupabaseVerifiedEventRow = {
+  id?: unknown;
+  title?: unknown;
+  city?: unknown;
+  region?: unknown;
+  parish?: unknown;
+  venue?: unknown;
+  start_date?: unknown;
+  date_label?: unknown;
+  vibes?: unknown;
+  price?: unknown;
+  ticket_requirement?: unknown;
+  official_url?: unknown;
+  description?: unknown;
+};
+
 export function resetEventsHandlerStateForTest() {
   EVENT_CACHE.clear();
   cachedCuratedEvents = null;
@@ -118,7 +135,7 @@ export default async function eventsHandler(req: ApiRequest, res: ApiResponse) {
 
   const query = normalizeEventQuery(req.query ?? {});
   const providerKeys = getEventProviderKeys();
-  const providerConfigured = Boolean(providerKeys.eventbrite || providerKeys.ticketmaster);
+  const providerConfigured = hasEventProviderConfigured(providerKeys);
   const cacheKey = getEventCacheKey(query);
   const cachedResponse = getCachedEventsResponse(cacheKey);
   if (cachedResponse) {
@@ -174,6 +191,7 @@ async function fetchLiveEvents(
   const requests: Array<Promise<LiveEvent[]>> = [];
   if (providerKeys.eventbrite) requests.push(fetchEventbriteEvents(providerKeys.eventbrite, query));
   if (providerKeys.ticketmaster) requests.push(fetchTicketmasterEvents(providerKeys.ticketmaster, query));
+  if (providerKeys.verifiedCalendar) requests.push(fetchVerifiedIslandEvents(providerKeys.verifiedCalendar, query));
   if (!requests.length) return { events: [] };
 
   const settled = await Promise.allSettled(requests);
@@ -294,6 +312,49 @@ async function fetchTicketmasterEventsUrl(url: URL, query: EventQuery): Promise<
   return (Array.isArray(embedded.events) ? embedded.events : [])
     .map((event) => normalizeTicketmasterEvent(event, query))
     .filter((event): event is LiveEvent => Boolean(event));
+}
+
+async function fetchVerifiedIslandEvents(
+  config: NonNullable<ReturnType<typeof getEventProviderKeys>["verifiedCalendar"]>,
+  query: EventQuery
+): Promise<LiveEvent[]> {
+  const url = new URL(`${config.url}/rest/v1/${VERIFIED_EVENTS_TABLE}`);
+  url.searchParams.set("select", [
+    "id",
+    "title",
+    "city",
+    "region",
+    "parish",
+    "venue",
+    "start_date",
+    "date_label",
+    "vibes",
+    "price",
+    "ticket_requirement",
+    "official_url",
+    "description",
+  ].join(","));
+  url.searchParams.set("is_published", "eq.true");
+  url.searchParams.set("start_date", `gte.${new Date().toISOString()}`);
+  url.searchParams.set("order", "start_date.asc");
+  url.searchParams.set("limit", String(MAX_EVENTS_RESPONSE));
+
+  const response = await fetch(url, {
+    headers: {
+      apikey: config.anonKey,
+      Authorization: `Bearer ${config.anonKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new EventProviderError(response.status, `Verified events lookup failed: ${response.status}`);
+  }
+
+  const payload: unknown = await response.json();
+  return (Array.isArray(payload) ? payload : [])
+    .map((row) => normalizeVerifiedEvent(row, query))
+    .filter((event): event is LiveEvent => Boolean(event))
+    .slice(0, MAX_LIVE_EVENTS_PER_PROVIDER);
 }
 
 function buildTicketmasterEventUrls(apiKey: string, query: EventQuery): URL[] {
@@ -462,6 +523,46 @@ function normalizeTicketmasterEvent(event: unknown, query: EventQuery): LiveEven
   };
 }
 
+function normalizeVerifiedEvent(row: unknown, query: EventQuery): LiveEvent | null {
+  if (!isRecord(row)) return null;
+  const event = row as SupabaseVerifiedEventRow;
+  const id = asString(event.id);
+  const title = asString(event.title);
+  const city = asString(event.city);
+  const region = asString(event.region);
+  const venue = asString(event.venue);
+  const startDate = asString(event.start_date);
+  const description = asString(event.description);
+  if (!id || !title || !city || !region || !venue || !startDate || !description) return null;
+
+  const parish = asString(event.parish);
+  if (!eventMatchesQuery(region, parish, query)) return null;
+
+  const vibes = Array.isArray(event.vibes)
+    ? event.vibes.filter((vibe): vibe is string => typeof vibe === "string" && vibe.trim().length > 0)
+    : [];
+  const dateLabel = asString(event.date_label);
+  const price = asString(event.price);
+  const ticketRequirement = asString(event.ticket_requirement);
+  const officialUrl = asString(event.official_url);
+
+  return {
+    id: `verified-${id}`,
+    title,
+    city,
+    region,
+    ...(parish ? { parish } : {}),
+    venue,
+    startDate,
+    ...(dateLabel ? { dateLabel } : {}),
+    vibes: uniqueStrings(["verified", ...vibes]).slice(0, 4),
+    ...(price ? { price } : {}),
+    ...(ticketRequirement ? { ticketRequirement } : {}),
+    ...(officialUrl ? { officialUrl } : {}),
+    description: truncateText(description, 220),
+  };
+}
+
 function buildEventsPayload(args: {
   query: EventQuery;
   curatedEvents: LiveEvent[];
@@ -476,10 +577,11 @@ function buildEventsPayload(args: {
   const hasCurated = args.curatedEvents.length > 0;
   const meta: EventsApiResponse["meta"] = {
     source: hasLive && hasCurated ? "mixed" : hasLive ? "live" : "curated",
-    providerConfigured: Boolean(args.providerKeys.eventbrite || args.providerKeys.ticketmaster),
+    providerConfigured: hasEventProviderConfigured(args.providerKeys),
     providers: {
       eventbrite: Boolean(args.providerKeys.eventbrite),
       ticketmaster: Boolean(args.providerKeys.ticketmaster),
+      verifiedCalendar: Boolean(args.providerKeys.verifiedCalendar),
     },
     ...(args.query.region ? { region: args.query.region } : {}),
     ...(args.query.parish ? { parish: args.query.parish } : {}),
@@ -509,7 +611,34 @@ function filterCuratedEvents(events: LiveEvent[], query: EventQuery): LiveEvent[
   });
 }
 
+function eventMatchesQuery(region: string | undefined, parish: string | undefined, query: EventQuery): boolean {
+  const queryRegion = query.region?.toLowerCase();
+  const queryParish = query.parish?.toLowerCase();
+  const eventRegion = region?.toLowerCase();
+  const eventParish = parish?.toLowerCase();
+  if (!queryRegion && !queryParish) return true;
+  return Boolean((queryRegion && eventRegion === queryRegion) || (queryParish && eventParish === queryParish));
+}
+
 function getEventProviderKeys() {
+  const supabaseUrl = (
+    process.env.VITE_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    process.env.vite_supabase_url ||
+    process.env.supabase_url ||
+    ""
+  ).trim().replace(/\/$/, "");
+  const supabaseAnonKey = (
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.vite_supabase_anon_key ||
+    process.env.supabase_anon_key ||
+    ""
+  ).trim();
+  const supabaseDisabled = /^(1|true|yes|on)$/i.test(
+    process.env.VITE_SUPABASE_DISABLED || process.env.SUPABASE_DISABLED || ""
+  );
+
   return {
     eventbrite: (
       process.env.EVENTBRITE_PRIVATE_TOKEN ||
@@ -519,7 +648,14 @@ function getEventProviderKeys() {
       ""
     ).trim(),
     ticketmaster: (process.env.TICKETMASTER_API_KEY || process.env.ticketmaster_api_key || "").trim(),
+    verifiedCalendar: !supabaseDisabled && supabaseUrl && supabaseAnonKey
+      ? { url: supabaseUrl, anonKey: supabaseAnonKey }
+      : null,
   };
+}
+
+function hasEventProviderConfigured(providerKeys: ReturnType<typeof getEventProviderKeys>): boolean {
+  return Boolean(providerKeys.eventbrite || providerKeys.ticketmaster || providerKeys.verifiedCalendar);
 }
 
 function readCsvEnv(name: string): string[] {

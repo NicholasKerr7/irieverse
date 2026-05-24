@@ -32,12 +32,22 @@ if (!latestGrantMigration) {
 }
 
 const grantMigration = read(path.join("supabase", "migrations", latestGrantMigration));
+const verifiedEventsMigration = migrations.find((file) => file.includes("create_verified_events"));
+
+if (!verifiedEventsMigration) {
+  throw new Error("Missing Supabase verified events migration.");
+}
+
+const verifiedEventsMigrationContent = read(path.join("supabase", "migrations", verifiedEventsMigration));
 
 [
   "alter table public.trips enable row level security;",
   "alter table public.user_boards enable row level security;",
+  "alter table public.verified_events enable row level security;",
   "revoke all on public.trips from anon, authenticated;",
   "revoke all on public.user_boards from anon;",
+  "revoke all on public.verified_events from anon, authenticated;",
+  "grant select on public.verified_events to anon, authenticated;",
   "grant select, insert, update, delete on public.user_boards to authenticated;",
   "grant execute on function public.create_trip_share(jsonb, text) to anon, authenticated;",
   "grant execute on function public.read_trip_share(uuid) to anon, authenticated;",
@@ -56,6 +66,16 @@ const grantMigration = read(path.join("supabase", "migrations", latestGrantMigra
   "grant execute on function public.update_trip_share(uuid, jsonb, text) to anon, authenticated;",
   "grant execute on function public.delete_trip_share(uuid, text) to anon, authenticated;",
 ].forEach((needle) => assertIncludes(grantMigration, needle, latestGrantMigration));
+
+[
+  "create table if not exists public.verified_events",
+  "alter table public.verified_events enable row level security;",
+  "create policy \"Published verified events are readable\"",
+  "using (is_published = true);",
+  "revoke all on public.verified_events from anon, authenticated;",
+  "grant select on public.verified_events to anon, authenticated;",
+  "grant select, insert, update, delete on public.verified_events to service_role;",
+].forEach((needle) => assertIncludes(verifiedEventsMigrationContent, needle, verifiedEventsMigration));
 
 const productionEnv = read("docs/production-env.md");
 [

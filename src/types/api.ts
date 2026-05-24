@@ -61,6 +61,7 @@ export type EventsApiMeta = {
   providers: {
     eventbrite: boolean;
     ticketmaster: boolean;
+    verifiedCalendar: boolean;
   };
   region?: string;
   parish?: string;

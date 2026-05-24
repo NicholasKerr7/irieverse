@@ -1119,10 +1119,10 @@ function CloudBoardPanel({
             <div className="min-w-0">
               <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Online board</p>
               <h2 className="mt-1 text-xl font-semibold">
-                {user ? "Save this Jamaica board across devices." : "Keep your Jamaica ideas recoverable."}
+                {user ? "Your online Jamaica board is ready." : "Keep your Jamaica ideas recoverable."}
               </h2>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
-                Sign in with email to save places, experiences, imported links, collections, and map anchors to your account.
+                Email sign-in unlocks a private cloud copy of places, experiences, imported links, collections, and map anchors.
               </p>
             </div>
           </div>
@@ -1130,7 +1130,7 @@ function CloudBoardPanel({
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
             <CloudBoardMetric label="Board items" value={totalItems.toString()} />
             <CloudBoardMetric label="Signed in" value={user ? "Yes" : "No"} />
-            <CloudBoardMetric label="Last online save" value={formatCloudBoardDate(updatedAt)} />
+            <CloudBoardMetric label="Cloud copy" value={ready ? (user ? formatCloudBoardDate(updatedAt) : "Ready") : "Off"} />
           </div>
         </div>
 
@@ -1152,6 +1152,10 @@ function CloudBoardPanel({
                     value={email}
                     onChange={(event) => onEmailChange(event.target.value)}
                     placeholder="you@example.com"
+                    required
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    disabled={isBusy}
                     className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none"
                   />
                 </span>
@@ -1161,7 +1165,7 @@ function CloudBoardPanel({
                 disabled={isBusy}
                 className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950 disabled:opacity-50"
               >
-                <Mail className="h-4 w-4" /> {isBusy ? "Sending..." : "Send sign-in link"}
+                <Mail className="h-4 w-4" /> {isBusy ? "Sending..." : "Send magic link"}
               </button>
             </form>
           )}
@@ -1177,7 +1181,7 @@ function CloudBoardPanel({
                   disabled={isBusy}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950 disabled:opacity-50"
                 >
-                  <UploadCloud className="h-4 w-4" /> Save online
+                  <UploadCloud className="h-4 w-4" /> Save board online
                 </button>
                 <button
                   type="button"
@@ -1185,7 +1189,7 @@ function CloudBoardPanel({
                   disabled={isBusy}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-cyan-300/50 px-4 py-2 text-xs font-bold text-cyan-100 disabled:opacity-50"
                 >
-                  <RefreshCcw className="h-4 w-4" /> Load online
+                  <RefreshCcw className="h-4 w-4" /> Load cloud board
                 </button>
               </div>
               <button
@@ -1199,7 +1203,11 @@ function CloudBoardPanel({
             </div>
           )}
 
-          {statusMessage && <p className="mt-3 text-xs leading-5 text-cyan-100">{statusMessage}</p>}
+          {statusMessage && (
+            <p className="mt-3 text-xs leading-5 text-cyan-100" role="status" aria-live="polite">
+              {statusMessage}
+            </p>
+          )}
         </div>
       </div>
     </section>

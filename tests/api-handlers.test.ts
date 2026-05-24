@@ -41,6 +41,7 @@ async function main() {
   await testBookingsLiveAmadeusNormalization();
   await testBookingsProviderLimitFallback();
   await testEventsFallbackWithoutCredentials();
+  await testEventsVerifiedCalendarSource();
   await testEventsLiveProviderNormalization();
   await testEventsTicketmasterKeywordFallback();
   await testEventsRejectUntrustedProviderLocation();
@@ -460,6 +461,8 @@ async function testEventsFallbackWithoutCredentials() {
     EVENTBRITE_API_KEY: undefined,
     EVENTBRITE_PRIVATE_TOKEN: undefined,
     TICKETMASTER_API_KEY: undefined,
+    VITE_SUPABASE_URL: undefined,
+    VITE_SUPABASE_ANON_KEY: undefined,
   });
 
   try {
@@ -484,9 +487,91 @@ async function testEventsFallbackWithoutCredentials() {
     assert.equal(body.meta.providerConfigured, false);
     assert.equal(body.meta.providers.eventbrite, false);
     assert.equal(body.meta.providers.ticketmaster, false);
+    assert.equal(body.meta.providers.verifiedCalendar, false);
     assert.ok(body.data.some((event) => event.title === "Reggae Sumfest"));
   } finally {
     resetEventsHandlerStateForTest();
+    restoreEnv();
+  }
+}
+
+async function testEventsVerifiedCalendarSource() {
+  resetEventsHandlerStateForTest();
+  const restoreEnv = withEnv({
+    EVENTBRITE_API_KEY: undefined,
+    EVENTBRITE_PRIVATE_TOKEN: undefined,
+    TICKETMASTER_API_KEY: undefined,
+    VITE_SUPABASE_URL: "https://verified-events.supabase.co",
+    VITE_SUPABASE_ANON_KEY: "test-supabase-anon-key",
+  });
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (url, init) => {
+    const requestUrl = new URL(String(url));
+    assert.equal(requestUrl.origin + requestUrl.pathname, "https://verified-events.supabase.co/rest/v1/verified_events");
+    assert.equal(new Headers(init?.headers).get("apikey"), "test-supabase-anon-key");
+    assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-supabase-anon-key");
+    assert.equal(requestUrl.searchParams.get("is_published"), "eq.true");
+    assert.equal(requestUrl.searchParams.get("order"), "start_date.asc");
+
+    return jsonResponse([
+      {
+        id: "verified-kingston-stage",
+        title: "Kingston Harbour Stage",
+        city: "Kingston",
+        region: "Kingston",
+        parish: "Kingston",
+        venue: "Kingston Waterfront",
+        start_date: "2026-08-08T19:00:00-05:00",
+        date_label: "August 8, 2026",
+        vibes: ["music", "culture"],
+        price: "Ticket required",
+        ticket_requirement: "Ticket or pass required.",
+        official_url: "https://example.com/kingston-stage",
+        description: "Verified Kingston event listing.",
+      },
+      {
+        id: "verified-negril-stage",
+        title: "Negril Stage",
+        city: "Negril",
+        region: "West Coast",
+        parish: "Westmoreland",
+        venue: "Seven Mile Beach",
+        start_date: "2026-08-09T19:00:00-05:00",
+        vibes: ["music"],
+        price: "Confirm access",
+        description: "Verified west coast event listing.",
+      },
+    ]);
+  };
+
+  try {
+    const response = createResponse();
+    await eventsHandler(
+      {
+        method: "GET",
+        query: {
+          region: "Kingston",
+          parish: "Kingston",
+          latitude: "17.9712",
+          longitude: "-76.7936",
+        },
+      },
+      response
+    );
+
+    assert.equal(response.statusCode, 200);
+    const body = assertBody<EventsApiResponse>(response.body);
+    assert.equal(body.meta.source, "mixed");
+    assert.equal(body.meta.providerConfigured, true);
+    assert.equal(body.meta.providers.eventbrite, false);
+    assert.equal(body.meta.providers.ticketmaster, false);
+    assert.equal(body.meta.providers.verifiedCalendar, true);
+    assert.ok(body.data.some((event) => event.id === "verified-verified-kingston-stage"));
+    assert.equal(body.data.some((event) => event.id === "verified-verified-negril-stage"), false);
+  } finally {
+    resetEventsHandlerStateForTest();
+    globalThis.fetch = originalFetch;
     restoreEnv();
   }
 }
@@ -498,6 +583,8 @@ async function testEventsLiveProviderNormalization() {
     EVENTBRITE_PRIVATE_TOKEN: "test-eventbrite-private-token",
     TICKETMASTER_API_KEY: "test-ticketmaster-key",
     EVENTS_CACHE_TTL_SECONDS: "60",
+    VITE_SUPABASE_URL: undefined,
+    VITE_SUPABASE_ANON_KEY: undefined,
   });
   const originalFetch = globalThis.fetch;
 
@@ -628,6 +715,8 @@ async function testEventsTicketmasterKeywordFallback() {
     EVENTBRITE_PRIVATE_TOKEN: undefined,
     TICKETMASTER_API_KEY: "test-ticketmaster-key",
     EVENTS_CACHE_TTL_SECONDS: "60",
+    VITE_SUPABASE_URL: undefined,
+    VITE_SUPABASE_ANON_KEY: undefined,
   });
   const originalFetch = globalThis.fetch;
   const ticketmasterCalls: URL[] = [];
@@ -717,6 +806,8 @@ async function testEventsRejectUntrustedProviderLocation() {
     EVENTBRITE_PRIVATE_TOKEN: "test-eventbrite-private-token",
     TICKETMASTER_API_KEY: undefined,
     EVENTS_CACHE_TTL_SECONDS: "60",
+    VITE_SUPABASE_URL: undefined,
+    VITE_SUPABASE_ANON_KEY: undefined,
   });
   const originalFetch = globalThis.fetch;
 

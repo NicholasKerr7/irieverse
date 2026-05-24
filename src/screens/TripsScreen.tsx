@@ -2198,7 +2198,7 @@ function getEventIntegrationStatus(app: TravelOS): { status: string; tone: Integ
     return {
       status: "Live events",
       tone: "live",
-      body: "Current Eventbrite or Ticketmaster listings are available for this area.",
+      body: "Current verified island listings are available for this area.",
     };
   }
 

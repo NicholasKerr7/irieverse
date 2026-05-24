@@ -33,7 +33,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Doctor's Cave Beach",
     heroImage:
-      "https://images.pexels.com/photos/4093370/pexels-photo-4093370.png?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "/media/places/doctors-cave-beach.jpg",
     entryRequirement: {
       status: "ticket-required",
       label: "Beach entry ticket",
@@ -76,7 +76,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Seven Mile Beach",
     heroImage:
-      "https://upload.wikimedia.org/wikipedia/commons/d/dd/7milesbeach1.JPG",
+      "/media/places/seven-mile-beach.jpg",
     entryRequirement: {
       status: "varies",
       label: "Mixed access",
@@ -117,7 +117,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Dunn's River Falls",
     heroImage:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Dunns_River_Falls_climb.JPG/1280px-Dunns_River_Falls_climb.JPG",
+      "/media/places/dunns-river-falls.jpg",
     entryRequirement: {
       status: "ticket-required",
       label: "Attraction ticket",
@@ -159,7 +159,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Bob Marley Museum",
     heroImage:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Bob_Marley_Museum_2006_1.jpg?width=1200",
+      "/media/places/bob-marley-museum.jpg",
     entryRequirement: {
       status: "ticket-required",
       label: "Museum tour ticket",
@@ -201,7 +201,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Port Royal",
     heroImage:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Inside_the_Giddy_House.JPG?width=1200",
+      "/media/places/giddy-house-port-royal.jpg",
     entryRequirement: {
       status: "varies",
       label: "Some paid sites",
@@ -242,7 +242,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Frenchman's Cove",
     heroImage:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Frenchman%27s_Cove_%2832306710322%29.jpg/1280px-Frenchman%27s_Cove_%2832306710322%29.jpg",
+      "/media/places/frenchmans-cove.jpg",
     entryRequirement: {
       status: "ticket-required",
       label: "Beach entry ticket",
@@ -283,7 +283,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "YS Falls",
     heroImage:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/YS_Falls.jpg?width=1200",
+      "/media/places/ys-falls.jpg",
     entryRequirement: {
       status: "ticket-required",
       label: "Attraction ticket",
@@ -325,7 +325,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Luminous Lagoon / Glistening Waters",
     heroImage:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Glistening_waters_-_geograph.org.uk_-_5654662.jpg/1280px-Glistening_waters_-_geograph.org.uk_-_5654662.jpg",
+      "/media/places/luminous-lagoon.jpg",
     entryRequirement: {
       status: "ticket-required",
       label: "Boat tour ticket",
@@ -366,7 +366,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Fort Charlotte, Lucea",
     heroImage:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Old_Fort%2C_Lucea%2C_Jamaica%2C_ca.1875-ca.1940_%28imp-cswc-GB-237-CSWC47-LS11-014%29.jpg?width=1200",
+      "/media/places/fort-charlotte-lucea.jpg",
     entryRequirement: CONFIRM_LOCAL,
     placeLookup: {
       query: "Fort Charlotte, Lucea, Jamaica",
@@ -403,7 +403,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Firefly Estate",
     heroImage:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/NoelCowardFirefly.jpg?width=1200",
+      "/media/places/firefly-estate.jpg",
     entryRequirement: {
       status: "ticket-required",
       label: "Tour ticket likely",
@@ -444,7 +444,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Morant Point Lighthouse",
     heroImage:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/View_of_Morant_Point_Lighthouse_Facing_East_II.jpg/1280px-View_of_Morant_Point_Lighthouse_Facing_East_II.jpg",
+      "/media/places/morant-point-lighthouse.jpg",
     entryRequirement: {
       status: "varies",
       label: "Remote heritage route",
@@ -485,7 +485,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Milk River Bath",
     heroImage:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/MilkRiverBath.JPG?width=1200",
+      "/media/places/milk-river-bath.jpg",
     entryRequirement: {
       status: "ticket-required",
       label: "Bath entry ticket",
@@ -526,7 +526,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Mandeville Courthouse",
     heroImage:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Mandeville-courthouse.jpg?width=1200",
+      "/media/places/mandeville-courthouse.jpg",
     entryRequirement: {
       status: "varies",
       label: "Public town, private venues",
@@ -567,7 +567,7 @@ export const DESTINATIONS: [Destination, ...Destination[]] = [
     ],
     heroAttraction: "Spanish Town Square",
     heroImage:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/King%27s_Square_Spanish_Town%2C_Jamaica%2C_ca.1875-ca.1940_%28imp-cswc-GB-237-CSWC47-LS11-037%29.jpg/1280px-King%27s_Square_Spanish_Town%2C_Jamaica%2C_ca.1875-ca.1940_%28imp-cswc-GB-237-CSWC47-LS11-037%29.jpg",
+      "/media/places/spanish-town-square.jpg",
     entryRequirement: {
       status: "varies",
       label: "Mixed access",
@@ -611,7 +611,7 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     ],
     bestTime: "Lunch to sunset",
     imageUrl:
-      "https://images.pexels.com/photos/27556985/pexels-photo-27556985.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "/media/experiences/boston-bay-jerk-grill.jpg",
     approxCost: "$",
     entryRequirement: FREE_PUBLIC,
     placeLookup: {
@@ -639,7 +639,7 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     ],
     bestTime: "Late night, mainly weekends",
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Street_dance_Kingston_Jamaica_passa_passa.jpg?width=1200",
+      "/media/experiences/kingston-sound-system.jpg",
     approxCost: "$$",
     entryRequirement: CONFIRM_LOCAL,
   },
@@ -663,7 +663,7 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     ],
     bestTime: "Golden hour",
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Jamaica_-_Negril_-_048.jpg?width=1200",
+      "/media/experiences/negril-sunset-cruise.jpg",
     approxCost: "$$$",
     entryRequirement: {
       status: "ticket-required",
@@ -691,7 +691,7 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     ],
     bestTime: "Evening into night",
     imageUrl:
-      "https://images.unsplash.com/photo-1658833621083-01fd8a4acf19?auto=format&fit=crop&w=1200&q=80",
+      "/media/experiences/mobay-street-food.jpg",
     approxCost: "$$",
     entryRequirement: FREE_PUBLIC,
     placeLookup: {
@@ -711,7 +711,7 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     rating: 4.8,
     energy: "high",
     description:
-      "Annual celebration of Maroon history with drumming, food, ceremony, and community gatherings.",
+      "Annual Accompong celebration of Maroon history with drumming, food, ceremony, and community gatherings.",
     whatToExpect: [
       "Processions and traditional music",
       "Local food stalls",
@@ -719,7 +719,7 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     ],
     bestTime: "Specific dates each year",
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Maroon_Accompong.jpg?width=1200",
+      "/media/experiences/accompong-maroon-heritage.jpg",
     approxCost: "$$",
     entryRequirement: CONFIRM_LOCAL,
     placeLookup: {
@@ -747,7 +747,7 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     ],
     bestTime: "Weekends and holidays",
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Dunns_River_Falls_Photo_D_Ramey_Logan.jpg?width=1200",
+      "/media/experiences/ochi-river-lime.jpg",
     approxCost: "$$",
     entryRequirement: {
       status: "varies",
@@ -779,7 +779,7 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     ],
     bestTime: "After dark",
     imageUrl:
-      "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Glistening_waters_-_geograph.org.uk_-_5654662.jpg/1280px-Glistening_waters_-_geograph.org.uk_-_5654662.jpg",
+      "/media/places/luminous-lagoon.jpg",
     approxCost: "$$",
     entryRequirement: {
       status: "ticket-required",
@@ -811,7 +811,7 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     ],
     bestTime: "Lunch to sunset",
     imageUrl:
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+      "/media/experiences/hellshire-fish-run.jpg",
     approxCost: "$$",
     entryRequirement: {
       status: "varies",
@@ -831,15 +831,15 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     rating: 4.7,
     energy: "high",
     description:
-      "Agriculture, livestock, local food, vendors, family activities, and parish pride.",
+      "Agriculture, produce displays, local food, vendors, family activities, and parish pride.",
     whatToExpect: [
       "Large crowds during show season",
-      "Farm displays and food stalls",
-      "Family-friendly local day out",
+      "Farm and produce displays",
+      "Food stalls and family vendors",
     ],
     bestTime: "Annual show season",
     imageUrl:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/MilkRiverBath.JPG?width=1200",
+      "/media/experiences/denbigh-agriculture.jpg",
     approxCost: "$$",
     entryRequirement: {
       status: "ticket-required",
@@ -867,7 +867,7 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     ],
     bestTime: "Morning to early afternoon",
     imageUrl:
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80",
+      "/media/experiences/st-thomas-bath-reggae-falls.jpg",
     approxCost: "$",
     entryRequirement: {
       status: "varies",

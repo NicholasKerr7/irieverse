@@ -41,7 +41,7 @@ IrieVerse is designed to launch without every provider key. Missing providers do
 | Places | Google Places | Curated Jamaica notes |
 | Flights | AviationStack | Saved flight examples |
 | Stays | Amadeus | Curated Jamaica stays |
-| Events | Eventbrite and Ticketmaster | Built-in Jamaica event calendar |
+| Events | Supabase verified events, Eventbrite, and Ticketmaster | Built-in Jamaica event calendar |
 | Routes | OSRM-compatible routing | Estimated route preview |
 | Sharing | Supabase | Local planning plus calendar export |
 | Saved imports | Metadata and Google Places enrichment | Local link parsing |
@@ -118,7 +118,7 @@ Production priorities:
 - Add `EVENTBRITE_PRIVATE_TOKEN` and/or `TICKETMASTER_API_KEY` for automatic live event listings.
 - Add `AVIATIONSTACK_API_KEY` for live flight snapshots.
 - Keep Amadeus unset until hotel pricing credentials are ready.
-- Add Supabase migrations before enabling cloud boards or shared trips.
+- Add Supabase migrations before enabling cloud boards, shared trips, or the verified event calendar.
 - Run `npm run verify:full` before major releases.
 - Run `npm run qa:production` after deployment.
 
