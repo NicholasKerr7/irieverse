@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Map, { Layer, Marker, Source, type MapRef, type ViewStateChangeEvent } from "react-map-gl/maplibre";
+import type { StyleSpecification } from "maplibre-gl";
 import type { Destination, RouteLeg } from "../types/travel";
 import type { ThemeMode } from "../hooks/useTravelOS";
 import type { RoadRoute, RoadRouteStep } from "../types/api";
@@ -10,9 +11,12 @@ import { formatMiles } from "../utils/format";
 import { logRecoverableWarning } from "../utils/logging";
 import { getRouteColor, type MapPinCategory } from "../utils/mapRoutes";
 
-const MAP_STYLES: Record<ThemeMode, string> = {
-  dark: "https://tiles.openfreemap.org/styles/liberty",
-  light: "https://tiles.openfreemap.org/styles/positron",
+const MAP_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+const MAP_STYLES = {
+  dark: buildRasterMapStyle("carto-dark", "dark_all", 0.98),
+  light: buildRasterMapStyle("carto-light", "light_all", 0.94),
 };
 
 const JAMAICA_MAP_BOUNDS: [[number, number], [number, number]] = [
@@ -22,6 +26,35 @@ const JAMAICA_MAP_BOUNDS: [[number, number], [number, number]] = [
 
 const ROAD_ROUTE_PROXY_PATH = "/api/road-route";
 const PUBLIC_OSRM_ROUTE_BASE_URL = "https://router.project-osrm.org/route/v1/driving";
+
+function buildRasterMapStyle(sourceId: string, styleName: "dark_all" | "light_all", opacity: number): StyleSpecification {
+  return {
+    version: 8,
+    sources: {
+      [sourceId]: {
+        type: "raster",
+        tiles: [
+          `https://a.basemaps.cartocdn.com/${styleName}/{z}/{x}/{y}@2x.png`,
+          `https://b.basemaps.cartocdn.com/${styleName}/{z}/{x}/{y}@2x.png`,
+          `https://c.basemaps.cartocdn.com/${styleName}/{z}/{x}/{y}@2x.png`,
+          `https://d.basemaps.cartocdn.com/${styleName}/{z}/{x}/{y}@2x.png`,
+        ],
+        tileSize: 256,
+        attribution: MAP_ATTRIBUTION,
+      },
+    },
+    layers: [
+      {
+        id: `${sourceId}-raster`,
+        type: "raster",
+        source: sourceId,
+        paint: {
+          "raster-opacity": opacity,
+        },
+      },
+    ],
+  };
+}
 
 const CATEGORY_COLORS: Record<MapPinCategory, string> = {
   beaches: "#22d3ee",

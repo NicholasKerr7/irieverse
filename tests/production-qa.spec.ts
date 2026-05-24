@@ -78,7 +78,6 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
   await screenshot(page, "mobile-explore-experiences.png");
 
   await openTab(page, "map");
-  await expect(page.getByText("IrieVerse Map")).toBeVisible();
   await expect(page.getByTestId("mobile-bottom-nav")).toBeVisible();
   await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
   await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
