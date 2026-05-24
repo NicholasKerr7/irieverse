@@ -42,6 +42,7 @@ async function main() {
   await testBookingsProviderLimitFallback();
   await testEventsFallbackWithoutCredentials();
   await testEventsVerifiedCalendarSource();
+  await testEventsDeduplicatesVerifiedCalendarAndCuratedListings();
   await testEventsLiveProviderNormalization();
   await testEventsTicketmasterKeywordFallback();
   await testEventsRejectUntrustedProviderLocation();
@@ -569,6 +570,62 @@ async function testEventsVerifiedCalendarSource() {
     assert.equal(body.meta.providers.verifiedCalendar, true);
     assert.ok(body.data.some((event) => event.id === "verified-verified-kingston-stage"));
     assert.equal(body.data.some((event) => event.id === "verified-verified-negril-stage"), false);
+  } finally {
+    resetEventsHandlerStateForTest();
+    globalThis.fetch = originalFetch;
+    restoreEnv();
+  }
+}
+
+async function testEventsDeduplicatesVerifiedCalendarAndCuratedListings() {
+  resetEventsHandlerStateForTest();
+  const restoreEnv = withEnv({
+    EVENTBRITE_API_KEY: undefined,
+    EVENTBRITE_PRIVATE_TOKEN: undefined,
+    TICKETMASTER_API_KEY: undefined,
+    VITE_SUPABASE_URL: "https://verified-events.supabase.co",
+    VITE_SUPABASE_ANON_KEY: "test-supabase-anon-key",
+  });
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async () => jsonResponse([
+    {
+      id: "reggae-sumfest-st-ann-2026",
+      title: "Reggae Sumfest",
+      city: "Priory",
+      region: "North Coast",
+      parish: "St. Ann",
+      venue: "Plantation Cove",
+      start_date: "2026-07-18T19:00:00-05:00",
+      date_label: "July 18, 2026",
+      vibes: ["music", "nightlife"],
+      price: "Ticket/pass required",
+      ticket_requirement: "Festival ticket or pass required.",
+      official_url: "https://reggaesumfest.com/",
+      description: "Verified Reggae Sumfest listing.",
+    },
+  ]);
+
+  try {
+    const response = createResponse();
+    await eventsHandler(
+      {
+        method: "GET",
+        query: {
+          region: "North Coast",
+          parish: "St. Ann",
+          latitude: "18.4029",
+          longitude: "-76.974",
+        },
+      },
+      response
+    );
+
+    assert.equal(response.statusCode, 200);
+    const body = assertBody<EventsApiResponse>(response.body);
+    const sumfestEvents = body.data.filter((event) => event.title === "Reggae Sumfest");
+    assert.equal(sumfestEvents.length, 1);
+    assert.equal(sumfestEvents[0]?.id, "verified-reggae-sumfest-st-ann-2026");
   } finally {
     resetEventsHandlerStateForTest();
     globalThis.fetch = originalFetch;

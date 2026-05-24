@@ -886,14 +886,18 @@ function dedupeEvents(events: LiveEvent[]): LiveEvent[] {
   const seen = new Set<string>();
   return events.filter((event) => {
     const key = [
-      event.title.toLowerCase().replace(/\s+/g, " ").trim(),
-      event.city.toLowerCase().trim(),
+      normalizeEventIdentityPart(event.title),
       event.startDate.slice(0, 10),
+      normalizeEventIdentityPart(event.parish ?? event.region ?? event.city),
     ].join("|");
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+function normalizeEventIdentityPart(value: string): string {
+  return normalizeSearchText(value).replace(/\bst\s+/g, "st. ");
 }
 
 function getEventCacheKey(query: EventQuery): string {
