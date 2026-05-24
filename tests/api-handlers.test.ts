@@ -596,7 +596,7 @@ async function testEventsDeduplicatesVerifiedCalendarAndCuratedListings() {
       region: "North Coast",
       parish: "St. Ann",
       venue: "Plantation Cove",
-      start_date: "2026-07-18T19:00:00-05:00",
+      start_date: "2026-07-19T00:00:00+00:00",
       date_label: "July 18, 2026",
       vibes: ["music", "nightlife"],
       price: "Ticket/pass required",

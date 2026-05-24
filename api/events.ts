@@ -12,6 +12,7 @@ const DEFAULT_EVENT_RANGE_DAYS = 365;
 const DEFAULT_CACHE_TTL_SECONDS = 30 * 60;
 const MAX_LIVE_EVENTS_PER_PROVIDER = 12;
 const MAX_EVENTS_RESPONSE = 18;
+const JAMAICA_TIME_ZONE = "America/Jamaica";
 const TICKETMASTER_GEOHASH_PRECISION = 7;
 const GEOHASH_BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz";
 const JAMAICA_EVENT_TERMS = [
@@ -887,7 +888,7 @@ function dedupeEvents(events: LiveEvent[]): LiveEvent[] {
   return events.filter((event) => {
     const key = [
       normalizeEventIdentityPart(event.title),
-      event.startDate.slice(0, 10),
+      getEventIdentityDate(event.startDate),
       normalizeEventIdentityPart(event.parish ?? event.region ?? event.city),
     ].join("|");
     if (seen.has(key)) return false;
@@ -898,6 +899,22 @@ function dedupeEvents(events: LiveEvent[]): LiveEvent[] {
 
 function normalizeEventIdentityPart(value: string): string {
   return normalizeSearchText(value).replace(/\bst\s+/g, "st. ");
+}
+
+function getEventIdentityDate(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: JAMAICA_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(parsed);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : value.slice(0, 10);
 }
 
 function getEventCacheKey(query: EventQuery): string {
