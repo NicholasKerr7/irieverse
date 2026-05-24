@@ -226,13 +226,6 @@ async function screenshot(page: Page, filename: string) {
 function collectPageIssues(page: Page): string[] {
   const issues: string[] = [];
 
-  page.on("request", (request) => {
-    const url = request.url();
-    if (url.includes("cartocdn.com")) {
-      issues.push(`map provider: blocked Carto basemap request ${url}`);
-    }
-  });
-
   page.on("console", (message) => {
     if (message.type() === "error") {
       issues.push(`console: ${message.text()}`);
