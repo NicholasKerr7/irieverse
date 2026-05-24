@@ -42,6 +42,7 @@ async function main() {
   await testBookingsProviderLimitFallback();
   await testEventsFallbackWithoutCredentials();
   await testEventsLiveProviderNormalization();
+  await testEventsTicketmasterKeywordFallback();
   await testFlightsLiveAviationStackNormalization();
   await testFlightsRateLimitFallbackAndCooldown();
   await testImportMetadataBlocksPrivateUrls();
@@ -513,6 +514,16 @@ async function testEventsLiveProviderNormalization() {
       });
     }
 
+    if (requestUrl.origin + requestUrl.pathname === "https://www.eventbriteapi.com/v3/users/me/events/") {
+      assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-eventbrite-private-token");
+      assert.equal(requestUrl.searchParams.get("status"), "live");
+      assert.equal(requestUrl.searchParams.get("order_by"), "start_asc");
+      assert.equal(requestUrl.searchParams.get("expand"), "venue,ticket_availability");
+      return jsonResponse({
+        events: [],
+      });
+    }
+
     if (requestUrl.origin + requestUrl.pathname === "https://www.eventbriteapi.com/v3/organizations/org-1/events/") {
       assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-eventbrite-private-token");
       assert.equal(requestUrl.searchParams.get("status"), "live");
@@ -541,7 +552,7 @@ async function testEventsLiveProviderNormalization() {
       assert.equal(requestUrl.searchParams.get("apikey"), "test-ticketmaster-key");
       assert.equal(requestUrl.searchParams.get("countryCode"), "JM");
       assert.equal(requestUrl.searchParams.get("latlong"), "18.4029,-76.974");
-      assert.equal(requestUrl.searchParams.get("radius"), "100");
+      assert.equal(requestUrl.searchParams.get("radius"), "160");
       assert.equal(requestUrl.searchParams.get("keyword"), null);
       return jsonResponse({
         _embedded: {
@@ -609,6 +620,93 @@ async function testEventsLiveProviderNormalization() {
     assert.ok(body.data.some((event) => event.id === "ticketmaster-tm-1" && event.price === "USD 40-90"));
     assert.ok(body.data.some((event) => event.officialUrl === "https://eventbrite.example/ochi-food"));
     assert.ok(body.data.some((event) => event.officialUrl === "https://ticketmaster.example/st-ann-live"));
+  } finally {
+    resetEventsHandlerStateForTest();
+    globalThis.fetch = originalFetch;
+    restoreEnv();
+  }
+}
+
+async function testEventsTicketmasterKeywordFallback() {
+  resetEventsHandlerStateForTest();
+  const restoreEnv = withEnv({
+    EVENTBRITE_API_KEY: undefined,
+    EVENTBRITE_PRIVATE_TOKEN: undefined,
+    TICKETMASTER_API_KEY: "test-ticketmaster-key",
+    EVENTS_CACHE_TTL_SECONDS: "60",
+  });
+  const originalFetch = globalThis.fetch;
+  const ticketmasterCalls: URL[] = [];
+
+  globalThis.fetch = async (url) => {
+    const requestUrl = new URL(String(url));
+    assert.equal(requestUrl.origin + requestUrl.pathname, "https://app.ticketmaster.com/discovery/v2/events.json");
+    assert.equal(requestUrl.searchParams.get("apikey"), "test-ticketmaster-key");
+    assert.equal(requestUrl.searchParams.get("countryCode"), "JM");
+    ticketmasterCalls.push(requestUrl);
+
+    if (requestUrl.searchParams.get("latlong")) {
+      return jsonResponse({
+        page: {
+          totalElements: 0,
+        },
+      });
+    }
+
+    assert.equal(requestUrl.searchParams.get("keyword"), "st. ann north coast jamaica");
+    return jsonResponse({
+      _embedded: {
+        events: [
+          {
+            id: "tm-keyword-1",
+            name: "Ocho Rios Live Stage",
+            url: "https://ticketmaster.example/ochi-live",
+            dates: {
+              start: { localDate: "2026-07-03" },
+            },
+            _embedded: {
+              venues: [
+                {
+                  name: "Ocho Rios Bay",
+                  city: { name: "Ocho Rios" },
+                },
+              ],
+            },
+            classifications: [
+              {
+                segment: { name: "Music" },
+                genre: { name: "Reggae" },
+              },
+            ],
+          },
+        ],
+      },
+    });
+  };
+
+  try {
+    const response = createResponse();
+    await eventsHandler(
+      {
+        method: "GET",
+        query: {
+          region: "North Coast",
+          parish: "St. Ann",
+          latitude: "18.4029",
+          longitude: "-76.974",
+        },
+      },
+      response
+    );
+
+    assert.equal(response.statusCode, 200);
+    const body = assertBody<EventsApiResponse>(response.body);
+    assert.equal(body.meta.source, "mixed");
+    assert.equal(body.meta.providerConfigured, true);
+    assert.equal(body.meta.providers.eventbrite, false);
+    assert.equal(body.meta.providers.ticketmaster, true);
+    assert.ok(body.data.some((event) => event.id === "ticketmaster-tm-keyword-1"));
+    assert.equal(ticketmasterCalls.length, 2);
   } finally {
     resetEventsHandlerStateForTest();
     globalThis.fetch = originalFetch;

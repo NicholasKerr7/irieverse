@@ -26,6 +26,7 @@ IrieVerse runs without production secrets by using local fallback data. Add thes
 | `EVENTBRITE_ORGANIZATION_ID` | Optional | Eventbrite organization ID. If omitted, `api/events.ts` tries to list organizations from the private token. |
 | `TICKETMASTER_API_KEY` | Optional | Server-only Ticketmaster Discovery API key used by `api/events.ts` for automatic concert, festival, and venue listings. |
 | `EVENTS_CACHE_TTL_SECONDS` | Optional | Server-side live events cache TTL. Defaults to `1800` seconds. |
+| `EVENTS_TICKETMASTER_RADIUS_KM` | Optional | Ticketmaster local-search radius around the selected Jamaica area. Defaults to `160` km. |
 | `UNSPLASH_ACCESS_KEY` | Optional | Server/local-only key for curating richer parish images from Unsplash. Do not prefix with `VITE_`. |
 | `PIXABAY_API_KEY` | Optional | Server/local-only key for curating richer parish images from Pixabay. Do not prefix with `VITE_`. |
 | `PEXELS_API_KEY` | Optional | Server/local-only key for curating richer parish images from Pexels. Do not prefix with `VITE_`. |
@@ -74,6 +75,7 @@ vercel env add EVENTBRITE_PRIVATE_TOKEN production
 vercel env add EVENTBRITE_ORGANIZATION_ID production
 vercel env add TICKETMASTER_API_KEY production
 vercel env add EVENTS_CACHE_TTL_SECONDS production
+vercel env add EVENTS_TICKETMASTER_RADIUS_KM production
 vercel env add IRIEVERSE_ALLOWED_ORIGINS production
 vercel env add IRIEVERSE_API_RATE_LIMIT_WINDOW_SECONDS production
 ```

@@ -1,10 +1,17 @@
 # Production QA
 
+## Current readiness note
+
+- `supabase migration list` shows the linked project `xvfyljebjwfccfthbzcl` is missing the local grant-hardening migration `20260522205437_harden_data_api_grants.sql`.
+- `supabase db lint --linked --schema public,private --fail-on error` reports no schema errors.
+- `supabase db push --dry-run` is currently blocked by Supabase CLI temp-role database authentication, so the migration still needs to be applied after database auth is refreshed.
+- Before marking Supabase production sharing fully ready again, apply `20260522205437_harden_data_api_grants.sql`, rerun `supabase migration list`, and confirm the local and remote columns match.
+
 ## Supabase sharing check
 
 Date: 2026-05-17
 
-Result: Passed production sharing and cloud board setup on the replacement Supabase project.
+Result: Passed production sharing and cloud board setup on the replacement Supabase project at the time of this check.
 
 - Linked project: `xvfyljebjwfccfthbzcl`.
 - Remote migration history now includes:
@@ -12,7 +19,6 @@ Result: Passed production sharing and cloud board setup on the replacement Supab
 - The Supabase probe created a `trips` row, read it back through the trip-share RPC, updated it with the correct local edit token, deleted it through the protected cleanup RPC, and verified the row was gone.
 - Cloud board storage is migrated through `20260506120000_create_user_boards.sql`; the table has row-level security enabled and authenticated-only grants.
 - The trip-share RPC hardening migration, `20260515161350_harden_trip_share_rpc.sql`, is applied and keeps privileged implementation functions in the private schema.
-- `supabase db push --dry-run` reports the remote database is up to date.
 - `supabase db lint --linked --schema public,private --fail-on error` reports no schema errors.
 
 ## Full QA run

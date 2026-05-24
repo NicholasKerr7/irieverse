@@ -6,7 +6,7 @@ import { guardApiRequest } from "./_shared/api-guard.js";
 
 const EVENTBRITE_API_BASE_URL = "https://www.eventbriteapi.com/v3";
 const TICKETMASTER_EVENTS_URL = "https://app.ticketmaster.com/discovery/v2/events.json";
-const DEFAULT_RADIUS_KM = 100;
+const DEFAULT_TICKETMASTER_RADIUS_KM = 160;
 const DEFAULT_EVENT_RANGE_DAYS = 365;
 const DEFAULT_CACHE_TTL_SECONDS = 30 * 60;
 const MAX_LIVE_EVENTS_PER_PROVIDER = 12;
@@ -108,16 +108,28 @@ async function fetchLiveEvents(
 }
 
 async function fetchEventbriteEvents(apiKey: string, query: EventQuery): Promise<LiveEvent[]> {
-  const organizationIds = await getEventbriteOrganizationIds(apiKey);
-  if (!organizationIds.length) return [];
+  let organizationIds: string[] = [];
+  try {
+    organizationIds = await getEventbriteOrganizationIds(apiKey);
+  } catch (error) {
+    console.warn(`Eventbrite organization lookup unavailable; checking user events. ${formatErrorForLog(error)}`);
+  }
 
-  const organizationEvents = await Promise.all(
-    organizationIds.slice(0, 3).map((organizationId) => fetchEventbriteOrganizationEvents(apiKey, organizationId))
-  );
+  const eventRequests: Array<Promise<unknown[]>> = [
+    fetchEventbriteUserEvents(apiKey),
+    ...organizationIds.slice(0, 3).map((organizationId) => fetchEventbriteOrganizationEvents(apiKey, organizationId)),
+  ];
+
+  const settled = await Promise.allSettled(eventRequests);
+  const fulfilledEvents = settled.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+  const failures = settled.flatMap((result) => result.status === "rejected" ? [result.reason] : []);
+
+  if (!fulfilledEvents.length && failures.length === eventRequests.length) {
+    throw failures[0];
+  }
 
   return dedupeEvents(
-    organizationEvents
-      .flat()
+    fulfilledEvents
       .map((event) => normalizeEventbriteEvent(event, query))
       .filter((event): event is LiveEvent => Boolean(event))
   ).slice(0, MAX_LIVE_EVENTS_PER_PROVIDER);
@@ -136,16 +148,29 @@ async function getEventbriteOrganizationIds(apiKey: string): Promise<string[]> {
     .filter((id): id is string => Boolean(id));
 }
 
-async function fetchEventbriteOrganizationEvents(apiKey: string, organizationId: string): Promise<unknown[]> {
-  const url = new URL(`${EVENTBRITE_API_BASE_URL}/organizations/${encodeURIComponent(organizationId)}/events/`);
-  url.searchParams.set("status", "live");
-  url.searchParams.set("order_by", "start_asc");
-  url.searchParams.set("expand", "venue,ticket_availability");
-  url.searchParams.set("page_size", String(MAX_LIVE_EVENTS_PER_PROVIDER));
+async function fetchEventbriteUserEvents(apiKey: string): Promise<unknown[]> {
+  const url = new URL(`${EVENTBRITE_API_BASE_URL}/users/me/events/`);
+  addEventbriteEventSearchParams(url);
 
   const payload = await fetchEventbriteJson(apiKey, url);
   const payloadRecord = isRecord(payload) ? payload : {};
   return Array.isArray(payloadRecord.events) ? payloadRecord.events : [];
+}
+
+async function fetchEventbriteOrganizationEvents(apiKey: string, organizationId: string): Promise<unknown[]> {
+  const url = new URL(`${EVENTBRITE_API_BASE_URL}/organizations/${encodeURIComponent(organizationId)}/events/`);
+  addEventbriteEventSearchParams(url);
+
+  const payload = await fetchEventbriteJson(apiKey, url);
+  const payloadRecord = isRecord(payload) ? payload : {};
+  return Array.isArray(payloadRecord.events) ? payloadRecord.events : [];
+}
+
+function addEventbriteEventSearchParams(url: URL) {
+  url.searchParams.set("status", "live");
+  url.searchParams.set("order_by", "start_asc");
+  url.searchParams.set("expand", "venue,ticket_availability");
+  url.searchParams.set("page_size", String(MAX_LIVE_EVENTS_PER_PROVIDER));
 }
 
 async function fetchEventbriteJson(apiKey: string, url: URL): Promise<unknown> {
@@ -162,22 +187,29 @@ async function fetchEventbriteJson(apiKey: string, url: URL): Promise<unknown> {
 }
 
 async function fetchTicketmasterEvents(apiKey: string, query: EventQuery): Promise<LiveEvent[]> {
-  const { rangeStart, rangeEnd } = getEventRange();
-  const url = new URL(TICKETMASTER_EVENTS_URL);
-  url.searchParams.set("apikey", apiKey);
-  url.searchParams.set("countryCode", "JM");
-  url.searchParams.set("size", String(MAX_LIVE_EVENTS_PER_PROVIDER));
-  url.searchParams.set("sort", "date,asc");
-  url.searchParams.set("startDateTime", rangeStart);
-  url.searchParams.set("endDateTime", rangeEnd);
-  if (query.latitude !== undefined && query.longitude !== undefined) {
-    url.searchParams.set("latlong", `${query.latitude},${query.longitude}`);
-    url.searchParams.set("radius", String(DEFAULT_RADIUS_KM));
-    url.searchParams.set("unit", "km");
-  } else {
-    url.searchParams.set("keyword", buildProviderQuery(query));
+  const urls = buildTicketmasterEventUrls(apiKey, query);
+  const failures: unknown[] = [];
+
+  for (const url of urls) {
+    try {
+      const events = await fetchTicketmasterEventsUrl(url, query);
+      if (events.length) return events.slice(0, MAX_LIVE_EVENTS_PER_PROVIDER);
+    } catch (error) {
+      if (error instanceof EventProviderError && error.status === 429) {
+        throw error;
+      }
+      failures.push(error);
+    }
   }
 
+  if (failures.length === urls.length && failures.length > 0) {
+    throw failures[0];
+  }
+
+  return [];
+}
+
+async function fetchTicketmasterEventsUrl(url: URL, query: EventQuery): Promise<LiveEvent[]> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new EventProviderError(response.status, `Ticketmaster failed: ${response.status}`);
@@ -189,6 +221,51 @@ async function fetchTicketmasterEvents(apiKey: string, query: EventQuery): Promi
   return (Array.isArray(embedded.events) ? embedded.events : [])
     .map((event) => normalizeTicketmasterEvent(event, query))
     .filter((event): event is LiveEvent => Boolean(event));
+}
+
+function buildTicketmasterEventUrls(apiKey: string, query: EventQuery): URL[] {
+  const urls: URL[] = [];
+  const seen = new Set<string>();
+  const radiusKm = getPositiveEnvNumber("EVENTS_TICKETMASTER_RADIUS_KM", DEFAULT_TICKETMASTER_RADIUS_KM);
+
+  if (query.latitude !== undefined && query.longitude !== undefined) {
+    const localUrl = createTicketmasterBaseUrl(apiKey);
+    localUrl.searchParams.set("latlong", `${query.latitude},${query.longitude}`);
+    localUrl.searchParams.set("radius", String(radiusKm));
+    localUrl.searchParams.set("unit", "km");
+    addUniqueUrl(urls, seen, localUrl);
+  }
+
+  for (const keyword of buildTicketmasterKeywords(query)) {
+    const keywordUrl = createTicketmasterBaseUrl(apiKey);
+    keywordUrl.searchParams.set("keyword", keyword);
+    addUniqueUrl(urls, seen, keywordUrl);
+  }
+
+  if (!urls.length) {
+    addUniqueUrl(urls, seen, createTicketmasterBaseUrl(apiKey));
+  }
+
+  return urls;
+}
+
+function createTicketmasterBaseUrl(apiKey: string): URL {
+  const { rangeStart, rangeEnd } = getEventRange();
+  const url = new URL(TICKETMASTER_EVENTS_URL);
+  url.searchParams.set("apikey", apiKey);
+  url.searchParams.set("countryCode", "JM");
+  url.searchParams.set("size", String(MAX_LIVE_EVENTS_PER_PROVIDER));
+  url.searchParams.set("sort", "date,asc");
+  url.searchParams.set("startDateTime", rangeStart);
+  url.searchParams.set("endDateTime", rangeEnd);
+  return url;
+}
+
+function addUniqueUrl(urls: URL[], seen: Set<string>, url: URL) {
+  const key = url.toString();
+  if (seen.has(key)) return;
+  seen.add(key);
+  urls.push(url);
 }
 
 function normalizeEventbriteEvent(event: unknown, query: EventQuery): LiveEvent | null {
@@ -339,6 +416,14 @@ function normalizeEventQuery(query: QueryRecord): EventQuery {
 
 function buildProviderQuery(query: EventQuery): string {
   return [query.parish, query.region, "Jamaica"].filter(Boolean).join(" ");
+}
+
+function buildTicketmasterKeywords(query: EventQuery): string[] {
+  return uniqueStrings([
+    buildProviderQuery(query),
+    query.parish ? `${query.parish} Jamaica` : undefined,
+    query.region ? `${query.region} Jamaica` : undefined,
+  ]).filter((keyword) => keyword !== "jamaica");
 }
 
 function getEventRange() {
