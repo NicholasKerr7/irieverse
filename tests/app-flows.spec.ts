@@ -438,6 +438,80 @@ test("traveler-facing screens avoid integration jargon", async ({ page }) => {
   expect(issues).toEqual([]);
 });
 
+test("trip events show verified and curated source badges", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await page.route("**/api/events**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [
+          {
+            id: "verified-qa-reggae-night",
+            title: "QA Reggae Night",
+            city: "Montego Bay",
+            region: "North Coast",
+            parish: "St. James",
+            venue: "Harbour stage",
+            startDate: "2026-07-30T20:00:00-05:00",
+            dateLabel: "July 30, 2026",
+            vibes: ["verified", "music"],
+            price: "Ticket/pass required",
+            ticketRequirement: "Ticket or pass required; confirm tiers with the organizer.",
+            description: "Verified event listing used to confirm the source badge.",
+            sourceKind: "verified",
+            sourceLabel: "Verified island calendar",
+          },
+          {
+            id: "qa-curated-food-run",
+            title: "QA Curated Food Run",
+            city: "Montego Bay",
+            region: "North Coast",
+            parish: "St. James",
+            venue: "Food route",
+            startDate: "2026-08-02T12:00:00-05:00",
+            dateLabel: "Weekend route idea",
+            vibes: ["food"],
+            price: "Pay-as-you-go",
+            ticketRequirement: "Food is pay-as-you-go; parking or managed stops may charge.",
+            description: "Curated event listing used to confirm the source badge.",
+            sourceKind: "curated",
+            sourceLabel: "Curated Jamaica calendar",
+          },
+        ],
+        meta: {
+          source: "mixed",
+          providerConfigured: true,
+          providers: {
+            eventbrite: false,
+            ticketmaster: false,
+            verifiedCalendar: true,
+          },
+          region: "North Coast",
+          parish: "St. James",
+          cached: false,
+        },
+      }),
+    });
+  });
+
+  await openCleanTab(page, "trips", []);
+
+  const islandCalendarHeading = page.getByRole("heading", { name: /What's on near/ });
+  await islandCalendarHeading.scrollIntoViewIfNeeded();
+  await expect(islandCalendarHeading).toBeVisible();
+  const verifiedCard = page.locator("article").filter({ hasText: "QA Reggae Night" });
+  const curatedCard = page.locator("article").filter({ hasText: "QA Curated Food Run" });
+  await expect(verifiedCard).toBeVisible();
+  await expect(verifiedCard.getByText("Verified island calendar", { exact: true })).toBeVisible();
+  await expect(curatedCard).toBeVisible();
+  await expect(curatedCard.getByText("Curated Jamaica calendar", { exact: true })).toBeVisible();
+  await expect(page.getByText("Live + curated")).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("app hides visual scrollbars while preserving page and panel scrolling", async ({ page }) => {
   const issues = collectPageIssues(page);
 
