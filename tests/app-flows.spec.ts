@@ -414,6 +414,30 @@ test("trip route order controls move, lock, remove, and reset stops", async ({ p
   expect(issues).toEqual([]);
 });
 
+test("trips workspace tabs persist through reloads and app navigation", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await openCleanTab(page, "trips", ["irieverse_trip_workspace_tab"]);
+  await openTripsWorkspace(page, "Route");
+  await expect(page).toHaveURL(/trip_view=route/);
+  await expect(page.getByText("Route intelligence")).toBeVisible();
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("trip-workspace-tabs").getByRole("button", { name: /^Route$/ })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText("Route intelligence")).toBeVisible();
+
+  await openTripsWorkspace(page, "Share");
+  await expect(page).toHaveURL(/trip_view=share/);
+  await expect(page.getByText("Export / Share")).toBeVisible();
+
+  await page.getByTestId("mobile-bottom-nav").getByRole("button", { name: /^Explore$/ }).click();
+  await expect(page).toHaveURL(/tab=explore/);
+  await expect(page).not.toHaveURL(/trip_view=/);
+
+  await expectNoHorizontalOverflow(page);
+  expect(issues).toEqual([]);
+});
+
 test("traveler-facing screens avoid integration jargon", async ({ page }) => {
   const issues = collectPageIssues(page);
   const internalTerms = /\b(Supabase|schema|OSRM|AviationStack|Amadeus|fallback|Fallback data|Irieverse sample|API key|public\.trips|heuristic|metadata parsing|Manual idea)\b/i;

@@ -85,11 +85,13 @@ const TRIP_WORKSPACE_TABS: Array<{
   { id: "saved", label: "Saved", icon: Heart },
   { id: "share", label: "Share", icon: Share2 },
 ];
+const TRIP_WORKSPACE_STORAGE_KEY = "irieverse_trip_workspace_tab";
+const TRIP_WORKSPACE_QUERY_PARAM = "trip_view";
 
 export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
   const [activeStep, setActiveStep] = useState<WizardStepId>("base");
   const [builderLane, setBuilderLane] = useState<BuilderLane>(() => getDefaultBuilderLane(app.planningMode));
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<TripWorkspaceTab>("overview");
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<TripWorkspaceTab>(() => getInitialTripWorkspaceTab());
   const savedDestinations = useMemo(
     () => DESTINATIONS.filter((destination) => app.savedPlaces.has(destination.id)),
     [app.savedPlaces]
@@ -103,6 +105,10 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
   useEffect(() => {
     setBuilderLane(getDefaultBuilderLane(app.planningMode));
   }, [app.planningMode]);
+
+  useEffect(() => {
+    persistTripWorkspaceTab(activeWorkspaceTab);
+  }, [activeWorkspaceTab]);
 
   return (
     <section className="mx-auto min-h-screen max-w-7xl px-4 py-4 sm:px-6 lg:px-10">
@@ -2873,6 +2879,40 @@ function TripMetric({ label, value }: { label: string; value: string }) {
 
 function getEstimatedTripTotal(app: TravelOS): number {
   return (app.perDayBudget.lodging + app.perDayBudget.dining + app.perDayBudget.experiences) * app.plannerDays + app.transportBudget;
+}
+
+function getInitialTripWorkspaceTab(): TripWorkspaceTab {
+  if (typeof window === "undefined") return "overview";
+
+  const params = new URLSearchParams(window.location.search);
+  const urlTab = parseTripWorkspaceTab(params.get(TRIP_WORKSPACE_QUERY_PARAM));
+  if (urlTab) return urlTab;
+
+  const savedTab = parseTripWorkspaceTab(window.localStorage.getItem(TRIP_WORKSPACE_STORAGE_KEY));
+  return savedTab ?? "overview";
+}
+
+function persistTripWorkspaceTab(tab: TripWorkspaceTab) {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(TRIP_WORKSPACE_STORAGE_KEY, getTripWorkspaceUrlValue(tab));
+
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("tab") !== "trips" && !url.searchParams.has("trip")) return;
+
+  url.searchParams.set("tab", "trips");
+  url.searchParams.set(TRIP_WORKSPACE_QUERY_PARAM, getTripWorkspaceUrlValue(tab));
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function parseTripWorkspaceTab(value: string | null): TripWorkspaceTab | null {
+  if (!value) return null;
+  if (value === "plan" || value === "overview") return "overview";
+  return TRIP_WORKSPACE_TABS.some((tab) => tab.id === value) ? (value as TripWorkspaceTab) : null;
+}
+
+function getTripWorkspaceUrlValue(tab: TripWorkspaceTab): string {
+  return tab === "overview" ? "plan" : tab;
 }
 
 function MiniCard({

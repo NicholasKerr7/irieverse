@@ -2228,8 +2228,15 @@ function formatICSTimestamp(date: Date): string {
 }
 
 function buildShareUrl(sharedTripId: string): string {
-  const baseUrl = window.location.origin + window.location.pathname;
-  return `${baseUrl}?trip=${encodeURIComponent(sharedTripId)}`;
+  const url = new URL(window.location.href);
+  url.searchParams.delete("page");
+  url.searchParams.delete("source");
+  url.searchParams.delete("shared_title");
+  url.searchParams.delete("shared_text");
+  url.searchParams.delete("shared_url");
+  url.searchParams.set("tab", "trips");
+  url.searchParams.set("trip", sharedTripId);
+  return `${url.origin}${url.pathname}${url.search}${url.hash}`;
 }
 
 function updateUrlWithTrip(shareUrl: string) {

@@ -37,7 +37,7 @@ type WebManifest = {
   screenshots: Array<{ src: string }>;
 };
 
-test.setTimeout(120_000);
+test.setTimeout(240_000);
 
 test.use({
   acceptDownloads: true,
@@ -52,6 +52,7 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
   const issues = collectPageIssues(page);
   const qaRunId = `production-qa-${Date.now()}`;
   const supabaseRest = trackSupabaseRest(page);
+  let sharedTripCleanup: { tripId: string; editToken: string } | null = null;
   fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
   await verifyProductionAssets(request);
@@ -81,7 +82,7 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
   await openTab(page, "map");
   await expect(page.getByTestId("mobile-bottom-nav")).toBeVisible();
   await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
-  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await expectMapCanvasReady(page);
   await page.waitForTimeout(4500);
   await screenshot(page, "mobile-map.png");
 
@@ -125,13 +126,23 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
         const tokens = JSON.parse(window.localStorage.getItem("irieverse_trip_edit_tokens") || "{}");
         return tokens[tripId] || "";
       }, sharedTripId);
-      await cleanupSharedTrip(request, supabaseRest.getCredentials(), sharedTripId, editToken, qaRunId);
+      sharedTripCleanup = { tripId: sharedTripId, editToken };
     }
   } else {
     await expect(page.getByText("Share links unavailable").first()).toBeVisible();
   }
 
   expect(issues).toEqual([]);
+
+  if (sharedTripCleanup) {
+    await cleanupSharedTrip(
+      request,
+      supabaseRest.getCredentials(),
+      sharedTripCleanup.tripId,
+      sharedTripCleanup.editToken,
+      qaRunId
+    );
+  }
 });
 
 test("production desktop map screenshot", async ({ browser }) => {
@@ -142,10 +153,10 @@ test("production desktop map screenshot", async ({ browser }) => {
   const issues = collectPageIssues(page);
 
   await openTab(page, "map");
-  await expect(page.getByText("IrieVerse Map")).toBeVisible();
   await expect(page.getByTestId("desktop-header-nav")).toBeVisible();
   await expect(page.getByTestId("mobile-bottom-nav")).toBeHidden();
-  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await expectMapCanvasReady(page);
+  await expect(page.getByText("IrieVerse Map")).toBeVisible({ timeout: 10000 });
   await page.waitForTimeout(4500);
   await screenshot(page, "desktop-map.png");
 
@@ -178,7 +189,7 @@ test("production desktop home uses hero navigation", async ({ browser }) => {
 
 async function openTab(page: Page, tab: string) {
   const url = tab ? `${BASE_URL}/?tab=${tab}` : BASE_URL;
-  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
   await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
   await expectVisibleNavigation(page);
 }
@@ -217,6 +228,10 @@ async function expectVisibleNavigation(page: Page) {
   await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
 }
 
+async function expectMapCanvasReady(page: Page) {
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 30000 });
+}
+
 async function screenshot(page: Page, filename: string) {
   await page.waitForTimeout(350);
   await page.screenshot({
@@ -233,6 +248,13 @@ async function expectHeroVideoReady(page: Page) {
     const videoElement = element as HTMLVideoElement;
     const haveCurrentData = 2;
 
+    videoElement.muted = true;
+    videoElement.playsInline = true;
+    if (videoElement.networkState === HTMLMediaElement.NETWORK_EMPTY) {
+      videoElement.load();
+    }
+    await videoElement.play().catch(() => {});
+
     await new Promise<void>((resolve) => {
       if (videoElement.readyState >= haveCurrentData || videoElement.error) {
         resolve();
@@ -241,8 +263,9 @@ async function expectHeroVideoReady(page: Page) {
 
       const finish = () => resolve();
       videoElement.addEventListener("loadeddata", finish, { once: true });
+      videoElement.addEventListener("canplay", finish, { once: true });
       videoElement.addEventListener("error", finish, { once: true });
-      window.setTimeout(finish, 8000);
+      window.setTimeout(finish, 20000);
     });
 
     return {

@@ -131,6 +131,9 @@ function isLegalPageId(value: string | null): value is LegalPageId {
 function buildTabUrl(activeTab: MobileTabId): string {
   const url = new URL(window.location.href);
   url.searchParams.delete("page");
+  if (activeTab !== "trips") {
+    url.searchParams.delete("trip_view");
+  }
   if (activeTab === "home") {
     url.searchParams.delete("tab");
   } else {
