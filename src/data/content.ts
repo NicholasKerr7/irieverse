@@ -644,6 +644,38 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     entryRequirement: CONFIRM_LOCAL,
   },
   {
+    id: "port-royal-harbour-heritage",
+    title: "Port Royal Harbour Heritage Walk",
+    type: "heritage",
+    region: "Kingston",
+    parish: "Kingston",
+    location: "Port Royal and Kingston Harbour",
+    linkedDestinationId: "port-royal",
+    vibes: ["culture", "food"],
+    rating: 4.5,
+    energy: "medium",
+    description:
+      "Historic harbour route for Fort Charles, the Giddy House, Port Royal seafood, and waterfront Kingston context.",
+    whatToExpect: [
+      "Fort and Giddy House heritage stops",
+      "Seafood lunch or early dinner",
+      "Harbour views close to Kingston",
+    ],
+    bestTime: "Late morning to sunset",
+    imageUrl:
+      "/media/places/giddy-house-port-royal.jpg",
+    approxCost: "$$",
+    entryRequirement: {
+      status: "varies",
+      label: "Some paid sites",
+      note: "Village access is open, but forts, guided history stops, museums, parking, boat trips, and seafood stops may charge.",
+    },
+    placeLookup: {
+      query: "Fort Charles Port Royal Jamaica",
+      requiredTerms: ["port", "royal"],
+    },
+  },
+  {
     id: "negril-sunset-reggae-cruise",
     title: "Negril Sunset Reggae Cruise",
     type: "music",

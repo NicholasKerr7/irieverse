@@ -4,6 +4,22 @@ import type { LiveEvent } from "../src/types/travel";
 
 const EVENT_FILE = path.join(process.cwd(), "public", "data", "events.json");
 const STALE_EVENT_GRACE_DAYS = 7;
+const JAMAICA_PARISHES = [
+  "Clarendon",
+  "Hanover",
+  "Kingston",
+  "Manchester",
+  "Portland",
+  "St. Andrew",
+  "St. Ann",
+  "St. Catherine",
+  "St. Elizabeth",
+  "St. James",
+  "St. Mary",
+  "St. Thomas",
+  "Trelawny",
+  "Westmoreland",
+];
 
 const requiredStringFields = [
   "id",
@@ -26,6 +42,7 @@ if (!Array.isArray(parsed)) {
 }
 
 const ids = new Set<string>();
+const coveredParishes = new Set<string>();
 const staleCutoff = getStaleCutoff();
 
 for (const [index, event] of parsed.entries()) {
@@ -37,6 +54,8 @@ for (const [index, event] of parsed.entries()) {
   const id = asString(event.id) ?? `event[${index}]`;
   if (ids.has(id)) failures.push(`${id} is duplicated.`);
   ids.add(id);
+  const parish = asString(event.parish);
+  if (parish) coveredParishes.add(parish);
 
   for (const field of requiredStringFields) {
     if (!asString(event[field])) {
@@ -58,6 +77,12 @@ for (const [index, event] of parsed.entries()) {
   const ticketRequirement = asString(event.ticketRequirement);
   if (ticketRequirement && !/(ticket|pass|registration|confirm|access|cover|charge|pay|parking|reservation|entry|admission)/i.test(ticketRequirement)) {
     failures.push(`${id} ticketRequirement should clearly state whether ticket, pass, access, confirmation, or payment is needed.`);
+  }
+}
+
+for (const parish of JAMAICA_PARISHES) {
+  if (!coveredParishes.has(parish)) {
+    failures.push(`event calendar must include at least one current or upcoming item for ${parish}.`);
   }
 }
 

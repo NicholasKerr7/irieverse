@@ -3,6 +3,23 @@ import path from "node:path";
 import { DESTINATIONS, EXPERIENCES } from "../src/data/content";
 
 const HERO_VIDEO_PATH = path.join(process.cwd(), "public", "media", "hero.mp4");
+const JAMAICA_PARISHES = [
+  "Clarendon",
+  "Hanover",
+  "Kingston",
+  "Manchester",
+  "Portland",
+  "St. Andrew",
+  "St. Ann",
+  "St. Catherine",
+  "St. Elizabeth",
+  "St. James",
+  "St. Mary",
+  "St. Thomas",
+  "Trelawny",
+  "Westmoreland",
+];
+
 const mediaReferences = [
   ...DESTINATIONS.map((destination) => ({
     label: `destination:${destination.id}`,
@@ -15,6 +32,37 @@ const mediaReferences = [
 ];
 
 const failures: string[] = [];
+
+assertParishCoverage("destination", DESTINATIONS);
+assertParishCoverage("experience", EXPERIENCES);
+
+for (const destination of DESTINATIONS) {
+  if (!destination.heroAttraction?.trim()) {
+    failures.push(`destination:${destination.id} must name the hero attraction shown by its image.`);
+  }
+
+  if (!destination.entryRequirement?.label || !destination.entryRequirement.note) {
+    failures.push(`destination:${destination.id} must explain ticket, pass, or access requirements.`);
+  }
+
+  if (!destination.localTips?.length || !destination.visitorTips?.length) {
+    failures.push(`destination:${destination.id} must include local and visitor tips.`);
+  }
+
+  if (!destination.placeLookup?.query || !destination.placeLookup.requiredTerms?.length) {
+    failures.push(`destination:${destination.id} must include guarded place lookup terms.`);
+  }
+}
+
+for (const experience of EXPERIENCES) {
+  if (!experience.entryRequirement?.label || !experience.entryRequirement.note) {
+    failures.push(`experience:${experience.id} must explain ticket, pass, or access requirements.`);
+  }
+
+  if (!experience.linkedDestinationId) {
+    failures.push(`experience:${experience.id} must link back to a parish destination.`);
+  }
+}
 
 for (const reference of mediaReferences) {
   if (!reference.image.startsWith("/media/")) {
@@ -52,4 +100,13 @@ if (failures.length) {
   throw new Error(`Content media check failed:\n${failures.join("\n")}`);
 }
 
-console.log(`Content media check passed for ${mediaReferences.length} images and hero video.`);
+console.log(`Content media check passed for ${mediaReferences.length} images, parish coverage, entry notes, and hero video.`);
+
+function assertParishCoverage(label: string, items: Array<{ id: string; parish?: string }>): void {
+  const covered = new Set(items.map((item) => item.parish).filter(Boolean));
+  for (const parish of JAMAICA_PARISHES) {
+    if (!covered.has(parish)) {
+      failures.push(`${label} content must include ${parish}.`);
+    }
+  }
+}
