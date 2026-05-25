@@ -51,6 +51,10 @@ serviceWorker.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (isRangeRequest(request)) {
+    return;
+  }
+
   if (shouldCache(url)) {
     event.respondWith(cacheFirst(request));
   }
@@ -60,9 +64,7 @@ async function networkFirst(request: Request, fallbackUrl: string): Promise<Resp
   const cache = await caches.open(CACHE_NAME);
   try {
     const response = await fetch(request);
-    if (response.ok) {
-      await cache.put(fallbackUrl, response.clone());
-    }
+    await putCacheSafely(cache, fallbackUrl, response);
     return response;
   } catch {
     const cached = await cache.match(fallbackUrl);
@@ -76,10 +78,26 @@ async function cacheFirst(request: Request): Promise<Response> {
   if (cached) return cached;
 
   const response = await fetch(request);
-  if (response.ok) {
-    await cache.put(request, response.clone());
-  }
+  await putCacheSafely(cache, request, response);
   return response;
+}
+
+async function putCacheSafely(cache: Cache, request: RequestInfo, response: Response): Promise<void> {
+  if (!isCacheableResponse(response)) return;
+
+  try {
+    await cache.put(request, response.clone());
+  } catch {
+    // Cache writes are opportunistic; never fail the fetch because storage rejected a response.
+  }
+}
+
+function isRangeRequest(request: Request): boolean {
+  return request.headers.has("range");
+}
+
+function isCacheableResponse(response: Response): boolean {
+  return response.ok && response.status !== 206;
 }
 
 function shouldCache(url: URL): boolean {

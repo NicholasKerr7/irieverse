@@ -36,6 +36,23 @@ try {
     throw new Error("public/sw.js is stale. Run `npm run build:sw` and commit the generated file.");
   }
 
+  const requiredGuards = [
+    {
+      pattern: /request\.headers\.has\("range"\)/,
+      message: "service worker must bypass range requests so video partial responses stream normally.",
+    },
+    {
+      pattern: /response\.status !== 206/,
+      message: "service worker must not cache 206 Partial Content responses.",
+    },
+  ];
+
+  for (const guard of requiredGuards) {
+    if (!guard.pattern.test(generatedWorker)) {
+      throw new Error(guard.message);
+    }
+  }
+
   console.log("Service worker output is current.");
 } finally {
   fs.rmSync(temporaryOutDir, { recursive: true, force: true });
