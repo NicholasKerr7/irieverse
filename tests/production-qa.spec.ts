@@ -65,6 +65,7 @@ test("production mobile flows, screenshots, and live integrations", async ({ pag
   await expect(page.getByText("Plan Jamaica with IrieVerse").first()).toBeVisible();
   await expect(page.getByTestId("mobile-bottom-nav")).toBeVisible();
   await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
+  await expectHeroVideoReady(page);
   await screenshot(page, "mobile-home.png");
 
   await openTab(page, "explore");
@@ -164,6 +165,7 @@ test("production desktop home uses hero navigation", async ({ browser }) => {
   await expect(page.getByTestId("hero-desktop-nav")).toBeVisible();
   await expect(page.getByTestId("desktop-header-nav")).toBeHidden();
   await expect(page.getByTestId("mobile-bottom-nav")).toBeHidden();
+  await expectHeroVideoReady(page);
   await screenshot(page, "desktop-home.png");
 
   await page.getByTestId("hero-desktop-nav").getByRole("button", { name: "Map" }).click();
@@ -221,6 +223,43 @@ async function screenshot(page: Page, filename: string) {
     path: path.join(SCREENSHOT_DIR, filename),
     fullPage: false,
   });
+}
+
+async function expectHeroVideoReady(page: Page) {
+  const video = page.locator('video[src$="/media/hero.mp4"], video[src="/media/hero.mp4"]').first();
+  await expect(video).toBeVisible();
+
+  const playback = await video.evaluate(async (element) => {
+    const videoElement = element as HTMLVideoElement;
+    const haveCurrentData = 2;
+
+    await new Promise<void>((resolve) => {
+      if (videoElement.readyState >= haveCurrentData || videoElement.error) {
+        resolve();
+        return;
+      }
+
+      const finish = () => resolve();
+      videoElement.addEventListener("loadeddata", finish, { once: true });
+      videoElement.addEventListener("error", finish, { once: true });
+      window.setTimeout(finish, 8000);
+    });
+
+    return {
+      duration: Number.isFinite(videoElement.duration) ? videoElement.duration : 0,
+      errorCode: videoElement.error?.code ?? null,
+      networkState: videoElement.networkState,
+      readyState: videoElement.readyState,
+      videoHeight: videoElement.videoHeight,
+      videoWidth: videoElement.videoWidth,
+    };
+  });
+
+  expect(playback.errorCode, "hero video should not report a media decode error").toBeNull();
+  expect(playback.readyState, "hero video should have decoded current frame data").toBeGreaterThanOrEqual(2);
+  expect(playback.videoWidth, "hero video should expose decoded video width").toBeGreaterThan(0);
+  expect(playback.videoHeight, "hero video should expose decoded video height").toBeGreaterThan(0);
+  expect(playback.duration, "hero video should expose a finite duration").toBeGreaterThan(1);
 }
 
 function collectPageIssues(page: Page): string[] {
