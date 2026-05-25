@@ -143,6 +143,7 @@ Desktop:
 - [Production environment](docs/production-env.md)
 - [Production QA](docs/production-qa.md)
 - [Dependency maintenance](docs/dependency-maintenance.md)
+- [Media attributions](docs/media-attributions.md)
 - [Marketing strategy](docs/marketing-strategy.md)
 - [Local mode plan](docs/local-mode-plan.md)
 - [Press kit](public/press-kit.html)

@@ -130,15 +130,20 @@ const ORIGIN_AIRPORTS: [OriginAirport, ...OriginAirport[]] = [
   { id: "ocj", name: "Ocho Rios, Jamaica (OCJ)", code: "OCJ", shortLabel: "Ochi", latitude: 18.4042, longitude: -76.969 },
   { id: "negril-start", name: "Negril, Jamaica", code: "NEG", shortLabel: "Negril", latitude: 18.2728, longitude: -78.3488, supportsFlights: false },
   { id: "falmouth-start", name: "Falmouth, Jamaica", code: "FAL", shortLabel: "Falmouth", latitude: 18.4936, longitude: -77.6559, supportsFlights: false },
+  { id: "st-anns-bay-start", name: "St. Ann's Bay, Jamaica", code: "SAB", shortLabel: "St. Ann's Bay", latitude: 18.4358, longitude: -77.2005, supportsFlights: false },
   { id: "lucea-start", name: "Lucea, Jamaica", code: "LUC", shortLabel: "Lucea", latitude: 18.4508, longitude: -78.1736, supportsFlights: false },
   { id: "port-antonio-start", name: "Port Antonio, Jamaica", code: "PAJ", shortLabel: "Port Antonio", latitude: 18.1801, longitude: -76.457, supportsFlights: false },
+  { id: "port-maria-start", name: "Port Maria, Jamaica", code: "PMJ", shortLabel: "Port Maria", latitude: 18.3776, longitude: -76.8993, supportsFlights: false },
   { id: "treasure-beach-start", name: "Treasure Beach, Jamaica", code: "TBJ", shortLabel: "Treasure Beach", latitude: 17.8815, longitude: -77.7675, supportsFlights: false },
+  { id: "black-river-start", name: "Black River, Jamaica", code: "BLR", shortLabel: "Black River", latitude: 18.0264, longitude: -77.8487, supportsFlights: false },
   { id: "savanna-la-mar-start", name: "Savanna-la-Mar, Jamaica", code: "SLM", shortLabel: "Sav-la-Mar", latitude: 18.2189, longitude: -78.1332, supportsFlights: false },
   { id: "mandeville-start", name: "Mandeville, Jamaica", code: "MAN", shortLabel: "Mandeville", latitude: 18.0417, longitude: -77.5071, supportsFlights: false },
   { id: "may-pen-start", name: "May Pen, Jamaica", code: "MAY", shortLabel: "May Pen", latitude: 17.9645, longitude: -77.2459, supportsFlights: false },
   { id: "spanish-town-start", name: "Spanish Town, Jamaica", code: "SPA", shortLabel: "Spanish Town", latitude: 17.9959, longitude: -76.9551, supportsFlights: false },
   { id: "portmore-start", name: "Portmore, Jamaica", code: "PMR", shortLabel: "Portmore", latitude: 17.9503, longitude: -76.8822, supportsFlights: false },
+  { id: "half-way-tree-start", name: "Half Way Tree, Jamaica", code: "HWT", shortLabel: "Half Way Tree", latitude: 18.0106, longitude: -76.7983, supportsFlights: false },
   { id: "morant-bay-start", name: "Morant Bay, Jamaica", code: "MOR", shortLabel: "Morant Bay", latitude: 17.8817, longitude: -76.4093, supportsFlights: false },
+  { id: "yallahs-start", name: "Yallahs, Jamaica", code: "YAL", shortLabel: "Yallahs", latitude: 17.8748, longitude: -76.5628, supportsFlights: false },
 ];
 
 const DEFAULT_ORIGIN_AIRPORT_ID = ORIGIN_AIRPORTS[0].id;

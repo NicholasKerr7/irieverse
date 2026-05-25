@@ -721,7 +721,11 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
     imageUrl:
       "/media/experiences/accompong-maroon-heritage.jpg",
     approxCost: "$$",
-    entryRequirement: CONFIRM_LOCAL,
+    entryRequirement: {
+      status: "varies",
+      label: "Community access varies",
+      note: "January 6 celebrations may involve event controls, parking, guides, or community contributions. Confirm current access before travelling.",
+    },
     placeLookup: {
       query: "Accompong Maroon Village, St Elizabeth, Jamaica",
       requiredTerms: ["accompong"],
@@ -817,6 +821,98 @@ export const EXPERIENCES: [Experience, ...Experience[]] = [
       status: "varies",
       label: "Beach access varies",
       note: "Food is pay-as-you-go; beach parking or managed beach access may charge.",
+    },
+  },
+  {
+    id: "hanover-lucea-fort-harbour",
+    title: "Lucea Fort and Harbour Walk",
+    type: "heritage",
+    region: "Lucea",
+    parish: "Hanover",
+    location: "Fort Charlotte and Lucea Harbour",
+    linkedDestinationId: "hanover",
+    vibes: ["culture", "chill"],
+    rating: 4.4,
+    energy: "soft",
+    description:
+      "Low-key Hanover heritage route around Fort Charlotte, Lucea harbour views, roadside food, and quiet north-west coast stops.",
+    whatToExpect: [
+      "Short heritage stop at Fort Charlotte",
+      "Harbour photos and town context",
+      "Optional coast drive toward Tryall",
+    ],
+    bestTime: "Morning or late afternoon",
+    imageUrl:
+      "/media/places/fort-charlotte-lucea.jpg",
+    approxCost: "$",
+    entryRequirement: CONFIRM_LOCAL,
+    placeLookup: {
+      query: "Fort Charlotte, Lucea, Jamaica",
+      requiredTerms: ["fort", "charlotte"],
+    },
+  },
+  {
+    id: "st-mary-firefly-oracabessa",
+    title: "Firefly and Oracabessa Coast",
+    type: "heritage",
+    region: "Oracabessa",
+    parish: "St. Mary",
+    location: "Firefly Estate and Oracabessa",
+    linkedDestinationId: "st-mary",
+    vibes: ["culture", "chill"],
+    rating: 4.5,
+    energy: "soft",
+    description:
+      "North-east heritage day built around Firefly Estate views, Oracabessa coastline, Rio Nuevo context, and small seafood stops.",
+    whatToExpect: [
+      "Timed heritage or estate visit",
+      "Coastal views near Oracabessa",
+      "Good pairing with Ochi or Portland",
+    ],
+    bestTime: "Late morning to afternoon",
+    imageUrl:
+      "/media/places/firefly-estate.jpg",
+    approxCost: "$$",
+    entryRequirement: {
+      status: "ticket-required",
+      label: "Tour ticket likely",
+      note: "Firefly and nearby heritage or beach sites may charge admission or require a guided visit. Confirm current access.",
+    },
+    placeLookup: {
+      query: "Firefly Estate, Oracabessa, Jamaica",
+      requiredTerms: ["firefly"],
+    },
+  },
+  {
+    id: "manchester-cool-hills-route",
+    title: "Mandeville Cool-Hills Route",
+    type: "food",
+    region: "Mandeville",
+    parish: "Manchester",
+    location: "Mandeville and south-coast road",
+    linkedDestinationId: "manchester",
+    vibes: ["food", "culture"],
+    rating: 4.4,
+    energy: "medium",
+    description:
+      "Cool-weather inland route for Mandeville town, market stops, hillside cafes, and a food run down toward Alligator Pond.",
+    whatToExpect: [
+      "Town and market browsing",
+      "Cooler central Jamaica weather",
+      "Optional Little Ochie-style seafood add-on",
+    ],
+    bestTime: "Lunch through early evening",
+    imageUrl:
+      "/media/places/mandeville-courthouse.jpg",
+    approxCost: "$$",
+    entryRequirement: {
+      status: "varies",
+      label: "Pay as you go",
+      note: "Town stops are usually free or pay-as-you-go; restaurants, private venues, parking, and tours may charge.",
+    },
+    placeLookup: {
+      query: "Mandeville Courthouse, Manchester, Jamaica",
+      requiredTerms: ["mandeville"],
     },
   },
   {
