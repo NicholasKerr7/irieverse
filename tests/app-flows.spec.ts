@@ -114,13 +114,13 @@ test("saved import updates duplicate links instead of adding clutter", async ({ 
   await expect(mapDrawer.getByText("1 saved stop pinned into this day.")).toBeVisible();
 
   await openCleanTab(page, "trips", []);
+  await openTripsWorkspace(page, "Days");
   const exactStopBadge = page.getByText("Exact stop").first();
   await exactStopBadge.scrollIntoViewIfNeeded();
   await expect(exactStopBadge).toBeVisible();
   await expect(page.getByText(/26 Hope Road, Kingston.*Restaurant.*4\.6/).first()).toBeVisible();
-  await page.getByRole("button", { name: /Add ideas/ }).click();
-  await expect(page.getByText("1 route-ready")).toBeVisible();
-  await expect(page.getByText("Map anchor ready for route planning")).toBeVisible();
+  await openTripsWorkspace(page, "Saved");
+  await expect(page.getByText("Route-ready imports", { exact: true })).toBeVisible();
   await expect(page.getByText("Trip board")).toBeVisible();
   await expect(page.getByText("Saved ideas by day")).toBeVisible();
   await expect(page.getByText("Pinned day 1")).toBeVisible();
@@ -236,9 +236,7 @@ test("unplaced imported map ideas ask to be placed before trip use", async ({ pa
   await expect(detailSheet.getByRole("button", { name: "Trip" })).toHaveCount(0);
 
   await page.goto("/?tab=trips", { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /Add ideas/ }).click();
-  await expect(page.getByText("1 need placing")).toBeVisible();
-  await expect(page.getByText("1 saved import need Jamaica map anchors")).toBeVisible();
+  await openTripsWorkspace(page, "Saved");
   await expect(page.getByText("Trip board")).toBeVisible();
   await expect(page.getByText("1 import still need placing")).toBeVisible();
   await page.getByRole("button", { name: "Place in Saved" }).first().click();
@@ -256,9 +254,8 @@ test("unplaced imported map ideas ask to be placed before trip use", async ({ pa
   await expect(page.getByText("1 to place")).toHaveCount(0);
 
   await page.goto("/?tab=trips", { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /Add ideas/ }).click();
-  await expect(page.getByText("1 route-ready")).toBeVisible();
-  await expect(page.getByText("Map anchor ready for route planning")).toBeVisible();
+  await openTripsWorkspace(page, "Saved");
+  await expect(page.getByText("Route-ready imports", { exact: true })).toBeVisible();
 
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
@@ -333,6 +330,8 @@ test("trip day cards support area edits, locks, and single-day add-on refresh", 
     "irieverse_locked_route",
     "irieverse_day_experiences",
   ]);
+  await openTripsWorkspace(page, "Days");
+  await page.getByRole("button", { name: /^Day 2$/ }).click();
 
   const dayAreaLabel = page.getByText("Day area").first();
   await dayAreaLabel.scrollIntoViewIfNeeded();
@@ -350,11 +349,11 @@ test("trip day cards support area edits, locks, and single-day add-on refresh", 
   await expectLocalStorage(
     page,
     "irieverse_day_experiences",
-    (overrides: Record<string, string>) => typeof overrides["1"] === "string" && overrides["1"].length > 0
+    (overrides: Record<string, string>) => typeof overrides["2"] === "string" && overrides["2"].length > 0
   );
 
   await page.getByRole("button", { name: "Use auto" }).first().click();
-  await expectLocalStorage(page, "irieverse_day_experiences", (overrides: Record<string, string>) => !overrides["1"]);
+  await expectLocalStorage(page, "irieverse_day_experiences", (overrides: Record<string, string>) => !overrides["2"]);
 
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
@@ -369,6 +368,7 @@ test("trip route order controls move, lock, remove, and reset stops", async ({ p
     "irieverse_manual_route",
     "irieverse_locked_route",
   ]);
+  await openTripsWorkspace(page, "Route");
 
   await page.getByText("Route intelligence").scrollIntoViewIfNeeded();
 
@@ -497,6 +497,7 @@ test("trip events show verified and curated source badges", async ({ page }) => 
   });
 
   await openCleanTab(page, "trips", []);
+  await openTripsWorkspace(page, "Share");
 
   const islandCalendarHeading = page.getByRole("heading", { name: /What's on near/ });
   await islandCalendarHeading.scrollIntoViewIfNeeded();
@@ -1018,6 +1019,10 @@ async function openCleanTab(page: Page, tab: string, storageKeys: string[]) {
     Array.from(new Set(keys)).forEach((key) => window.localStorage.removeItem(key));
   }, [...defaultStorageKeys, ...storageKeys]);
   await page.goto(`/?tab=${tab}`, { waitUntil: "domcontentloaded" });
+}
+
+async function openTripsWorkspace(page: Page, label: "Plan" | "Days" | "Route" | "Saved" | "Share") {
+  await page.getByTestId("trip-workspace-tabs").getByRole("button", { name: new RegExp(`^${label}`) }).click();
 }
 
 async function waitForImportedIdeas(

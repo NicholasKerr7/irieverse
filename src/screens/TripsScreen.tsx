@@ -31,7 +31,6 @@ import {
 } from "lucide-react";
 import { BookingRecommendations } from "../components/BookingRecommendations";
 import { BudgetInsight } from "../components/BudgetInsight";
-import { ItineraryView } from "../components/ItineraryView";
 import { LiveEventsFeed } from "../components/LiveEventsFeed";
 import { SafeImage } from "../components/SafeImage";
 import type { MobileTabId } from "../components/mobile/BottomNav";
@@ -63,6 +62,7 @@ const WIZARD_STEPS = [
 
 type WizardStepId = (typeof WIZARD_STEPS)[number]["id"];
 type BuilderLane = "quick" | "full";
+type TripWorkspaceTab = "overview" | "days" | "route" | "saved" | "share";
 type PlanCheckTone = "ready" | "watch" | "action";
 type PlanCheckAction = "saved" | "map" | "smooth-route";
 type PlanCheck = {
@@ -74,9 +74,22 @@ type PlanCheck = {
   actionLabel?: string;
 };
 
+const TRIP_WORKSPACE_TABS: Array<{
+  id: TripWorkspaceTab;
+  label: string;
+  icon: ComponentType<LucideProps>;
+}> = [
+  { id: "overview", label: "Plan", icon: Sparkles },
+  { id: "days", label: "Days", icon: CalendarDays },
+  { id: "route", label: "Route", icon: Route },
+  { id: "saved", label: "Saved", icon: Heart },
+  { id: "share", label: "Share", icon: Share2 },
+];
+
 export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
   const [activeStep, setActiveStep] = useState<WizardStepId>("base");
   const [builderLane, setBuilderLane] = useState<BuilderLane>(() => getDefaultBuilderLane(app.planningMode));
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<TripWorkspaceTab>("overview");
   const savedDestinations = useMemo(
     () => DESTINATIONS.filter((destination) => app.savedPlaces.has(destination.id)),
     [app.savedPlaces]
@@ -86,230 +99,370 @@ export function TripsScreen({ app, onNavigate }: TripsScreenProps) {
     [app.savedExperiences]
   );
   const importedIdeas = app.importedIdeas;
-  const weatherReadyDays = app.itinerary.daysPlan.filter((day) => day.weather || day.weatherNote).length;
-  const estimatedTotal =
-    (app.perDayBudget.lodging + app.perDayBudget.dining + app.perDayBudget.experiences) * app.plannerDays +
-    app.transportBudget;
 
   useEffect(() => {
     setBuilderLane(getDefaultBuilderLane(app.planningMode));
   }, [app.planningMode]);
 
   return (
-    <section className="mx-auto min-h-screen max-w-7xl px-4 py-5 sm:px-6 lg:px-10">
-      <header className={classNames("overflow-hidden rounded-3xl", glassPanel)}>
-        <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="relative min-h-72">
-            <SafeImage src={app.destination.heroImage} alt={app.destination.name} className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-transparent" />
-            <div className="media-overlay absolute bottom-5 left-5 right-5">
-              <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/90">
-                {PLANNING_MODE_LABELS[app.planningMode].label} plan
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">{getTripHeroTitle(app.planningMode)}</h1>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
-                {getTripHeroBody(app.planningMode)}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 bg-slate-950/50 sm:grid-cols-4 lg:grid-cols-2">
-            <TripMetric label="Base" value={app.destination.name} />
-            <TripMetric label="Days" value={app.plannerDays.toString()} />
-            <TripMetric label="Budget" value={`${formatCurrency(app.plannerBudget, app.plannerCurrency, { compact: true })}/day`} />
-            <TripMetric label="Estimate" value={formatCurrency(estimatedTotal, app.plannerCurrency, { compact: true })} />
-          </div>
-        </div>
-      </header>
+    <section className="mx-auto min-h-screen max-w-7xl px-4 py-4 sm:px-6 lg:px-10">
+      <TripSummaryHeader app={app} onNavigate={onNavigate} />
 
       <PlanLaneSwitch activeLane={builderLane} onChange={setBuilderLane} planningMode={app.planningMode} />
+      <TripWorkspaceTabs activeTab={activeWorkspaceTab} onChange={setActiveWorkspaceTab} app={app} />
 
       {builderLane === "quick" ? (
         <QuickPlanExperience
           app={app}
           onNavigate={onNavigate}
+          activeTab={activeWorkspaceTab}
           savedDestinations={savedDestinations}
           savedExperiences={savedExperiences}
           importedIdeas={importedIdeas}
         />
       ) : (
+        <FullTripExperience
+          app={app}
+          onNavigate={onNavigate}
+          activeTab={activeWorkspaceTab}
+          activeStep={activeStep}
+          setActiveStep={setActiveStep}
+          savedDestinations={savedDestinations}
+          savedExperiences={savedExperiences}
+          importedIdeas={importedIdeas}
+        />
+      )}
+    </section>
+  );
+}
+
+function TripSummaryHeader({ app, onNavigate }: { app: TravelOS; onNavigate: (tab: MobileTabId) => void }) {
+  const estimatedTotal = getEstimatedTripTotal(app);
+
+  return (
+    <header className={classNames("overflow-hidden rounded-3xl p-3", glassPanel)}>
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+        <div className="flex min-w-0 gap-3 pr-14 md:pr-0">
+          <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl sm:h-28 sm:w-36">
+            <SafeImage src={app.destination.heroImage} alt={app.destination.name} className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.62rem] uppercase tracking-[0.26em] text-cyan-300/90">
+              {PLANNING_MODE_LABELS[app.planningMode].label} plan
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold leading-tight text-slate-100 sm:text-3xl">
+              {getTripHeroTitle(app.planningMode)}
+            </h1>
+            <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-400">
+              {getTripHeroBody(app.planningMode)}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 xl:w-[26rem]">
+          <button
+            type="button"
+            onClick={() => onNavigate("map")}
+            className={classNames("inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-bold text-cyan-100", glassControlMuted)}
+          >
+            <MapPinned className="h-4 w-4" /> Map
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate("saved")}
+            className={classNames("inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-3 py-2 text-xs font-bold text-cyan-100", glassControlMuted)}
+          >
+            <Heart className="h-4 w-4" /> Saved
+          </button>
+          <button
+            type="button"
+            onClick={app.handleExportItinerary}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-emerald-300/45 bg-emerald-300/10 px-3 py-2 text-xs font-bold text-emerald-100"
+          >
+            <Download className="h-4 w-4" /> Export
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/45 sm:grid-cols-4">
+        <TripMetric label="Base" value={app.destination.name} />
+        <TripMetric label="Days" value={app.plannerDays.toString()} />
+        <TripMetric label="Budget" value={`${formatCurrency(app.plannerBudget, app.plannerCurrency, { compact: true })}/day`} />
+        <TripMetric label="Estimate" value={formatCurrency(estimatedTotal, app.plannerCurrency, { compact: true })} />
+      </div>
+    </header>
+  );
+}
+
+function TripWorkspaceTabs({
+  activeTab,
+  onChange,
+  app,
+}: {
+  activeTab: TripWorkspaceTab;
+  onChange: (tab: TripWorkspaceTab) => void;
+  app: TravelOS;
+}) {
+  const counts: Partial<Record<TripWorkspaceTab, string>> = {
+    days: String(app.plannerDays),
+    saved: String(app.savedPlaces.size + app.savedExperiences.size + app.importedIdeas.length),
+  };
+
+  return (
+    <div className="sticky top-[calc(env(safe-area-inset-top)+0.35rem)] z-40 -mx-1 mt-4 py-1 backdrop-blur-2xl md:top-[5rem]">
+      <div className={classNames("flex gap-1 overflow-x-auto rounded-full border p-1", glassPanelStrong)} data-testid="trip-workspace-tabs">
+        {TRIP_WORKSPACE_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onChange(tab.id)}
+              className={classNames(
+                "inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-full px-2 text-[0.72rem] font-bold transition sm:min-h-11 sm:flex-1 sm:gap-2 sm:px-3 sm:text-sm",
+                active ? "bg-cyan-300 text-slate-950 shadow-lg shadow-cyan-950/20" : "text-slate-300 hover:bg-white/7 hover:text-cyan-100"
+              )}
+              aria-current={active ? "page" : undefined}
+            >
+              <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span>{tab.label}</span>
+              {counts[tab.id] && (
+                <span
+                  className={classNames(
+                    "hidden rounded-full px-2 py-0.5 text-[0.62rem] font-black sm:inline-flex",
+                    active ? "bg-slate-950/15 text-slate-950" : "bg-slate-950/70 text-cyan-100"
+                  )}
+                >
+                  {counts[tab.id]}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FullTripExperience({
+  app,
+  onNavigate,
+  activeTab,
+  activeStep,
+  setActiveStep,
+  savedDestinations,
+  savedExperiences,
+  importedIdeas,
+}: {
+  app: TravelOS;
+  onNavigate: (tab: MobileTabId) => void;
+  activeTab: TripWorkspaceTab;
+  activeStep: WizardStepId;
+  setActiveStep: (step: WizardStepId) => void;
+  savedDestinations: Destination[];
+  savedExperiences: Experience[];
+  importedIdeas: ImportedIdea[];
+}) {
+  return (
+    <div className="mt-4 space-y-4">
+      {activeTab === "overview" && (
         <>
-          <div className="mt-5 grid gap-4 lg:grid-cols-[22rem_1fr]">
-            <aside className="min-w-0 space-y-4">
-              <TemplateQuickStartPanel app={app} />
-
-              <div className={classNames("rounded-3xl p-4", glassPanel)}>
-                <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-500">Guided builder</p>
-                <div className="mt-4 space-y-2">
-                  {WIZARD_STEPS.map((step, index) => (
-                    <button
-                      key={step.id}
-                      type="button"
-                      onClick={() => setActiveStep(step.id)}
-                      className={classNames(
-                        "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition",
-                        activeStep === step.id
-                          ? "border-cyan-300 bg-cyan-300 text-slate-950"
-                          : `${glassControlMuted} text-slate-300 hover:border-cyan-300/50`
-                      )}
-                    >
-                      <span className={classNames(
-                        "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold",
-                        activeStep === step.id ? "bg-slate-950 text-cyan-200" : "bg-cyan-300 text-slate-950"
-                      )}>
-                        {index + 1}
-                      </span>
-                      <span className="flex-1 text-sm font-semibold">{step.label}</span>
-                      {index < getCompletedStepIndex(app) && <Check className="h-4 w-4" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <WizardPanel
-                app={app}
-                activeStep={activeStep}
-                setActiveStep={setActiveStep}
-                savedDestinations={savedDestinations}
-                savedExperiences={savedExperiences}
-                importedIdeas={importedIdeas}
-                onNavigate={onNavigate}
-              />
-            </aside>
-
-            <div className="min-w-0 space-y-4">
-              <section className={classNames("rounded-3xl p-4", glassPanel)}>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <CalendarDays className="h-5 w-5 text-cyan-300" />
-                    <div>
-                      <p className="text-[0.65rem] uppercase tracking-[0.25em] text-slate-500">Upcoming trip</p>
-                      <h2 className="text-xl font-semibold">{app.destination.name} base plan</h2>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onNavigate("saved")}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60"
-                    >
-                      <Heart className="h-3.5 w-3.5" /> Saved
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onNavigate("map")}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60"
-                    >
-                      <Route className="h-3.5 w-3.5" /> Map route
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <MiniCard
-                    icon={Route}
-                    title="Road pacing"
-                    body={`${formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)} across ${app.itinerary.routeSummary.regionCount} regions.`}
-                  />
-                  <MiniCard
-                    icon={CloudSun}
-                    title="Weather cues"
-                    body={
-                      weatherReadyDays
-                        ? `${weatherReadyDays} days checked for rain, heat, and outdoor timing.`
-                        : "Daily plan adapts when weather is available."
-                    }
-                  />
-                  <MiniCard
-                    icon={Users}
-                    title="Local ideas"
-                    body={`${savedDestinations.length + savedExperiences.length + importedIdeas.length} saved places, experiences, and imports.`}
-                  />
-                  <MiniCard icon={WalletCards} title="Budget" body={`${formatCurrency(estimatedTotal, app.plannerCurrency)} trip estimate.`} />
-                </div>
-              </section>
-
-              <BoardTripContextPanel app={app} onNavigate={onNavigate} />
-
-              <TripBoardPanel app={app} onNavigate={onNavigate} />
-
-              <PlanCheckPanel app={app} onNavigate={onNavigate} />
-
-              <RoutePreviewPanel app={app} onNavigate={onNavigate} />
-
-              <IntegrationStatusPanel app={app} />
-
-              <section className={classNames("rounded-3xl p-4", glassPanel)}>
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Daily plan</p>
-                    <h2 className="text-lg font-semibold">{app.plannerDays} day itinerary</h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveStep("generate")}
-                    className="rounded-full border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300"
-                  >
-                    Tune
-                  </button>
-                </div>
-                <ItineraryView
-                  itinerary={app.itinerary}
-                  dayExperienceOverrides={app.dayExperienceOverrides}
-                  savedPlaceIds={app.savedPlaces}
-                  savedExperienceIds={app.savedExperiences}
-                  importedIdeas={app.importedIdeas}
-                  importedIdeaDayAssignments={app.importedIdeaDayAssignments}
-                  dayNotes={app.dayNotes}
-                  lockedRouteDestinationIds={app.lockedRouteDestinationIds}
-                  onSetRouteStopForDay={app.setRouteStopForDay}
-                  onToggleRouteStopLock={app.toggleRouteStopLock}
-                  onSetDayExperience={app.setDayExperience}
-                  onClearDayExperience={app.clearDayExperience}
-                  onRefreshDayExperience={app.refreshDayExperience}
-                  onSetDayNote={app.setDayNote}
-                  onClearDayNote={app.clearDayNote}
-                  onAssignImportedIdeaToDay={app.assignImportedIdeaToDay}
-                  onAssignImportedIdeaToUnplanned={app.assignImportedIdeaToUnplanned}
-                  onClearImportedIdeaDayAssignment={app.clearImportedIdeaDayAssignment}
-                />
-              </section>
-
-              <BudgetInsight
-                perDay={app.perDayBudget}
-                transportPerTrip={app.transportBudget}
-                days={app.plannerDays}
-                vibe={app.plannerVibe}
-                currency={app.plannerCurrency}
-              />
-
-              <section className="grid gap-4 xl:grid-cols-2">
-                {app.planningMode === "local" || isGroundOrigin(app) ? <LocalPlanSnapshot app={app} /> : <FlightSnapshot app={app} />}
-                <SharePanel app={app} />
-              </section>
-            </div>
-          </div>
-
-          <div className="mt-6 space-y-6">
-            <BookingRecommendations
-              bookings={app.bookingOptions}
-              isLoading={app.isLoadingBookings}
-              error={app.bookingError}
-              onRefresh={app.refreshBookings}
-              destinationName={app.destination.name}
-              sourceMeta={app.bookingSourceMeta}
-            />
-
-            <LiveEventsFeed
-              events={app.liveEvents}
-              isLoading={app.isLoadingEvents}
-              error={app.eventsError}
-              sourceMeta={app.eventSourceMeta}
-              onRefresh={app.loadEvents}
-              selectedRegion={app.destination.region}
-            />
-          </div>
+          <TripOverviewPanel
+            app={app}
+            onNavigate={onNavigate}
+            savedDestinations={savedDestinations}
+            savedExperiences={savedExperiences}
+            importedIdeas={importedIdeas}
+          />
+          <PlanCheckPanel app={app} onNavigate={onNavigate} />
+          <section className="grid gap-4 xl:grid-cols-2">
+            {app.planningMode === "local" || isGroundOrigin(app) ? <LocalPlanSnapshot app={app} /> : <FlightSnapshot app={app} />}
+            <SharePanel app={app} />
+          </section>
         </>
       )}
+
+      {activeTab === "days" && (
+        <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
+          <div className="min-w-0 space-y-4">
+            <TemplateQuickStartPanel app={app} />
+            <GuidedBuilderPanel app={app} activeStep={activeStep} setActiveStep={setActiveStep} />
+            <WizardPanel
+              app={app}
+              activeStep={activeStep}
+              setActiveStep={setActiveStep}
+              savedDestinations={savedDestinations}
+              savedExperiences={savedExperiences}
+              importedIdeas={importedIdeas}
+              onNavigate={onNavigate}
+            />
+          </div>
+          <QuickDailyPlanPanel app={app} />
+        </div>
+      )}
+
+      {activeTab === "route" && <RoutePreviewPanel app={app} onNavigate={onNavigate} />}
+
+      {activeTab === "saved" && (
+        <>
+          <BoardTripContextPanel app={app} onNavigate={onNavigate} />
+          <TripBoardPanel app={app} onNavigate={onNavigate} />
+          <QuickSavedIdeasPanel
+            savedDestinations={savedDestinations}
+            savedExperiences={savedExperiences}
+            importedIdeas={importedIdeas}
+            onExplore={() => onNavigate("explore")}
+            onSaved={() => onNavigate("saved")}
+          />
+        </>
+      )}
+
+      {activeTab === "share" && (
+        <>
+          <IntegrationStatusPanel app={app} />
+          <BudgetInsight
+            perDay={app.perDayBudget}
+            transportPerTrip={app.transportBudget}
+            days={app.plannerDays}
+            vibe={app.plannerVibe}
+            currency={app.plannerCurrency}
+          />
+          <section className="grid gap-4 xl:grid-cols-2">
+            {app.planningMode === "local" || isGroundOrigin(app) ? <LocalPlanSnapshot app={app} /> : <FlightSnapshot app={app} />}
+            <SharePanel app={app} />
+          </section>
+          <BookingRecommendations
+            bookings={app.bookingOptions}
+            isLoading={app.isLoadingBookings}
+            error={app.bookingError}
+            onRefresh={app.refreshBookings}
+            destinationName={app.destination.name}
+            sourceMeta={app.bookingSourceMeta}
+          />
+          <LiveEventsFeed
+            events={app.liveEvents}
+            isLoading={app.isLoadingEvents}
+            error={app.eventsError}
+            sourceMeta={app.eventSourceMeta}
+            onRefresh={app.loadEvents}
+            selectedRegion={app.destination.region}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function GuidedBuilderPanel({
+  app,
+  activeStep,
+  setActiveStep,
+}: {
+  app: TravelOS;
+  activeStep: WizardStepId;
+  setActiveStep: (step: WizardStepId) => void;
+}) {
+  return (
+    <div className={classNames("rounded-3xl p-4", glassPanel)}>
+      <p className="text-[0.65rem] uppercase tracking-[0.28em] text-slate-500">Guided builder</p>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+        {WIZARD_STEPS.map((step, index) => (
+          <button
+            key={step.id}
+            type="button"
+            onClick={() => setActiveStep(step.id)}
+            className={classNames(
+              "flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition",
+              activeStep === step.id
+                ? "border-cyan-300 bg-cyan-300 text-slate-950"
+                : `${glassControlMuted} text-slate-300 hover:border-cyan-300/50`
+            )}
+          >
+            <span
+              className={classNames(
+                "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold",
+                activeStep === step.id ? "bg-slate-950 text-cyan-200" : "bg-cyan-300 text-slate-950"
+              )}
+            >
+              {index + 1}
+            </span>
+            <span className="flex-1 text-sm font-semibold">{step.label}</span>
+            {index < getCompletedStepIndex(app) && <Check className="h-4 w-4" />}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TripOverviewPanel({
+  app,
+  onNavigate,
+  savedDestinations,
+  savedExperiences,
+  importedIdeas,
+}: {
+  app: TravelOS;
+  onNavigate: (tab: MobileTabId) => void;
+  savedDestinations: Destination[];
+  savedExperiences: Experience[];
+  importedIdeas: ImportedIdea[];
+}) {
+  const weatherReadyDays = app.itinerary.daysPlan.filter((day) => day.weather || day.weatherNote).length;
+  const estimatedTotal = getEstimatedTripTotal(app);
+
+  return (
+    <section className={classNames("rounded-3xl p-4", glassPanel)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <CalendarDays className="h-5 w-5 text-cyan-300" />
+          <div>
+            <p className="text-[0.65rem] uppercase tracking-[0.25em] text-slate-500">Upcoming trip</p>
+            <h2 className="text-xl font-semibold">{app.destination.name} base plan</h2>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onNavigate("saved")}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60"
+          >
+            <Heart className="h-3.5 w-3.5" /> Saved
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate("map")}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/60"
+          >
+            <Route className="h-3.5 w-3.5" /> Map route
+          </button>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MiniCard
+          icon={Route}
+          title="Road pacing"
+          body={`${formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)} across ${app.itinerary.routeSummary.regionCount} regions.`}
+        />
+        <MiniCard
+          icon={CloudSun}
+          title="Weather cues"
+          body={
+            weatherReadyDays
+              ? `${weatherReadyDays} days checked for rain, heat, and outdoor timing.`
+              : "Daily plan adapts when weather is available."
+          }
+        />
+        <MiniCard
+          icon={Users}
+          title="Local ideas"
+          body={`${savedDestinations.length + savedExperiences.length + importedIdeas.length} saved places, experiences, and imports.`}
+        />
+        <MiniCard icon={WalletCards} title="Budget" body={`${formatCurrency(estimatedTotal, app.plannerCurrency)} trip estimate.`} />
+      </div>
     </section>
   );
 }
@@ -324,7 +477,7 @@ function PlanLaneSwitch({
   planningMode: PlanningMode;
 }) {
   return (
-    <div className="mt-5 grid gap-3 lg:grid-cols-2">
+    <div className="mt-4 grid grid-cols-2 gap-2">
       <LaneButton
         icon={Sparkles}
         active={activeLane === "quick"}
@@ -365,20 +518,20 @@ function LaneButton({
       type="button"
       onClick={onClick}
       className={classNames(
-        "min-h-32 rounded-3xl border p-4 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/60",
+        "min-h-20 rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/60 sm:min-h-32 sm:rounded-3xl sm:p-4",
         active ? "border-cyan-300/55 bg-cyan-300/12 shadow-xl shadow-cyan-950/25" : glassPanel
       )}
     >
       <span className="flex items-start justify-between gap-3">
         <span>
           <span className="text-[0.62rem] font-bold uppercase tracking-[0.22em] text-cyan-300/85">{eyebrow}</span>
-          <span className="mt-1 block text-lg font-semibold text-slate-100">{title}</span>
+          <span className="mt-1 block text-sm font-semibold text-slate-100 sm:text-lg">{title}</span>
         </span>
-        <span className={classNames("flex h-10 w-10 items-center justify-center rounded-2xl", active ? "bg-cyan-300 text-slate-950" : "bg-slate-950/70 text-cyan-300")}>
-          <Icon className="h-5 w-5" />
+        <span className={classNames("flex h-9 w-9 items-center justify-center rounded-2xl sm:h-10 sm:w-10", active ? "bg-cyan-300 text-slate-950" : "bg-slate-950/70 text-cyan-300")}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </span>
       </span>
-      <span className="mt-3 block text-sm leading-6 text-slate-400">{body}</span>
+      <span className="mt-3 hidden text-sm leading-6 text-slate-400 sm:block">{body}</span>
     </button>
   );
 }
@@ -386,12 +539,14 @@ function LaneButton({
 function QuickPlanExperience({
   app,
   onNavigate,
+  activeTab,
   savedDestinations,
   savedExperiences,
   importedIdeas,
 }: {
   app: TravelOS;
   onNavigate: (tab: MobileTabId) => void;
+  activeTab: TripWorkspaceTab;
   savedDestinations: Destination[];
   savedExperiences: Experience[];
   importedIdeas: ImportedIdea[];
@@ -403,91 +558,112 @@ function QuickPlanExperience({
 
   return (
     <div className="mt-5 space-y-4">
-      <section className={classNames("overflow-hidden rounded-3xl", glassPanel)}>
-        <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
-          <div className="p-4 sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Quick Plan</p>
-                <h2 className="mt-1 text-2xl font-semibold">Build the day around what matters.</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-                  Start with a Jamaica template, pick timing, tune vibe and budget, then preview the route. Navigation stays a handoff.
-                </p>
+      {activeTab === "overview" && (
+        <>
+          <section className={classNames("overflow-hidden rounded-3xl", glassPanel)}>
+            <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
+              <div className="p-4 sm:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-[0.65rem] uppercase tracking-[0.3em] text-cyan-300/80">Quick Plan</p>
+                    <h2 className="mt-1 text-2xl font-semibold">Build the day around what matters.</h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                      Start with a Jamaica template, pick timing, tune vibe and budget, then preview the route. Navigation stays a handoff.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate("saved")}
+                    className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-cyan-300/45 px-4 py-2 text-xs font-bold text-cyan-100"
+                  >
+                    <Heart className="h-4 w-4" /> Add ideas
+                  </button>
+                </div>
+
+                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                  <QuickTemplatePicker app={app} />
+                  <QuickPlanControls app={app} />
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => onNavigate("saved")}
-                className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border border-cyan-300/45 px-4 py-2 text-xs font-bold text-cyan-100"
-              >
-                <Heart className="h-4 w-4" /> Add ideas
-              </button>
-            </div>
 
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <QuickTemplatePicker app={app} />
-              <QuickPlanControls app={app} />
-            </div>
-          </div>
+              <div className="border-t border-slate-800 bg-slate-950/45 p-4 sm:p-5 lg:border-l lg:border-t-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[0.65rem] uppercase tracking-[0.26em] text-slate-500">Ready plan</p>
+                    <h3 className="text-xl font-semibold">{app.destination.name}</h3>
+                  </div>
+                  <span className="rounded-full border border-cyan-300/35 px-3 py-1 text-[0.62rem] font-bold uppercase tracking-[0.16em] text-cyan-100">
+                    {app.plannerDays} day{app.plannerDays === 1 ? "" : "s"}
+                  </span>
+                </div>
 
-          <div className="border-t border-slate-800 bg-slate-950/45 p-4 sm:p-5 lg:border-l lg:border-t-0">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[0.65rem] uppercase tracking-[0.26em] text-slate-500">Ready plan</p>
-                <h3 className="text-xl font-semibold">{app.destination.name}</h3>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <RouteStat icon={Clock3} label="Drive time" value={formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)} />
+                  <RouteStat icon={Route} label="Distance" value={`${app.itinerary.routeSummary.totalDistanceKm} km`} />
+                  <RouteStat icon={CloudSun} label="Weather" value={weatherReadyDays ? `${weatherReadyDays} days` : "Pending"} />
+                  <RouteStat icon={WalletCards} label="Estimate" value={formatCurrency(estimatedTotal, app.plannerCurrency, { compact: true })} />
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate("map")}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950"
+                  >
+                    <MapPinned className="h-4 w-4" /> Preview map
+                  </button>
+                  <button
+                    type="button"
+                    onClick={app.handleExportItinerary}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-emerald-300/50 px-4 py-2 text-xs font-bold text-emerald-100"
+                  >
+                    <Download className="h-4 w-4" /> Export
+                  </button>
+                </div>
               </div>
-              <span className="rounded-full border border-cyan-300/35 px-3 py-1 text-[0.62rem] font-bold uppercase tracking-[0.16em] text-cyan-100">
-                {app.plannerDays} day{app.plannerDays === 1 ? "" : "s"}
-              </span>
             </div>
+          </section>
 
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <RouteStat icon={Clock3} label="Drive time" value={formatDriveTime(app.itinerary.routeSummary.totalDriveMinutes)} />
-              <RouteStat icon={Route} label="Distance" value={`${app.itinerary.routeSummary.totalDistanceKm} km`} />
-              <RouteStat icon={CloudSun} label="Weather" value={weatherReadyDays ? `${weatherReadyDays} days` : "Pending"} />
-              <RouteStat icon={WalletCards} label="Estimate" value={formatCurrency(estimatedTotal, app.plannerCurrency, { compact: true })} />
-            </div>
+          <TripOverviewPanel
+            app={app}
+            onNavigate={onNavigate}
+            savedDestinations={savedDestinations}
+            savedExperiences={savedExperiences}
+            importedIdeas={importedIdeas}
+          />
+          <PlanCheckPanel app={app} onNavigate={onNavigate} />
+          <SharePanel app={app} />
+        </>
+      )}
 
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => onNavigate("map")}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950"
-              >
-                <MapPinned className="h-4 w-4" /> Preview map
-              </button>
-              <button
-                type="button"
-                onClick={app.handleExportItinerary}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-emerald-300/50 px-4 py-2 text-xs font-bold text-emerald-100"
-              >
-                <Download className="h-4 w-4" /> Export
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      {activeTab === "days" && (
+        <>
+          <BoardTripContextPanel app={app} onNavigate={onNavigate} />
+          <QuickDailyPlanPanel app={app} />
+        </>
+      )}
 
-      <BoardTripContextPanel app={app} onNavigate={onNavigate} />
+      {activeTab === "route" && <QuickRoutePanel app={app} onNavigate={onNavigate} />}
 
-      <TripBoardPanel app={app} onNavigate={onNavigate} />
+      {activeTab === "saved" && (
+        <>
+          <TripBoardPanel app={app} onNavigate={onNavigate} />
+          <QuickSavedIdeasPanel
+            savedDestinations={savedDestinations}
+            savedExperiences={savedExperiences}
+            importedIdeas={importedIdeas}
+            onExplore={() => onNavigate("explore")}
+            onSaved={() => onNavigate("saved")}
+          />
+        </>
+      )}
 
-      <PlanCheckPanel app={app} onNavigate={onNavigate} />
-
-      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <QuickRoutePanel app={app} onNavigate={onNavigate} />
-        <QuickDailyPlanPanel app={app} />
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
-        <QuickSavedIdeasPanel
-          savedDestinations={savedDestinations}
-          savedExperiences={savedExperiences}
-          importedIdeas={importedIdeas}
-          onExplore={() => onNavigate("explore")}
-          onSaved={() => onNavigate("saved")}
-        />
-        <SharePanel app={app} />
-      </section>
+      {activeTab === "share" && (
+        <section className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
+          <IntegrationStatusPanel app={app} />
+          <SharePanel app={app} />
+        </section>
+      )}
     </div>
   );
 }
@@ -1054,14 +1230,46 @@ function QuickRoutePanel({ app, onNavigate }: { app: TravelOS; onNavigate: (tab:
 }
 
 function QuickDailyPlanPanel({ app }: { app: TravelOS }) {
+  const [selectedDay, setSelectedDay] = useState(1);
+  const safeSelectedDay = Math.min(Math.max(selectedDay, 1), Math.max(app.plannerDays, 1));
+  const visibleDays = app.itinerary.daysPlan.filter((day) => day.day === safeSelectedDay);
+
+  useEffect(() => {
+    if (selectedDay !== safeSelectedDay) {
+      setSelectedDay(safeSelectedDay);
+    }
+  }, [safeSelectedDay, selectedDay]);
+
   return (
     <section className={classNames("min-w-0 overflow-hidden rounded-3xl p-4", glassPanel)}>
-      <div>
-        <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Plan cards</p>
-        <h2 className="text-xl font-semibold">What to do each day</h2>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-300/80">Plan cards</p>
+          <h2 className="text-xl font-semibold">What to do each day</h2>
+        </div>
+        <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-[0.62rem] font-bold uppercase tracking-[0.16em] text-cyan-100">
+          Day {safeSelectedDay} of {app.plannerDays}
+        </span>
+      </div>
+      <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+        {app.itinerary.daysPlan.map((day) => (
+          <button
+            key={day.day}
+            type="button"
+            onClick={() => setSelectedDay(day.day)}
+            className={classNames(
+              "inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border px-4 py-2 text-xs font-bold transition",
+              safeSelectedDay === day.day
+                ? "border-cyan-300 bg-cyan-300 text-slate-950"
+                : "border-slate-700 bg-slate-950/60 text-slate-300 hover:border-cyan-300/60"
+            )}
+          >
+            Day {day.day}
+          </button>
+        ))}
       </div>
       <div className="mt-4 grid gap-3">
-        {app.itinerary.daysPlan.map((day) => {
+        {visibleDays.map((day) => {
           const experienceOverrideId = app.dayExperienceOverrides[String(day.day)] ?? "";
           const dayNote = app.dayNotes[String(day.day)] ?? "";
           const experienceOptions = getExperienceOptionsForDay(day, 6, app.savedExperiences);
@@ -2656,11 +2864,15 @@ function getShareSetupNotice(app: TravelOS): { title: string; body: string; tone
 
 function TripMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-b border-r border-slate-800 p-4">
-      <p className="line-clamp-1 text-lg font-semibold text-cyan-200">{value}</p>
+    <div className="border-b border-r border-slate-800 p-3 sm:p-4">
+      <p className="line-clamp-1 text-base font-semibold text-cyan-200 sm:text-lg">{value}</p>
       <p className="mt-1 text-[0.65rem] uppercase tracking-[0.2em] text-slate-500">{label}</p>
     </div>
   );
+}
+
+function getEstimatedTripTotal(app: TravelOS): number {
+  return (app.perDayBudget.lodging + app.perDayBudget.dining + app.perDayBudget.experiences) * app.plannerDays + app.transportBudget;
 }
 
 function MiniCard({
