@@ -18,7 +18,7 @@
     "qa:local": "playwright test --config=playwright.local.config.ts --reporter=line",
     "qa:production": "playwright test tests/production-qa.spec.ts --reporter=line",
     "check:maintenance": "tsx scripts/check-maintenance-config.ts",
-    "check:content": "tsx scripts/check-content-media.ts",
+    "check:content": "tsx scripts/check-content-media.ts && tsx scripts/check-event-calendar.ts",
     "check:supabase": "tsx scripts/check-supabase-readiness.ts",
     "check:sw": "tsx scripts/check-service-worker-output.ts",
     "verify": "npm run typecheck && npm run test:api && npm run check:maintenance && npm run check:content && npm run check:supabase && npm run check:sw && npm run audit:prod && npm run build",
