@@ -229,7 +229,6 @@ function collectPageIssues(page: Page): string[] {
   page.on("console", (message) => {
     if (message.type() === "error") {
       if (isIgnorableHeroVideoFailure(message.location().url, message.text())) return;
-      if (message.text() === "Failed to load resource: net::ERR_FAILED") return;
       issues.push(`console: ${message.text()}`);
     }
   });
@@ -252,7 +251,7 @@ function collectPageIssues(page: Page): string[] {
 }
 
 function isIgnorableHeroVideoFailure(url: string, failureText: string): boolean {
-  return url.endsWith("/media/hero.mp4") && /ERR_(ABORTED|FAILED)/.test(failureText);
+  return url.endsWith("/media/hero.mp4") && failureText.includes("ERR_ABORTED");
 }
 
 function trackSupabaseRest(page: Page): SupabaseRestTracker {
