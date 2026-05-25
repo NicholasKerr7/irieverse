@@ -490,6 +490,8 @@ async function testEventsFallbackWithoutCredentials() {
     assert.equal(body.meta.providers.ticketmaster, false);
     assert.equal(body.meta.providers.verifiedCalendar, false);
     assert.ok(body.data.some((event) => event.title === "Reggae Sumfest"));
+    assert.ok(body.data.every((event) => event.sourceKind === "curated"));
+    assert.ok(body.data.every((event) => event.sourceLabel === "Curated Jamaica calendar"));
   } finally {
     resetEventsHandlerStateForTest();
     restoreEnv();
@@ -530,6 +532,7 @@ async function testEventsVerifiedCalendarSource() {
         ticket_requirement: "Ticket or pass required.",
         official_url: "https://example.com/kingston-stage",
         description: "Verified Kingston event listing.",
+        source_label: "Verified island calendar",
       },
       {
         id: "verified-negril-stage",
@@ -569,6 +572,9 @@ async function testEventsVerifiedCalendarSource() {
     assert.equal(body.meta.providers.ticketmaster, false);
     assert.equal(body.meta.providers.verifiedCalendar, true);
     assert.ok(body.data.some((event) => event.id === "verified-verified-kingston-stage"));
+    const verifiedEvent = body.data.find((event) => event.id === "verified-verified-kingston-stage");
+    assert.equal(verifiedEvent?.sourceKind, "verified");
+    assert.equal(verifiedEvent?.sourceLabel, "Verified island calendar");
     assert.equal(body.data.some((event) => event.id === "verified-verified-negril-stage"), false);
   } finally {
     resetEventsHandlerStateForTest();
@@ -758,6 +764,8 @@ async function testEventsLiveProviderNormalization() {
     assert.ok(body.data.some((event) => event.id === "ticketmaster-tm-1" && event.price === "USD 40-90"));
     assert.ok(body.data.some((event) => event.officialUrl === "https://eventbrite.example/ochi-food"));
     assert.ok(body.data.some((event) => event.officialUrl === "https://ticketmaster.example/st-ann-live"));
+    assert.ok(body.data.some((event) => event.id === "eventbrite-eb-1" && event.sourceLabel === "Eventbrite"));
+    assert.ok(body.data.some((event) => event.id === "ticketmaster-tm-1" && event.sourceLabel === "Ticketmaster"));
   } finally {
     resetEventsHandlerStateForTest();
     globalThis.fetch = originalFetch;

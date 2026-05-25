@@ -119,6 +119,7 @@ type SupabaseVerifiedEventRow = {
   ticket_requirement?: unknown;
   official_url?: unknown;
   description?: unknown;
+  source_label?: unknown;
 };
 
 export function resetEventsHandlerStateForTest() {
@@ -334,6 +335,7 @@ async function fetchVerifiedIslandEvents(
     "ticket_requirement",
     "official_url",
     "description",
+    "source_label",
   ].join(","));
   url.searchParams.set("is_published", "eq.true");
   url.searchParams.set("start_date", `gte.${new Date().toISOString()}`);
@@ -458,6 +460,8 @@ function normalizeEventbriteEvent(event: unknown, query: EventQuery): LiveEvent 
       : "Ticket, pass, or registration may be required. Confirm on Eventbrite.",
     ...(officialUrl ? { officialUrl } : {}),
     description: description ? truncateText(description, 180) : "Live Eventbrite listing for this Jamaica area.",
+    sourceKind: "eventbrite",
+    sourceLabel: "Eventbrite",
   };
 }
 
@@ -521,6 +525,8 @@ function normalizeTicketmasterEvent(event: unknown, query: EventQuery): LiveEven
     ticketRequirement: "Ticket or pass may be required. Confirm availability and access with the ticketing listing.",
     ...(officialUrl ? { officialUrl } : {}),
     description: asString(event.info) ?? asString(event.pleaseNote) ?? "Live Ticketmaster listing for this Jamaica area.",
+    sourceKind: "ticketmaster",
+    sourceLabel: "Ticketmaster",
   };
 }
 
@@ -546,6 +552,7 @@ function normalizeVerifiedEvent(row: unknown, query: EventQuery): LiveEvent | nu
   const price = asString(event.price);
   const ticketRequirement = asString(event.ticket_requirement);
   const officialUrl = asString(event.official_url);
+  const sourceLabel = asString(event.source_label);
 
   return {
     id: `verified-${id}`,
@@ -561,6 +568,8 @@ function normalizeVerifiedEvent(row: unknown, query: EventQuery): LiveEvent | nu
     ...(ticketRequirement ? { ticketRequirement } : {}),
     ...(officialUrl ? { officialUrl } : {}),
     description: truncateText(description, 220),
+    sourceKind: "verified",
+    sourceLabel: sourceLabel ?? "Verified island calendar",
   };
 }
 
@@ -597,8 +606,18 @@ async function getCuratedEvents(): Promise<LiveEvent[]> {
   const filePath = path.join(process.cwd(), "public", "data", "events.json");
   const fileContents = await readFile(filePath, "utf8");
   const parsed: unknown = JSON.parse(fileContents);
-  cachedCuratedEvents = Array.isArray(parsed) ? parsed.filter(isLiveEventLike) : [];
+  cachedCuratedEvents = Array.isArray(parsed)
+    ? parsed.filter(isLiveEventLike).map(normalizeCuratedEvent)
+    : [];
   return cachedCuratedEvents;
+}
+
+function normalizeCuratedEvent(event: LiveEvent): LiveEvent {
+  return {
+    ...event,
+    sourceKind: event.sourceKind ?? "curated",
+    sourceLabel: event.sourceLabel ?? "Curated Jamaica calendar",
+  };
 }
 
 function filterCuratedEvents(events: LiveEvent[], query: EventQuery): LiveEvent[] {

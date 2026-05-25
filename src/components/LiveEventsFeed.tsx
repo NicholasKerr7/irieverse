@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { LiveEvent } from "../types/travel";
 import type { EventsApiMeta } from "../types/api";
-import { AlertTriangle, CalendarDays, Database, ExternalLink, PartyPopper, RadioTower, RefreshCcw, Ticket } from "lucide-react";
+import { AlertTriangle, CalendarDays, CheckCircle2, Database, ExternalLink, PartyPopper, RadioTower, RefreshCcw, Ticket } from "lucide-react";
 import { CardGridSkeleton, EmptyStatePanel } from "./LoadingStates";
 import { classNames } from "../utils/classNames";
 import { glassCard, glassPanel } from "../utils/glass";
@@ -93,52 +93,86 @@ export const LiveEventsFeed = memo(function LiveEventsFeed({
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {events.map((event) => (
-          <article
-            key={event.id}
-            className={classNames("rounded-2xl p-4 flex flex-col gap-2", glassCard)}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">{event.title}</h3>
-              <span className="text-[0.65rem] uppercase tracking-[0.2em] text-cyan-300">
-                {event.vibes?.join(" · ") ?? "event"}
-              </span>
-            </div>
-            <p className="text-xs text-slate-400">
-              {event.city} · {event.venue}
-            </p>
-            <div className="flex items-center gap-2 text-[0.75rem] text-slate-200">
-              <CalendarDays className="w-3.5 h-3.5 text-emerald-300" />
-              <span>{event.dateLabel ?? formatEventTime(event.startDate)}</span>
-            </div>
-            <p className="text-xs text-slate-300">{event.description}</p>
-            <div className="rounded-2xl border border-slate-700/80 bg-slate-950/45 px-3 py-2">
-              <p className="flex items-center gap-2 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-amber-100">
-                <Ticket className="h-3.5 w-3.5" />
-                {event.price ?? "Confirm access"}
-              </p>
-              {event.ticketRequirement && (
-                <p className="mt-1 text-xs leading-5 text-slate-400">{event.ticketRequirement}</p>
-              )}
-            </div>
-            {event.officialUrl && (
-              <a
-                href={event.officialUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-200 hover:text-cyan-100"
+        {events.map((event) => {
+          const eventSource = getEventSourceBadge(event);
+
+          return (
+            <article
+              key={event.id}
+              className={classNames("rounded-2xl p-4 flex flex-col gap-2", glassCard)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="text-sm font-semibold">{event.title}</h3>
+                <span className="text-right text-[0.65rem] uppercase tracking-[0.2em] text-cyan-300">
+                  {event.vibes?.join(" · ") ?? "event"}
+                </span>
+              </div>
+              <div
+                className={classNames(
+                  "inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.12em]",
+                  eventSource.tone === "verified"
+                    ? "border-emerald-300/35 bg-emerald-300/10 text-emerald-100"
+                    : eventSource.tone === "live"
+                      ? "border-cyan-300/35 bg-cyan-300/10 text-cyan-100"
+                      : "border-amber-300/35 bg-amber-300/10 text-amber-100"
+                )}
               >
-                Check details <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            )}
-          </article>
-        ))}
+                {eventSource.tone === "curated" ? <Database className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                {eventSource.label}
+              </div>
+              <p className="text-xs text-slate-400">
+                {event.city} · {event.venue}
+              </p>
+              <div className="flex items-center gap-2 text-[0.75rem] text-slate-200">
+                <CalendarDays className="w-3.5 h-3.5 text-emerald-300" />
+                <span>{event.dateLabel ?? formatEventTime(event.startDate)}</span>
+              </div>
+              <p className="text-xs text-slate-300">{event.description}</p>
+              <div className="rounded-2xl border border-slate-700/80 bg-slate-950/45 px-3 py-2">
+                <p className="flex items-center gap-2 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-amber-100">
+                  <Ticket className="h-3.5 w-3.5" />
+                  {event.price ?? "Confirm access"}
+                </p>
+                {event.ticketRequirement && (
+                  <p className="mt-1 text-xs leading-5 text-slate-400">{event.ticketRequirement}</p>
+                )}
+              </div>
+              {event.officialUrl && (
+                <a
+                  href={event.officialUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-200 hover:text-cyan-100"
+                >
+                  Check details <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              )}
+            </article>
+          );
+        })}
       </div>
     </section>
   );
 });
 
 type EventSourceTone = "live" | "fallback" | "error";
+type EventBadgeTone = "verified" | "live" | "curated";
+
+function getEventSourceBadge(event: LiveEvent): { label: string; tone: EventBadgeTone } {
+  if (event.sourceKind === "verified" || event.id.startsWith("verified-")) {
+    return { label: event.sourceLabel ?? "Verified island calendar", tone: "verified" };
+  }
+
+  if (event.sourceKind === "eventbrite" || event.id.startsWith("eventbrite-")) {
+    return { label: event.sourceLabel ?? "Eventbrite", tone: "live" };
+  }
+
+  if (event.sourceKind === "ticketmaster" || event.id.startsWith("ticketmaster-")) {
+    return { label: event.sourceLabel ?? "Ticketmaster", tone: "live" };
+  }
+
+  return { label: event.sourceLabel ?? "Curated Jamaica calendar", tone: "curated" };
+}
 
 function getEventSourceStatus(
   meta: EventsApiMeta,

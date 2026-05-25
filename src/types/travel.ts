@@ -279,6 +279,8 @@ export interface LiveEvent {
   officialUrl?: string;
   description?: string;
   vibes?: string[];
+  sourceKind?: "verified" | "eventbrite" | "ticketmaster" | "curated";
+  sourceLabel?: string;
 }
 
 export interface BookingOption {
