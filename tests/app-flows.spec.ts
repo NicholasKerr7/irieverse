@@ -713,6 +713,9 @@ test("map trip drawer keeps every planned day visible", async ({ page }) => {
   await openCleanTab(page, "map", []);
   await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
   await expectVisibleMapDayTabs(page, 5);
+  await page.getByLabel("Expand trip drawer").click();
+  await page.getByTestId("map-trip-drawer").getByRole("button", { name: /Day 5/ }).click();
+  await expectMapDrawerScrollReachesBottom(page);
 
   await expectNoHorizontalOverflow(page);
   expect(issues).toEqual([]);
@@ -1129,6 +1132,35 @@ async function expectVisibleMapDayTabs(page: Page, expectedDays: number) {
     await expect(dayTab, `Day ${day} tab should be visible in the map drawer`).toBeVisible();
     await expect(dayTab, `Day ${day} tab should not be clipped offscreen`).toBeInViewport();
   }
+}
+
+async function expectMapDrawerScrollReachesBottom(page: Page) {
+  const scrollPanel = page.getByTestId("map-trip-drawer-scroll");
+  const bottomSentinel = page.getByTestId("map-trip-drawer-bottom-sentinel");
+  await expect(scrollPanel).toBeVisible();
+  await expect(bottomSentinel).toBeVisible();
+
+  const layout = await scrollPanel.evaluate((panel) => {
+    panel.scrollTop = panel.scrollHeight;
+    const sentinel = panel.querySelector<HTMLElement>('[data-testid="map-trip-drawer-bottom-sentinel"]');
+    if (!sentinel) return null;
+
+    const panelRect = panel.getBoundingClientRect();
+    const sentinelRect = sentinel.getBoundingClientRect();
+
+    return {
+      panelBottom: panelRect.bottom,
+      sentinelBottom: sentinelRect.bottom,
+      scrollTop: panel.scrollTop,
+      maxScrollTop: panel.scrollHeight - panel.clientHeight,
+      canScroll: panel.scrollHeight > panel.clientHeight,
+    };
+  });
+
+  expect(layout).not.toBeNull();
+  expect(layout?.canScroll).toBe(true);
+  expect(layout?.scrollTop).toBeGreaterThanOrEqual((layout?.maxScrollTop ?? 0) - 1);
+  expect(layout?.sentinelBottom).toBeLessThanOrEqual((layout?.panelBottom ?? 0) - 1);
 }
 
 async function expectMapTopControlsToHaveSeparateHitTargets(page: Page) {

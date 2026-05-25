@@ -564,7 +564,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       <aside
         data-testid="map-trip-drawer"
         className={classNames(
-          "map-glass-drawer absolute inset-x-2 bottom-3 z-40 mx-auto max-w-5xl overflow-hidden rounded-[2rem] border transition-[max-height,transform] duration-300 sm:inset-x-5",
+          "map-glass-drawer absolute inset-x-2 bottom-3 z-40 mx-auto flex max-w-5xl flex-col overflow-hidden rounded-[2rem] border transition-[max-height,transform] duration-300 sm:inset-x-5",
           sheetExpanded ? "max-h-[82vh]" : "max-h-[21.5rem]"
         )}
       >
@@ -577,7 +577,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
           <span className="h-1.5 w-14 rounded-full bg-slate-300" />
         </button>
 
-        <div className="px-4 pb-4">
+        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
           <div className="flex gap-2 sm:gap-3">
             <SafeImage
               src={app.destination.heroImage}
@@ -627,7 +627,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
           />
 
           {sheetExpanded && (
-            <div className="mt-4 max-h-[calc(82vh-16.5rem)] overflow-y-auto overflow-x-hidden pr-1">
+            <div data-testid="map-trip-drawer-scroll" className="mt-4 min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-6 pr-1 scroll-pb-6">
               {activeDrawerTab === "overview" && (
                 <TripOverviewPanel
                   app={app}
@@ -687,6 +687,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
                   }
                 />
               )}
+              <div data-testid="map-trip-drawer-bottom-sentinel" className="h-1" aria-hidden="true" />
             </div>
           )}
         </div>
