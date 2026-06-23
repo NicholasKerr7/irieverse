@@ -564,7 +564,7 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
       <aside
         data-testid="map-trip-drawer"
         className={classNames(
-          "map-glass-drawer absolute inset-x-2 bottom-3 z-40 mx-auto flex max-w-5xl flex-col overflow-hidden rounded-[2rem] border transition-[max-height,transform] duration-300 sm:inset-x-5",
+          "map-glass-drawer absolute inset-x-2 bottom-3 z-40 mx-auto flex min-w-0 max-w-5xl flex-col overflow-hidden rounded-[2rem] border transition-[max-height,transform] duration-300 sm:inset-x-5",
           sheetExpanded ? "max-h-[82vh]" : "max-h-[21.5rem]"
         )}
       >
@@ -577,8 +577,8 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
           <span className="h-1.5 w-14 rounded-full bg-slate-300" />
         </button>
 
-        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-          <div className="flex gap-2 sm:gap-3">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-4 pb-4">
+          <div className="flex min-w-0 gap-2 sm:gap-3">
             <SafeImage
               src={app.destination.heroImage}
               alt={app.destination.name}
@@ -604,13 +604,13 @@ export function MapScreen({ app, onNavigate }: MapScreenProps) {
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="inline-flex min-h-9 items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                <span className="inline-flex min-h-9 min-w-0 max-w-full items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
                   {getRouteStatusLabel(routeStatus)}
                 </span>
                 <button
                   type="button"
                   onClick={() => onNavigate("trips")}
-                  className="inline-flex min-h-9 items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700"
+                  className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700"
                 >
                   Choose dates
                 </button>
@@ -1041,7 +1041,7 @@ function TripOverviewPanel({
 }) {
   return (
     <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-      <div className="min-w-0">
+      <div className="min-w-0 overflow-hidden">
         <div className="flex min-h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
           <Search className="h-4 w-4 shrink-0 text-sky-600" />
           <input
@@ -1097,9 +1097,9 @@ function TripOverviewPanel({
 
       <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-3">
         <div className="flex items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-slate-400">Route Flow</p>
-            <h2 className="mt-1 text-lg font-black">{routeSummary.routeTone}</h2>
+            <h2 className="mt-1 line-clamp-2 text-lg font-black">{routeSummary.routeTone}</h2>
           </div>
           <button
             type="button"
@@ -1144,11 +1144,11 @@ function UnplannedPlacesPanel({
   onOpenExplore: () => void;
 }) {
   return (
-    <div>
-      <div className="flex items-center justify-between gap-3">
-        <div>
+    <div className="min-w-0 overflow-hidden">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-slate-400">Not In This Route</p>
-          <h2 className="mt-1 text-xl font-black">Good Jamaica ideas to add next.</h2>
+          <h2 className="mt-1 line-clamp-2 text-xl font-black">Good Jamaica ideas to add next.</h2>
         </div>
         <button
           type="button"
@@ -1159,13 +1159,13 @@ function UnplannedPlacesPanel({
         </button>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {importedPlaces.map((pin) => (
           <button
             key={pin.id}
             type="button"
             onClick={() => onSelectImportedPlace(pin.id)}
-            className="overflow-hidden rounded-3xl border border-cyan-200 bg-cyan-50 text-left transition hover:border-sky-300"
+            className="min-w-0 overflow-hidden rounded-3xl border border-cyan-200 bg-cyan-50 text-left transition hover:border-sky-300"
           >
             {pin.idea.imageUrl ? (
               <SafeImage src={pin.idea.imageUrl} alt={pin.name} className="h-28 w-full object-cover" loading="lazy" />
@@ -1187,7 +1187,7 @@ function UnplannedPlacesPanel({
             key={destination.id}
             type="button"
             onClick={() => onSelectDestination(destination.id)}
-            className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 text-left transition hover:border-sky-300"
+            className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 text-left transition hover:border-sky-300"
           >
             <SafeImage src={destination.heroImage} alt={destination.name} className="h-28 w-full object-cover" />
             <span className="block p-3">
@@ -1268,12 +1268,12 @@ function DayPlanPanel({
 
   return (
     <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-      <div className="min-w-0">
+      <div className="min-w-0 overflow-hidden">
         <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-sky-600">Day {day} Plan</p>
-              <h2 className="mt-1 text-2xl font-black tracking-tight">{destination.name}</h2>
+              <h2 className="mt-1 line-clamp-2 text-2xl font-black tracking-tight">{destination.name}</h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">{destination.region} · {plannerDay?.energyLevel ?? "balanced"} pace</p>
             </div>
             <button
@@ -1310,7 +1310,7 @@ function DayPlanPanel({
             <TimelineDriveChip stop={stop} routeLeg={routeLeg} routeDetail={routeDetail} />
 
             {!!importedStops.length && (
-              <div className="mt-3 grid gap-2">
+              <div className="mt-3 grid min-w-0 gap-2">
                 <p className="pl-1 text-[0.62rem] font-black uppercase tracking-[0.16em] text-sky-600">
                   Exact stops from your board
                 </p>
@@ -1356,8 +1356,8 @@ function DayPlanPanel({
       </div>
 
       <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-slate-400">Nearby</p>
             <h3 className="mt-1 text-base font-black">Add-ons for Day {day}</h3>
           </div>
@@ -1372,10 +1372,10 @@ function DayPlanPanel({
               <SafeImage src={experience.imageUrl} alt={experience.title} className="h-16 w-16 shrink-0 rounded-xl object-cover" />
               <span className="min-w-0 flex-1 py-1">
                 <span className="block truncate text-sm font-black">{experience.title}</span>
-                <span className="mt-1 block text-xs font-semibold capitalize text-slate-500">
+                <span className="mt-1 block truncate text-xs font-semibold capitalize text-slate-500">
                   {experience.type} · {experience.bestTime}
                 </span>
-                <span className="mt-1 block text-xs font-bold text-emerald-600">{experience.approxCost}</span>
+                <span className="mt-1 block truncate text-xs font-bold text-emerald-600">{experience.approxCost}</span>
               </span>
               <span className="flex shrink-0 flex-col gap-1">
                 <button
@@ -1409,8 +1409,8 @@ function DayFocusCard({ importedStops }: { importedStops: ImportedPlacePin[] }) 
   const stopLabel = `${importedStops.length} saved stop${importedStops.length === 1 ? "" : "s"}`;
 
   return (
-    <section className="mt-3 rounded-3xl border border-cyan-200 bg-cyan-50/80 p-3">
-      <div className="flex items-start gap-3">
+    <section className="mt-3 min-w-0 overflow-hidden rounded-3xl border border-cyan-200 bg-cyan-50/80 p-3">
+      <div className="flex min-w-0 items-start gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-100">
           <MapPin className="h-4 w-4" />
         </span>
@@ -1502,7 +1502,7 @@ function TimelineDriveChip({
   const durationMinutes = routeDetail?.durationMinutes ?? routeLeg?.leg.driveMinutes ?? stop.driveMinutesFromPrevious;
 
   return (
-    <div className="relative mt-3 flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm sm:rounded-full sm:text-sm">
+    <div className="relative mt-3 flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm sm:rounded-full sm:text-sm">
       <TimelineDot label="" tone="route" />
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-50 text-sky-600">
         <Route className="h-4 w-4" />
@@ -1685,8 +1685,8 @@ function TimelineDot({ label, tone = "main" }: { label: string; tone?: "main" | 
 
 function MiniPill({ children }: { children: string }) {
   return (
-    <span className="inline-flex min-h-7 items-center rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-black capitalize text-slate-500">
-      {children}
+    <span className="inline-flex min-h-7 min-w-0 max-w-full items-center overflow-hidden rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-black capitalize text-slate-500">
+      <span className="min-w-0 truncate">{children}</span>
     </span>
   );
 }
@@ -1701,7 +1701,7 @@ function DayNoteEditor({
   onSetNote: (note: string) => void;
 }) {
   return (
-    <label className="mt-4 block rounded-3xl border border-slate-200 bg-white p-3">
+    <label className="mt-4 block min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-3">
       <span className="text-[0.62rem] font-black uppercase tracking-[0.16em] text-slate-400">Day {day} Notes</span>
       <textarea
         value={note}
@@ -1746,9 +1746,9 @@ function ImportedPlaceDetailSheet({
     <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-950/55 p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-md sm:p-5">
       <article
         data-testid="imported-place-detail-sheet"
-        className="map-glass-sheet flex max-h-[84vh] w-full max-w-xl flex-col overflow-hidden rounded-[2rem] border"
+        className="map-glass-sheet flex max-h-[84vh] min-w-0 w-full max-w-xl flex-col overflow-hidden rounded-[2rem] border"
       >
-        <div className="flex items-start gap-3 p-4 sm:p-5">
+        <div className="flex min-w-0 items-start gap-3 p-4 sm:p-5">
           {pin.idea.imageUrl ? (
             <SafeImage src={pin.idea.imageUrl} alt={pin.name} className="h-20 w-20 shrink-0 rounded-3xl object-cover shadow-lg shadow-slate-200" />
           ) : (
@@ -1756,11 +1756,11 @@ function ImportedPlaceDetailSheet({
               <Sparkles className="h-8 w-8 text-sky-600" />
             </div>
           )}
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 overflow-hidden">
             <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-sky-600">
               {isPlacedIdea ? "Trip-ready map idea" : "Saved map idea"}
             </p>
-            <h2 className="mt-1 text-3xl font-black leading-tight tracking-tight">{pin.name}</h2>
+            <h2 className="mt-1 line-clamp-2 text-3xl font-black leading-tight tracking-tight">{pin.name}</h2>
             <p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-500">
               {ratingText && (
                 <>
@@ -1781,16 +1781,16 @@ function ImportedPlaceDetailSheet({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-5 sm:pb-5">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 sm:px-5 sm:pb-5">
           <div className="flex flex-wrap gap-2">
             {pills.map((pill) => (
               <MiniPill key={pill}>{pill}</MiniPill>
             ))}
           </div>
 
-          <section className="mt-4 rounded-3xl border border-cyan-100 bg-cyan-50/80 p-4">
+          <section className="mt-4 min-w-0 overflow-hidden rounded-3xl border border-cyan-100 bg-cyan-50/80 p-4">
             <p className="text-[0.65rem] font-black uppercase tracking-[0.16em] text-sky-600">Place facts</p>
-            <div className="mt-3 grid gap-2">
+            <div className="mt-3 grid min-w-0 gap-2">
               <ImportedPlaceFact icon={MapPin} label="Address" value={pin.address || pin.subtitle} />
               {pin.phone && <ImportedPlaceFact icon={Phone} label="Phone" value={pin.phone} />}
               {pin.websiteUrl && <ImportedPlaceFact icon={Globe2} label="Website" value={readableUrl(pin.websiteUrl)} />}
@@ -1798,7 +1798,7 @@ function ImportedPlaceDetailSheet({
           </section>
 
           {(pin.idea.note || pin.idea.description) && (
-            <section className="mt-3 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            <section className="mt-3 min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-4">
               <h3 className="text-lg font-black">Why you saved it</h3>
               <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
                 {pin.idea.note || pin.idea.description}
@@ -1813,7 +1813,7 @@ function ImportedPlaceDetailSheet({
           )}
         </div>
 
-        <div className="grid shrink-0 grid-cols-3 gap-2 border-t border-slate-200 bg-white/95 p-4">
+        <div className="grid min-w-0 shrink-0 grid-cols-3 gap-2 border-t border-slate-200 bg-white/95 p-4">
           <DrawerAction icon={Heart} label="Saved" onClick={onOpenSaved} active />
           <DrawerAction icon={Navigation} label="Open map" onClick={onOpenMaps} />
           <DrawerAction
@@ -1830,7 +1830,7 @@ function ImportedPlaceDetailSheet({
 
 function ImportedPlaceFact({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/80 bg-white px-3 py-2 shadow-sm shadow-sky-100/60">
+    <div className="flex min-h-14 min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-white/80 bg-white px-3 py-2 shadow-sm shadow-sky-100/60">
       <Icon className="h-4 w-4 shrink-0 text-sky-600" />
       <span className="min-w-0 flex-1">
         <span className="block text-[0.62rem] font-black uppercase tracking-[0.14em] text-slate-400">{label}</span>
@@ -1898,13 +1898,13 @@ function PlaceDetailSheet({
     <div className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-950/55 p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur-md sm:p-5">
       <article
         data-testid="place-detail-sheet"
-        className="map-glass-sheet flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border"
+        className="map-glass-sheet flex max-h-[86vh] min-w-0 w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border"
       >
-        <div className="flex items-start gap-3 p-4 sm:p-5">
+        <div className="flex min-w-0 items-start gap-3 p-4 sm:p-5">
           <SafeImage src={imageUrl} alt={title} className="h-24 w-24 shrink-0 rounded-3xl object-cover shadow-lg shadow-slate-200 sm:h-28 sm:w-28" />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 overflow-hidden">
             <p className="text-[0.65rem] font-black uppercase tracking-[0.18em] text-sky-600">{kicker}</p>
-            <h2 className="mt-1 text-3xl font-black leading-tight tracking-tight">{title}</h2>
+            <h2 className="mt-1 line-clamp-2 text-3xl font-black leading-tight tracking-tight">{title}</h2>
             <p className="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-500">
               <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
               {ratingText} · {region}
@@ -1921,7 +1921,7 @@ function PlaceDetailSheet({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-5 sm:pb-5">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 sm:px-5 sm:pb-5">
           <SafeImage src={imageUrl} alt="" fallbackLabel={title} className="h-56 w-full rounded-3xl object-cover shadow-xl shadow-slate-200" />
 
           <section
@@ -1941,7 +1941,7 @@ function PlaceDetailSheet({
             <p className="mt-1 text-xs font-semibold leading-5">{sourceStatus.body}</p>
           </section>
 
-          <section className="mt-4 grid gap-2 sm:grid-cols-3" aria-label="Trip fit">
+          <section className="mt-4 grid min-w-0 gap-2 sm:grid-cols-3" aria-label="Trip fit">
             {planFit.map((fact) => (
               <CompactPlanFact key={fact.label} icon={fact.icon} label={fact.label} value={fact.value} />
             ))}
@@ -1960,11 +1960,11 @@ function PlaceDetailSheet({
           )}
 
           {(isLiveDetailsLoading || liveVisitRows.length > 0) && (
-            <section className="mt-4 rounded-3xl border border-sky-100 bg-sky-50/80 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+            <section className="mt-4 min-w-0 overflow-hidden rounded-3xl border border-sky-100 bg-sky-50/80 p-4">
+              <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
                   <p className="text-[0.65rem] font-black uppercase tracking-[0.16em] text-sky-600">Visit details</p>
-                  <p className="mt-1 text-lg font-black text-slate-950">{liveDetails?.name || title}</p>
+                  <p className="mt-1 line-clamp-2 text-lg font-black text-slate-950">{liveDetails?.name || title}</p>
                 </div>
                 {openStatusLabel && (
                   <span
@@ -1982,7 +1982,7 @@ function PlaceDetailSheet({
                 )}
               </div>
 
-              <div className="mt-3 grid gap-2">
+              <div className="mt-3 grid min-w-0 gap-2">
                 {liveVisitRows.map((row) => (
                   <LiveVisitRow key={row.label} {...row} />
                 ))}
@@ -1990,8 +1990,8 @@ function PlaceDetailSheet({
             </section>
           )}
 
-          <section className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-start justify-between gap-3">
+          <section className="mt-4 min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex min-w-0 items-start justify-between gap-3">
               <h3 className="text-lg font-black">About this place</h3>
               {isLiveDetailsLoading && (
                 <span className="inline-flex shrink-0 items-center rounded-full bg-sky-50 px-2.5 py-1 text-[0.62rem] font-black text-sky-700">
@@ -2003,9 +2003,9 @@ function PlaceDetailSheet({
           </section>
 
           {!!whatToExpect.length && (
-            <section className="mt-3 rounded-3xl border border-slate-200 bg-white p-4">
+            <section className="mt-3 min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-4">
               <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">Good to know before you go</h3>
-              <div className="mt-3 grid gap-2">
+              <div className="mt-3 grid min-w-0 gap-2">
                 {whatToExpect.map((item) => (
                   <div key={item} className="rounded-2xl bg-slate-50 px-3 py-2 text-sm font-semibold leading-5 text-slate-600">
                     {item}
@@ -2016,11 +2016,11 @@ function PlaceDetailSheet({
           )}
 
           {!!liveDetails?.weekdayDescriptions.length && (
-            <section className="mt-3 rounded-3xl border border-slate-200 bg-white p-4">
-              <div className="flex items-center justify-between gap-3">
+            <section className="mt-3 min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-4">
+              <div className="flex min-w-0 items-center justify-between gap-3">
                 <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">Hours</h3>
               </div>
-              <div className="mt-3 grid gap-1.5">
+              <div className="mt-3 grid min-w-0 gap-1.5">
                 {liveDetails.weekdayDescriptions.slice(0, 7).map((description) => (
                   <p key={description} className="rounded-2xl bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-600">
                     {description}
@@ -2035,7 +2035,7 @@ function PlaceDetailSheet({
           )}
         </div>
 
-        <div className="grid shrink-0 grid-cols-3 gap-2 border-t border-slate-200 bg-white/95 p-4">
+        <div className="grid min-w-0 shrink-0 grid-cols-3 gap-2 border-t border-slate-200 bg-white/95 p-4">
           <DrawerAction icon={Heart} label={isSaved ? "Saved" : "Save"} onClick={onSave} active={isSaved} />
           <DrawerAction icon={Navigation} label="Open map" onClick={onOpenMaps} />
           <DrawerAction icon={Plus} label="Add trip" onClick={onAddToTrip} primary />
@@ -2071,7 +2071,7 @@ function EntryRequirementNotice({ requirement }: { requirement: EntryRequirement
 
 function AudienceTipsSection({ localTips, visitorTips }: { localTips: string[]; visitorTips: string[] }) {
   return (
-    <section className="mt-3 grid gap-3 sm:grid-cols-2">
+    <section className="mt-3 grid min-w-0 gap-3 sm:grid-cols-2">
       {!!localTips.length && <TipsCard title="For locals" tips={localTips} />}
       {!!visitorTips.length && <TipsCard title="For visitors" tips={visitorTips} />}
     </section>
@@ -2080,9 +2080,9 @@ function AudienceTipsSection({ localTips, visitorTips }: { localTips: string[]; 
 
 function TipsCard({ title, tips }: { title: string; tips: string[] }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4">
+    <div className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white p-4">
       <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">{title}</h3>
-      <div className="mt-3 grid gap-2">
+      <div className="mt-3 grid min-w-0 gap-2">
         {tips.map((tip) => (
           <p key={tip} className="rounded-2xl bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-600">
             {tip}
@@ -2201,11 +2201,11 @@ function buildPlanFit(target: PlaceDetailTarget, liveDetails: PlaceDetails | nul
 
 function CompactPlanFact({ icon: Icon, label, value }: CompactPlanFactProps) {
   return (
-    <div className="flex min-h-16 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+    <div className="flex min-h-16 min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white px-3 py-2">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-50 text-sky-600">
         <Icon className="h-4 w-4" />
       </span>
-      <span className="min-w-0">
+      <span className="min-w-0 flex-1">
         <span className="block text-[0.62rem] font-black uppercase tracking-[0.14em] text-slate-400">{label}</span>
         <span className="mt-0.5 block truncate text-sm font-black text-slate-800">{value}</span>
       </span>
@@ -2258,7 +2258,7 @@ function LiveVisitRow({ icon: Icon, label, value, href }: LiveVisitRowProps) {
         href={href}
         target={href.startsWith("tel:") ? undefined : "_blank"}
         rel={href.startsWith("tel:") ? undefined : "noreferrer"}
-        className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/80 bg-white px-3 py-2 text-left shadow-sm shadow-sky-100/60 transition hover:border-sky-200"
+        className="flex min-h-14 min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-white/80 bg-white px-3 py-2 text-left shadow-sm shadow-sky-100/60 transition hover:border-sky-200"
       >
         {content}
       </a>
@@ -2266,7 +2266,7 @@ function LiveVisitRow({ icon: Icon, label, value, href }: LiveVisitRowProps) {
   }
 
   return (
-    <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/80 bg-white px-3 py-2 text-left shadow-sm shadow-sky-100/60">
+    <div className="flex min-h-14 min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-white/80 bg-white px-3 py-2 text-left shadow-sm shadow-sky-100/60">
       {content}
     </div>
   );
@@ -2470,7 +2470,7 @@ function DrawerAction({
       type="button"
       onClick={onClick}
       className={classNames(
-        "inline-flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2 text-center text-[0.7rem] font-black leading-tight transition sm:flex-row sm:gap-2 sm:px-3 sm:py-3 sm:text-sm",
+        "inline-flex min-h-12 min-w-0 max-w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-2xl border px-2 py-2 text-center text-[0.7rem] font-black leading-tight transition sm:flex-row sm:gap-2 sm:px-3 sm:py-3 sm:text-sm",
         primary
           ? "border-sky-500 bg-sky-500 text-white shadow-lg shadow-sky-200"
           : active
@@ -2479,7 +2479,7 @@ function DrawerAction({
       )}
     >
       <Icon className={classNames("h-4 w-4 shrink-0", active && label === "Saved" ? "fill-current" : "")} />
-      <span className="min-w-0">{label}</span>
+      <span className="min-w-0 max-w-full truncate">{label}</span>
     </button>
   );
 }
