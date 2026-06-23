@@ -721,6 +721,65 @@ test("map trip drawer keeps every planned day visible", async ({ page }) => {
   expect(issues).toEqual([]);
 });
 
+test("map trip drawer contains day cards on desktop and mobile", async ({ page }) => {
+  const issues = collectPageIssues(page);
+
+  await page.route("**/api/road-route**", async (route) => {
+    const url = new URL(route.request().url());
+    const from = url.searchParams.get("from") ?? "";
+    const to = url.searchParams.get("to") ?? "";
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          coordinates: buildMockRoadCoordinates(from, to),
+          distanceKm: 78.4,
+          durationMinutes: 108,
+          summary: "Road-aware preview",
+          steps: [
+            {
+              id: "qa-long-step",
+              instruction: "Continue along the Northern Coastal Highway toward the next Jamaica stop",
+              distanceKm: 31.8,
+              durationMinutes: 44,
+              roadName: "Northern Coastal Highway",
+              maneuverType: "continue",
+              modifier: "",
+              direction: "Continue",
+            },
+          ],
+          source: "osrm",
+        },
+        meta: { source: "osrm", stepCount: 1 },
+      }),
+    });
+  });
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await page.getByLabel("Expand trip drawer").click();
+  const desktopDrawer = page.getByTestId("map-trip-drawer");
+  await desktopDrawer.getByRole("button", { name: /Day 2/ }).click();
+  await expect(desktopDrawer.getByText("Add-ons for Day 2")).toBeVisible();
+  await expectContainedLayout(page, '[data-testid="map-trip-drawer"]');
+  await expectNoHorizontalOverflow(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openCleanTab(page, "map", []);
+  await page.locator("canvas").first().waitFor({ state: "visible", timeout: 15000 });
+  await page.getByLabel("Expand trip drawer").click();
+  const mobileDrawer = page.getByTestId("map-trip-drawer");
+  await mobileDrawer.getByRole("button", { name: /Day 2/ }).click();
+  await expect(mobileDrawer.getByText("Add-ons for Day 2")).toBeVisible();
+  await expectContainedLayout(page, '[data-testid="map-trip-drawer"]');
+  await expectNoHorizontalOverflow(page);
+
+  expect(issues).toEqual([]);
+});
+
 test("map route preview keeps route notes secondary", async ({ page }) => {
   const issues = collectPageIssues(page);
 
@@ -1102,6 +1161,63 @@ async function expectNoHorizontalOverflow(page: Page) {
     clientWidth: document.documentElement.clientWidth,
   }));
   expect(sizes.scrollWidth).toBeLessThanOrEqual(sizes.clientWidth);
+}
+
+async function expectContainedLayout(page: Page, rootSelector: string) {
+  const leaks = await page.locator(rootSelector).evaluate((root) => {
+    const rootElement = root as HTMLElement;
+    const tolerance = 1;
+    const rootRect = rootElement.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth;
+
+    const isScreenReaderOnly = (element: HTMLElement) =>
+      element.classList.contains("sr-only") || Boolean(element.closest(".sr-only"));
+
+    const isVisible = (element: HTMLElement) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    };
+
+    const hasIntentionalHorizontalScroller = (element: HTMLElement) => {
+      let current = element.parentElement;
+      while (current && current !== rootElement) {
+        const style = getComputedStyle(current);
+        const hasScrollableX = /(auto|scroll)/.test(style.overflowX);
+        if (hasScrollableX && current.scrollWidth > current.clientWidth + tolerance) return true;
+        current = current.parentElement;
+      }
+      return false;
+    };
+
+    const elements = [
+      rootElement,
+      ...Array.from(rootElement.querySelectorAll("*")).filter((element): element is HTMLElement => element instanceof HTMLElement),
+    ];
+
+    return elements
+      .filter((element) => !isScreenReaderOnly(element) && isVisible(element) && !hasIntentionalHorizontalScroller(element))
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        const rootLeak = rect.left < rootRect.left - tolerance || rect.right > rootRect.right + tolerance;
+        const viewportLeak = rect.left < -tolerance || rect.right > viewportWidth + tolerance;
+
+        return {
+          tag: element.tagName.toLowerCase(),
+          className: element.className,
+          text: element.innerText?.replace(/\s+/g, " ").trim().slice(0, 90) ?? "",
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          rootLeft: Math.round(rootRect.left),
+          rootRight: Math.round(rootRect.right),
+          rootLeak,
+          viewportLeak,
+        };
+      })
+      .filter((item) => item.rootLeak || item.viewportLeak);
+  });
+
+  expect(leaks).toEqual([]);
 }
 
 function parseRouteCoordinate(value: string): [number, number] {
